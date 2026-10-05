@@ -19,9 +19,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
         </div>
         <nav aria-label="Administración" className="mx-auto flex max-w-6xl px-6 sm:px-10">
-          <Link href="/admin/correos" aria-current="page" className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-primary px-1 text-sm font-medium text-primary">
+          <Link href="/admin" aria-current="page" className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-primary px-1 text-sm font-medium text-primary">
             <UsersRound className="size-4" aria-hidden="true" />
-            Correos autorizados
+            Configuración
           </Link>
         </nav>
       </header>

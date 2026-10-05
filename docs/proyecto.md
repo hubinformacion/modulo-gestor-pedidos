@@ -36,7 +36,7 @@ Instalar paquetes de fases posteriores cuando corresponda, sin adelantar sus fun
 - Una cuenta Google verificada previamente autorizada puede crear su usuario de better-auth al ingresar por primera vez. Un correo no autorizado no puede crear usuario ni sesión.
 - Validar también el correo recibido de Google en ingresos posteriores y consultar la autorización vigente con cada petición protegida.
 - Todos los autorizados operan el sistema y consultan la lista; solo el maestro añade o elimina correos. El maestro no se elimina desde la aplicación.
-- La pantalla es una lista sencilla con alta/baja, no un gestor de usuarios ni de roles.
+- Configuración en `/admin`: lista sencilla con alta/baja, sin gestor de usuarios ni de roles. Pedidos e inventario conservan rutas propias.
 - Normalizar correos a minúsculas y quitar espacios externos; `added_by` procede de la sesión, nunca del cliente.
 - Comprobar sesión válida y tabla en el middleware (`src/proxy.ts` en Next 16), páginas y Server Actions. Una cookie presente no demuestra autorización.
 - Revocar un correo y eliminar sus sesiones en una misma transacción. La revocación no depende de cachés; reautorizar exige una sesión nueva.
@@ -103,7 +103,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Implementar el esquema de negocio en fase 2. La fase 1 solo incluye tablas de acceso y sus migraciones.
+Las tablas de acceso de fase 1 están implementadas y aplicadas. El esquema de negocio corresponde a fase 2.
 
 ## Integración Google prevista
 

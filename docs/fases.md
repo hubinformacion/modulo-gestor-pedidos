@@ -2,27 +2,17 @@
 
 ## Estado vigente
 
-Rama activa: `feat/01-auth-y-google`. El repositorio comenzó vacío y aún no tiene `main`. El código de acceso está implementado y ajustado a Inter, blanco, tema claro y `#6802C1`, sin landing ni marcas.
-
-La fase 1 incluye esquema generado por better-auth, autorización en BD, seed idempotente, login Google, proxy, Server Actions y pantalla de correos. Las migraciones y utilidades viven en `src/db`.
-
-Las variables requeridas ya están configuradas en `.env.local`; esto solo confirma su presencia/formato, no la validez externa de las credenciales. La conexión, migración, seed e ingreso contra **Neon y Google reales** siguen pendientes de revisión manual. La fase 1 no se ha integrado ni autorizado para pasar a fase 2. El usuario pidió retirar las pruebas automatizadas: esa infraestructura ya no forma parte del proyecto.
+Fase 1 completada y aprobada el 2026-10-05. Migración y seed aplicados en Neon; el usuario confirmó ingreso del maestro y rechazo de un correo no autorizado. Configuración centralizada en `/admin`. Autorizada su integración inicial a `main` y el inicio de fase 2.
 
 ## Regla de entrega
 
-Nunca hacer commits en `main`. Trabajar en una rama por fase, en este orden. Al cerrar cada fase, describir lo implementado y los pasos de revisión manual, detenerse y esperar aprobación explícita antes de integrar o seguir. No interpretar una petición de ajustes como aprobación de merge.
+Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fase, describir lo implementado y los pasos de revisión manual, detenerse y esperar aprobación explícita antes de integrar o seguir.
 
-Como `main` no existe todavía, la primera integración aprobada la establecerá a partir de la rama de fase. No crearla ni integrarla anticipadamente. No publicar ni configurar servicios externos sin el alcance/autorización correspondiente.
+## Completadas
 
-## 1. feat/01-auth-y-google
+- **1. Auth y Google:** pnpm/Next/UI, Neon/Drizzle, tablas better-auth generadas, autorizados, seed, Google OAuth y protección de páginas/acciones. Solo el maestro gestiona correos; la revocación elimina sesiones atómicamente. Aprobada por el usuario; sin pruebas automatizadas.
 
-**Entrega:** Next App Router, pnpm, TS estricto, Tailwind/UI, Neon/Drizzle mínimo, `authorized_emails` y tablas better-auth por CLI, seed del maestro, Google OAuth, middleware/proxy y pantalla simple de correos.
-
-**Permisos:** todos consultan; solo el maestro añade/quita. Sesión y autorización vigentes también dentro de cada Server Action. Revocación atómica y maestro protegido.
-
-**Revisión manual:** ingresar como maestro, rechazar un Google no autorizado, añadir otro correo, comprobar que puede consultar pero no gestionar, revocarlo y comprobar pérdida de acceso. Repetir seed sin duplicados.
-
-**Pendiente externo:** revisar conexión Neon, migración/seed y cliente Google con callback local, usando la configuración privada existente.
+## Pendientes
 
 ## 2. feat/02-schema-y-seed
 
@@ -50,7 +40,7 @@ Como `main` no existe todavía, la primera integración aprobada la establecerá
 
 ## 5. feat/05-admin-dashboard
 
-**Entrega:** `/admin/pedidos` con tabla/filtros, aprobación independiente por sello y despacho; `/admin/inventario` con CRUD de stock/precios. La entrada administrativa abrirá pedidos cuando este módulo exista.
+**Entrega:** `/admin/pedidos` con tabla/filtros, aprobación independiente por sello y despacho; `/admin/inventario` con CRUD de stock/precios. Configuración permanece en `/admin`; navegación hacia pedidos e inventario sin desplazarla.
 
 **Revisión manual:** aprobaciones de ambos sellos y `NO_APLICA`; ningún mixto pasa a preparación con un pago pendiente/rechazado; rechazo/re-subida de un sello conserva el otro; actualizar inventario y despachar.
 

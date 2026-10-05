@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Rama/fase vigente: `feat/01-auth-y-google`, todavía sin merge ni autorización para fase 2. `.env.local` tiene las variables requeridas; conexión e ingreso contra Neon/Google reales pendientes de revisión manual.
+- Fase 1 completada y aprobada el 2026-10-05: migración/seed en Neon, ingreso del maestro y rechazo de correo no autorizado confirmados. Configuración en `/admin`; pedidos e inventario tendrán rutas propias. Autorizados el merge inicial a `main` y el inicio de `feat/02-schema-y-seed`.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
 - Mantener código, migraciones y utilidades en `src`. Configuración de herramientas en raíz solo por convención necesaria. No crear `CLAUDE.md`.

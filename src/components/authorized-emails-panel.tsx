@@ -5,7 +5,7 @@ import { Mail, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addEmailAction, removeEmailAction } from "@/app/admin/correos/actions";
+import { addEmailAction, removeEmailAction } from "@/app/admin/actions";
 import { authorizedEmailSchema, MASTER_EMAIL, type AccessActionResult } from "@/lib/access-policy";
 
 export type AuthorizedEmailRow = { email: string; addedBy: string; createdAt: string };
