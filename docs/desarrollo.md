@@ -6,6 +6,7 @@
 src/
   app/                    Rutas, layouts y Server Actions (App Router)
   components/             Componentes de las pantallas
+    admin/                Pedidos, revisión, despacho e inventario
     ui/                   Primitivas shadcn/ui sobre Base UI
   db/
     schema.ts             Esquema propio y exportación del esquema auth
@@ -21,6 +22,7 @@ src/
   lib/                    Autenticación, acceso, validaciones e integraciones
     orders/               Catálogo servidor, validaciones, geografía y cálculo
     campuses/             Lectura/CRUD seguro y validación de campus
+    admin/                Lecturas autorizadas y validaciones administrativas
   proxy.ts                Middleware/proxy de rutas administrativas
 docs/                     Contexto, requisitos, fases y decisiones
 ```
@@ -101,3 +103,5 @@ Usar frontend-design respetando estas preferencias, incluso si la habilidad prop
 En Vercel: pnpm, Node compatible, variables de entorno y callback HTTPS del dominio estable. Aplicar migraciones explícitamente, fuera del build. La cuenta propietaria Drive/Gmail requerirá refresh token y carpeta adicionales en fase 4; completar variables de ejemplo en fase 6. Los dominios WordPress/CSP deben provenir de la configuración real, no de valores inventados.
 
 Fase 4: configuración de banco/propietario y revisión en [pedidos-pagos.md](pedidos-pagos.md). FilePond acepta 3 MiB por archivo; Server Actions 4 MiB. PDFs incluidos por tracing; verificar en Vercel.
+
+Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/operations.ts`, lectura/validaciones en `src/lib/admin`, componentes en `src/components/admin`. Migración 0006 agrega control del último comprobante confirmado y outbox de avisos en hilo; ejecutar `pnpm db:migrate`. Revisión: [admin-dashboard.md](admin-dashboard.md).

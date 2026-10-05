@@ -34,10 +34,10 @@ Sin ubicación precisa, el mapa busca por dirección y advierte que debe confirm
 
 Los tres desplegables usan `src/data/ubigeo/peru.json`: snapshot 2026 de 25 departamentos, 196 provincias y 1893 distritos, transformado del [listado SISCONCODE extraído por Peru-maps](https://github.com/Rodasluis/Peru-maps/blob/main/salida/ubigeos_2026.csv). Origen, checksum y actualización en [README del dataset](../src/data/ubigeo/README.md). No se llama una API al comprar; revisar/actualizar el snapshot cuando cambie la división administrativa. La calle/número permanece libre: elegir un distrito válido no geocodifica ni verifica automáticamente la calle.
 
-Las nuevas columnas de pedidos conservan provincia/distrito/ubigeo y datos de la otra persona. Fase 4 debe recuperar campus activos desde BD, validar ubigeo y derivar zona/nombres e importes en servidor; `delivery_city` mantiene compatibilidad con el esquema inicial como localidad, no sustituye el ubigeo.
+Las nuevas columnas de pedidos conservan provincia/distrito/ubigeo y datos de la otra persona. La creación recupera campus activos desde BD, valida ubigeo y deriva zona/nombres e importes en servidor; `delivery_city` mantiene compatibilidad con el esquema inicial como localidad, no sustituye el ubigeo.
 
 ## Estado
 
 Fase 3 aprobada. Este documento conserva únicamente el contrato vigente de la interfaz; el registro real, seguimiento y comprobantes se implementan en fase 4. Consentimiento único: «He leído y acepto la Política de Confidencialidad y Protección de Datos Personales, y autorizo a la Universidad Continental al tratamiento de mis datos.» Enlace de política visible y en negrita.
 
-Panel lateral: tarjetas independientes de compra, consentimiento/botón (solo confirmación) y cuentas (solo mixtos). En cuentas: Publicaciones → Envío (solo Universidad) → Total. Campus y ubigeo siguen las fuentes del servidor. Catálogo en filas sin portada/SKU; badges violeta y rojo Instituto `#e4000b`.
+Panel lateral: tarjetas independientes de compra, consentimiento/botón (solo confirmación) y cuentas (solo mixtos). En cuentas: Publicaciones → Costo por envío (solo Universidad) → Total. El resumen general muestra costo por envío en todos los tipos, incluidos mixtos. Campus y ubigeo siguen las fuentes del servidor. Catálogo en filas sin portada/SKU; badges violeta y rojo Instituto `#e4000b`.

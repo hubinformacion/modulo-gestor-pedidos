@@ -1,5 +1,5 @@
 import "server-only";
-import { and, count, eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { orders, paymentReceipts, paymentUploads } from "@/db/schema";
 import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
@@ -10,7 +10,7 @@ import { validateReceipt } from "./inspect";
 
 function ensureWritable(order: typeof orders.$inferSelect, imprint: "universidad" | "instituto") {
   const status = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
-  if (order.orderStatus !== "PENDIENTE_PAGO" || status === "NO_APLICA" || status === "VERIFICADO") throw new OrderInputError("Este sello no admite nuevos comprobantes.");
+  if (order.orderStatus !== "PENDIENTE_PAGO" || (status !== "PENDIENTE" && status !== "RECHAZADO")) throw new OrderInputError("Este sello no admite nuevos comprobantes.");
 }
 
 export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSchema>, file: File) {
@@ -47,7 +47,6 @@ export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSche
     if (existing) return existing.id;
     ensureWritable(order, metadata.imprint);
     const [receipt] = await tx.insert(paymentReceipts).values({ orderId: order.id, uploadId: intent.id, publisherImprint: metadata.imprint, ...uploaded, fileName: intent.fileName }).returning({ id: paymentReceipts.id });
-    await tx.update(orders).set(metadata.imprint === "universidad" ? { paymentStatusUniversidad: "EN_REVISION" } : { paymentStatusInstituto: "EN_REVISION" }).where(and(eq(orders.id, order.id), eq(orders.orderStatus, "PENDIENTE_PAGO")));
     return receipt.id;
   }));
 }

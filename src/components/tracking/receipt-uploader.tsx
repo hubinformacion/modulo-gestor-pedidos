@@ -1,70 +1,67 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FilePond, registerPlugin } from "react-filepond";
-import type { FilePondFile } from "filepond";
+import { FileStatus, type FilePondFile } from "filepond";
 import FileValidateType from "filepond-plugin-file-validate-type";
 import FileValidateSize from "filepond-plugin-file-validate-size";
 import ImagePreview from "filepond-plugin-image-preview";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { imprintNames, type Imprint } from "@/lib/orders/types";
-import { receiptFileSchema, receiptMetadataSchema } from "@/lib/payments/validation";
-import { uploadReceiptAction } from "@/app/seguimiento/[tracking_token]/actions";
+import { confirmReceiptSchema, receiptFileSchema, receiptMetadataSchema } from "@/lib/payments/validation";
+import { confirmReceiptAction, uploadReceiptAction } from "@/app/seguimiento/[tracking_token]/actions";
 
 registerPlugin(FileValidateType, FileValidateSize, ImagePreview);
 
-export default function ReceiptUploader({ token, writable }: { token: string; writable: Imprint[] }) {
-  const pond = useRef<FilePond>(null);
+export default function ReceiptUploader({ token, imprint, hasUnconfirmedReceipt }: { token: string; imprint: Imprint; hasUnconfirmedReceipt: boolean }) {
   const [files, setFiles] = useState<FilePondFile[]>([]);
-  const [busy, startTransition] = useTransition();
+  const [hasSavedFile, setHasSavedFile] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [confirming, startTransition] = useTransition();
   const router = useRouter();
+  const hasUnfinishedFiles = files.some((file) => file.status !== FileStatus.PROCESSING_COMPLETE);
+  const canConfirm = (hasUnconfirmedReceipt || hasSavedFile) && !hasUnfinishedFiles;
   return <div>
-    <FilePond ref={pond} allowMultiple maxFiles={8} instantUpload={false} maxParallelUploads={1} allowRevert={false} allowProcess={false} disabled={busy || writable.length === 0}
-      acceptedFileTypes={["application/pdf", "image/jpeg", "image/png"]} maxFileSize="3MB" imagePreviewHeight={100}
-      labelIdle='Arrastra tus comprobantes o <span class="filepond--label-action">selecciona archivos</span>'
+    <FilePond name={`comprobante-${imprint}`} allowMultiple maxFiles={8} instantUpload maxParallelUploads={1} allowRevert={false} disabled={confirming}
+      acceptedFileTypes={["application/pdf", "image/jpeg", "image/png"]} maxFileSize="3MB" imagePreviewHeight={90}
+      labelIdle={`Arrastra el comprobante de ${imprintNames[imprint]} o <span class="filepond--label-action">selecciona archivos</span>`}
       labelFileTypeNotAllowed="Usa PDF, JPG o PNG" fileValidateTypeLabelExpectedTypes="Formatos permitidos: PDF, JPG y PNG"
       labelMaxFileSizeExceeded="El archivo supera 3 MB" labelMaxFileSize="Máximo 3 MB"
-      labelFileProcessing="Guardando comprobante" labelFileProcessingComplete="Comprobante guardado" labelFileProcessingError="No se completó la carga"
+      labelFileProcessing="Cargando comprobante" labelFileProcessingComplete="Archivo cargado" labelFileProcessingError="No se completó la carga"
       labelTapToRetry="Pulsa para reintentar" labelTapToCancel="" labelTapToUndo="" labelButtonRemoveItem="Retirar archivo"
-      onaddfile={(error, item) => {
-        if (error) return;
-        item.setMetadata("uploadId", crypto.randomUUID());
-        item.setMetadata("imprint", writable.length === 1 ? writable[0] : "");
-      }}
+      onaddfile={(error, item) => { if (!error) item.setMetadata("uploadId", crypto.randomUUID(), true); }}
       onupdatefiles={setFiles}
+      onprocessfile={(error) => { setFiles((current) => [...current]); if (!error) { setHasSavedFile(true); setMessage(null); router.refresh(); } }}
       server={{ process: (_field, file, metadata, load, error, progress) => {
-        const validated = receiptMetadataSchema.safeParse({ token, uploadId: metadata.uploadId, imprint: metadata.imprint });
+        const validated = receiptMetadataSchema.safeParse({ token, uploadId: metadata.uploadId, imprint });
         const actual = new File([file], file.name, { type: file.type });
-        const validFile = receiptFileSchema.safeParse(actual);
-        if (!validated.success || !validFile.success) { error("Asigna el sello y usa PDF, JPG o PNG de hasta 3 MB."); return; }
+        if (!validated.success || !receiptFileSchema.safeParse(actual).success) { error("Usa PDF, JPG o PNG de hasta 3 MB."); return; }
         const data = new FormData();
-        data.set("token", token); data.set("uploadId", validated.data.uploadId); data.set("imprint", validated.data.imprint); data.set("file", actual);
+        data.set("token", token); data.set("uploadId", validated.data.uploadId); data.set("imprint", imprint); data.set("file", actual);
         progress(false, 0, file.size);
         let active = true;
-        startTransition(async () => {
-          try {
-            const result = await uploadReceiptAction(data);
-            if (!active) return;
-            if (!result.success) { error(result.message); sileo.error({ title: "No se completó la carga", description: result.message }); return; }
-            progress(true, file.size, file.size); load(result.receiptId);
-            sileo.success({ title: "Comprobante guardado" }); router.refresh();
-          } catch { if (active) error("No se completó la carga. Reintenta con el archivo seleccionado."); }
-        });
+        void uploadReceiptAction(data).then((result) => {
+          if (!active) return;
+          if (!result.success) { error(result.message); setMessage(result.message); return; }
+          progress(true, file.size, file.size); load(result.receiptId);
+        }).catch(() => { if (active) { const message = "No se completó la carga. Reintenta con el archivo seleccionado."; error(message); setMessage(message); } });
         return { abort: () => { active = false; } };
       } }} />
-    {files.length ? <ul className="mt-4 space-y-3">
-      {files.map((item) => <li key={item.id} className="rounded-lg border border-border p-3">
-        <label htmlFor={`imprint-${item.id}`} className="mb-2 block truncate text-xs font-medium">Sello del comprobante: {item.filename}</label>
-        <select id={`imprint-${item.id}`} value={String(item.getMetadata("imprint") ?? "")} disabled={busy || Boolean(item.serverId)} className="h-10 w-full rounded-lg border border-border bg-white px-3 text-xs disabled:opacity-60" onChange={(event) => { item.setMetadata("imprint", event.target.value); setFiles([...files]); }}>
-          <option value="">Selecciona el sello</option>{writable.map((imprint) => <option key={imprint} value={imprint}>{imprintNames[imprint]}</option>)}
-        </select>
-      </li>)}
-    </ul> : null}
-    <Button className="mt-4 h-11" disabled={busy || !files.some((file) => !file.serverId) || files.some((file) => !file.serverId && !file.getMetadata("imprint"))} onClick={() => {
-      startTransition(async () => { try { await pond.current?.processFiles(); } catch { /* FilePond retains failed files and their upload IDs. */ } });
-    }}>{busy ? "Guardando…" : "Enviar comprobantes"}</Button>
-    <p className="mt-3 text-xs leading-6 text-muted-foreground">PDF, JPG o PNG de hasta 3 MB por archivo. Cada comprobante se asocia a su sello. Si falla una carga, reintenta antes de retirar el archivo.</p>
+    <p className="mt-3 text-xs leading-6 text-muted-foreground">El archivo se carga al adjuntarlo. PDF, JPG o PNG de hasta 3 MB. Confirma cuando estén cargados todos los comprobantes de este sello.</p>
+    <Button type="button" className="mt-4 h-10 px-4" disabled={confirming || !canConfirm} onClick={() => {
+      const parsed = confirmReceiptSchema.safeParse({ token, imprint });
+      if (!parsed.success) { setMessage("El enlace del pedido no es válido."); return; }
+      setMessage(null);
+      startTransition(async () => {
+        try {
+          const result = await confirmReceiptAction(parsed.data);
+          if (!result.success) { setMessage(result.message); sileo.error({ title: result.message }); return; }
+          setHasSavedFile(false); sileo.success({ title: result.message }); router.refresh();
+        } catch { setMessage("No se pudo confirmar. Los archivos permanecen guardados; reintenta."); }
+      });
+    }}>{confirming ? "Confirmando…" : "Confirmar envío para revisión"}</Button>
+    {message ? <p role="alert" className="mt-3 text-xs leading-6 text-destructive">{message}</p> : null}
   </div>;
 }

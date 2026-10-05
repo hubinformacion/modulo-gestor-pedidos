@@ -74,7 +74,7 @@ La confirmación debe usar la plantilla y guía PDF del tipo de pedido: solo Uni
 
 ## Comprobantes y aprobación de pago
 
-- Una única zona FilePond admite varios archivos. Cada archivo debe poder asociarse a Universidad o Instituto.
+- Una zona FilePond por sello aplicable admite varios archivos; mixto muestra dos. El sello es fijo por zona, sin desplegable. Adjuntar sube automáticamente a Drive; confirmar después cambia solo ese pago a EN_REVISION y envía aviso en el hilo del pedido.
 - Validar tipo/tamaño en cliente y servidor; preview mediante los plugins correspondientes.
 - Guardar comprobantes en Google Drive y sus identificadores/links en `payment_receipts`.
 - Aprobar de forma independiente `payment_status_universidad` y `payment_status_instituto`.
@@ -104,7 +104,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Fases 1–3 aprobadas e integradas en `main`. Fase 4 implementa creación/pagos/seguimiento sobre ese catálogo; despacho/aprobación e inventario pertenecen a fase 5.
+Fases 1–4 aprobadas e integradas localmente en `main`. Creación/pagos/seguimiento implementados; aprobación/despacho e inventario CRUD implementados en la rama de fase 5, pendiente de revisión. Configuración y validación real de Google/PDF/Vercel siguen pendientes.
 
 ## Integración Google prevista
 

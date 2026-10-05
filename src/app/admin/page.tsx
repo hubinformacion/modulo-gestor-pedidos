@@ -8,6 +8,7 @@ import { headers } from "next/headers";
 import { AuthorizedEmailsPanel } from "@/components/authorized-emails-panel";
 import { getPaymentSetupStatus } from "@/lib/payments/config";
 import { CampusesPanel } from "@/components/campuses-panel";
+import { SettingsTabs } from "@/components/admin/settings-tabs";
 import { BankAccountsPanel } from "@/components/bank-accounts-panel";
 
 export const metadata: Metadata = { title: "Configuración" };
@@ -32,24 +33,23 @@ export default async function AuthorizedEmailsPage() {
   return (
     <>
       <h1 className="page-heading">Configuración</h1>
-      <h2 className="mt-8 text-lg font-semibold tracking-tight">Correos autorizados</h2>
+      <SettingsTabs emails={<section aria-labelledby="emails-title">
+      <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
-      <section className="mt-12 border-t border-border pt-8" aria-labelledby="campuses-title">
+      </section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
         <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
-      </section>
-      <section className="mt-12 border-t border-border pt-8" aria-labelledby="bank-accounts-title">
+      </section>} banks={<section aria-labelledby="bank-accounts-title">
         <h2 id="bank-accounts-title" className="text-lg font-semibold tracking-tight">Cuentas bancarias</h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Gestiona las alternativas de pago de cada sello. Los pedidos anteriores conservan las cuentas que recibieron al registrarse.</p>
         <BankAccountsPanel rows={bankRows.map((row) => ({ id: row.id, publisherImprint: row.publisherImprint, bank: row.bank, holder: row.holder, account: row.account, cci: row.cci, currency: "PEN", status: row.status }))} />
-      </section>
-      <section className="mt-12 border-t border-border pt-8" aria-labelledby="payment-setup-title">
+      </section>} integrations={<section aria-labelledby="payment-setup-title">
         <h2 id="payment-setup-title" className="text-lg font-semibold tracking-tight">Registro de pedidos y pagos</h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">El registro público se habilita cuando están disponibles las cuentas, guías y credenciales. Este listado comprueba la configuración; la conexión con Google se revisa al operar.</p>
         <ul className="mt-5 divide-y divide-border rounded-xl border border-border px-4">{paymentSetup.map((item) => <li key={item.label} className="flex items-center justify-between gap-3 py-3 text-xs"><span>{item.label}</span><span className={item.ready ? "font-medium text-primary" : "text-muted-foreground"}>{item.ready ? "Configurado" : "Pendiente"}</span></li>)}</ul>
-      </section>
+      </section>} />
     </>
   );
 }

@@ -14,8 +14,8 @@ export async function deliverOrderEmail(token: string) {
     .returning({ attempts: orderEmails.attempts }));
   if (!claimed.length) return false;
   try {
-    const gmailMessageId = await sendOrderConfirmationEmail(tracking);
-    await withDatabase((db) => db.update(orderEmails).set({ status: "ENVIADO", gmailMessageId, sentAt: new Date() }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.attempts, claimed[0].attempts))));
+    const sent = await sendOrderConfirmationEmail(tracking);
+    await withDatabase((db) => db.update(orderEmails).set({ status: "ENVIADO", gmailMessageId: sent.id, gmailThreadId: sent.threadId, rfcMessageId: sent.messageId, sentAt: new Date() }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.attempts, claimed[0].attempts))));
     return true;
   } catch {
     await withDatabase((db) => db.update(orderEmails).set({ status: "ERROR" }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.attempts, claimed[0].attempts))));
