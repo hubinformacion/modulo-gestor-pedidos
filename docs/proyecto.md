@@ -74,7 +74,7 @@ La confirmación debe usar la plantilla y guía PDF del tipo de pedido: solo Uni
 
 ## Comprobantes y aprobación de pago
 
-- Una única zona FilePond admite varios archivos. Cada archivo debe poder asociarse a Universidad o Instituto.
+- Una zona FilePond por sello aplicable admite varios archivos; mixto muestra dos. El sello es fijo por zona, sin desplegable. Adjuntar sube automáticamente a Drive; confirmar después cambia solo ese pago a EN_REVISION y envía aviso en el hilo del pedido.
 - Validar tipo/tamaño en cliente y servidor; preview mediante los plugins correspondientes.
 - Guardar comprobantes en Google Drive y sus identificadores/links en `payment_receipts`.
 - Aprobar de forma independiente `payment_status_universidad` y `payment_status_instituto`.

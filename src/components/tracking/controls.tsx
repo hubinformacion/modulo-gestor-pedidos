@@ -13,14 +13,13 @@ export function TrackingControls({ token, retryEmail }: { token: string; retryEm
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   return <div className="flex flex-wrap gap-2">
-    <Button variant="outline" onClick={() => router.refresh()}>Actualizar estado</Button>
-    <Button variant="outline" onClick={async () => { try { await navigator.clipboard.writeText(window.location.href); sileo.success({ title: "Enlace copiado" }); } catch { sileo.error({ title: "Copia el enlace desde la barra del navegador" }); } }}>Copiar enlace</Button>
+
     {retryEmail ? <Button variant="ghost" disabled={pending} onClick={() => startTransition(async () => {
       try { const result = await retryConfirmationEmailAction(token); (result.success ? sileo.success : sileo.error)({ title: result.message }); router.refresh(); }
       catch { sileo.error({ title: "No pudimos enviar el correo. Reintenta más tarde." }); }
     })}>{pending ? "Enviando…" : "Reintentar correo"}</Button> : null}
   </div>;
 }
-export function ReceiptArea({ token, writable, enabled }: { token: string; writable: Imprint[]; enabled: boolean }) {
-  return enabled ? <ReceiptUploader token={token} writable={writable} /> : <p className="text-sm text-muted-foreground">La carga está temporalmente no disponible. Conserva tus comprobantes para enviarlos más tarde.</p>;
+export function ReceiptArea({ token, imprint, enabled, hasUnconfirmedReceipt }: { token: string; imprint: Imprint; enabled: boolean; hasUnconfirmedReceipt: boolean }) {
+  return enabled ? <ReceiptUploader token={token} imprint={imprint} hasUnconfirmedReceipt={hasUnconfirmedReceipt} /> : <p className="text-sm text-muted-foreground">La carga está temporalmente no disponible. Conserva tus comprobantes para enviarlos más tarde.</p>;
 }

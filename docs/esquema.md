@@ -46,3 +46,5 @@ Fase 4 agrega `order_emails` (outbox de confirmación), `payment_uploads` (inten
 `payment_guides` guarda versiones inmutables de PDF por SHA-256; `orders.payment_guide_hash` referencia la versión aceptada al crear, compartida entre pedidos sin duplicar bytes. Los PDF del repositorio siguen siendo fuente de nuevas creaciones.
 
 Estado actual: seis migraciones aplicadas en Neon y cuatro cuentas iniciales; Instituto activo, Universidad pendiente. Revisión operativa de fase 4 en [pedidos-pagos.md](pedidos-pagos.md).
+
+Fase 5 agrega en migración 0006 el último recibo confirmado por sello (FK en pedidos), Gmail threadId/Message-ID RFC del correo inicial y `order_notifications` con evento/sello/recibo, estado e intentos. Cambios de pago y avisos se escriben juntos; enviar correo ocurre tras commit. Cargar a Drive no solicita revisión hasta confirmar.

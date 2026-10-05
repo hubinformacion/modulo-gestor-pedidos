@@ -1,10 +1,12 @@
 "use server";
 
+import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, orderItems, orders, paymentReceipts } from "@/db/schema";
+import { books, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
+import { deliverOrderNotification } from "@/lib/orders/notifications";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
@@ -28,7 +30,7 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
   if (!parsed.success) return { success: false, message: "Selecciona un comprobante y una decisión válidos." };
   try {
     const requestHeaders = await headers();
-    const token = await withDatabase(async (db) => {
+    const outcome = await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, requestHeaders);
       return db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
@@ -44,11 +46,13 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
         const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
         await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO" }).where(eq(orders.id, order.id));
-        return order.trackingToken;
+        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId }).returning({ id: orderNotifications.id });
+        return { token: order.trackingToken, notificationId: notification.id };
       });
     });
+    after(async () => { try { await deliverOrderNotification(outcome.notificationId); } catch { /* Preserve the event for retry. */ } });
     revalidatePath("/admin/pedidos", "layout");
-    revalidatePath(`/seguimiento/${token}`);
+    revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true, message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
   } catch (error) { return failure(error); }
 }

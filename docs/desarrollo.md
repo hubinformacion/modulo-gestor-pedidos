@@ -104,4 +104,4 @@ En Vercel: pnpm, Node compatible, variables de entorno y callback HTTPS del domi
 
 Fase 4: configuración de banco/propietario y revisión en [pedidos-pagos.md](pedidos-pagos.md). FilePond acepta 3 MiB por archivo; Server Actions 4 MiB. PDFs incluidos por tracing; verificar en Vercel.
 
-Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/operations.ts`, lectura/validaciones en `src/lib/admin`, componentes en `src/components/admin`. Reutiliza esquema existente, sin migraciones. Revisión: [admin-dashboard.md](admin-dashboard.md).
+Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/operations.ts`, lectura/validaciones en `src/lib/admin`, componentes en `src/components/admin`. Migración 0006 agrega control del último comprobante confirmado y outbox de avisos en hilo; ejecutar `pnpm db:migrate`. Revisión: [admin-dashboard.md](admin-dashboard.md).

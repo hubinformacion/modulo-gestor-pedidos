@@ -26,7 +26,7 @@ export function OrderSummary({ quote, onRemove, editable = true }: {
         {quote.lines.length ? <>
           <div className="mt-5 space-y-3 border-t border-border pt-5">
             <div className="flex justify-between text-xs"><span className="text-muted-foreground">Publicaciones</span><span className="tabular-nums">{formatMoney(quote.subtotal)}</span></div>
-            {quote.orderType !== "mixto" ? <div className="flex justify-between gap-3 text-xs"><span className="text-muted-foreground">Envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(quote.shippingCost) : "Por seleccionar"}</span></div> : null}
+            <div className="flex justify-between gap-3 text-xs"><span className="text-muted-foreground">Costo por envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(quote.shippingCost) : "Por seleccionar"}</span></div>
             <div className="flex justify-between gap-3 border-t border-border pt-4"><span className="text-sm font-semibold">{quote.shippingKnown ? "Total" : "Subtotal"}</span><span className="text-xl font-semibold tracking-tight tabular-nums">{formatMoney(quote.total)}</span></div>
           </div>
 
@@ -44,7 +44,7 @@ export function AccountBreakdown({ quote }: { quote: OrderQuote }) {
             {quote.accounts.map((account) => <div key={account.imprint} className="space-y-2">
               <p className="text-xs font-semibold">{imprintNames[account.imprint]}</p>
               <div className="flex justify-between text-[11px] text-muted-foreground"><span>Publicaciones</span><span className="tabular-nums">{formatMoney(account.subtotal)}</span></div>
-              {account.imprint === "universidad" ? <div className="flex justify-between gap-3 text-[11px] text-muted-foreground"><span>Envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(account.shipping) : "Por seleccionar"}</span></div> : null}
+              {account.imprint === "universidad" ? <div className="flex justify-between gap-3 text-[11px] text-muted-foreground"><span>Costo por envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(account.shipping) : "Por seleccionar"}</span></div> : null}
               <div className="flex justify-between text-xs font-semibold"><span>Total de la cuenta</span><span className="tabular-nums">{formatMoney(account.total)}</span></div>
             </div>)}
           </div>

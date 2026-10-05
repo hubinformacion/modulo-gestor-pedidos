@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export * from "./auth-schema";
 
@@ -110,6 +110,9 @@ export const orders = pgTable("orders", {
   // Required explicitly: creation must set the inapplicable imprint to NO_APLICA.
   paymentStatusUniversidad: paymentStatus("payment_status_universidad").notNull(),
   paymentStatusInstituto: paymentStatus("payment_status_instituto").notNull(),
+  // Confirming again after rejection requires a newly uploaded receipt.
+  submittedReceiptUniversidad: uuid("submitted_receipt_universidad").references((): AnyPgColumn => paymentReceipts.id, { onDelete: "restrict" }),
+  submittedReceiptInstituto: uuid("submitted_receipt_instituto").references((): AnyPgColumn => paymentReceipts.id, { onDelete: "restrict" }),
   courier: text("courier"),
   ...timestamps(),
 }, (table) => [
@@ -210,8 +213,29 @@ export const orderEmails = pgTable("order_emails", {
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
+  gmailThreadId: text("gmail_thread_id"),
+  rfcMessageId: text("rfc_message_id"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
 }, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
+
+export const orderNotifications = pgTable("order_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  eventType: text("event_type").notNull(),
+  publisherImprint: publisherImprint("publisher_imprint"),
+  receiptId: uuid("receipt_id").references((): AnyPgColumn => paymentReceipts.id, { onDelete: "restrict" }),
+  status: text("status").default("PENDIENTE").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  gmailMessageId: text("gmail_message_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("order_notifications_order_idx").on(table.orderId, table.createdAt),
+  index("order_notifications_retry_idx").on(table.status, table.lastAttemptAt),
+  check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO')`),
+  check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`),
+  check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL)`),
+]);
 
 export const bankAccounts = pgTable("bank_accounts", {
   id: uuid("id").defaultRandom().primaryKey(),

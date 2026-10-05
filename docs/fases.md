@@ -22,7 +22,7 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 ## 5. feat/05-admin-dashboard
 
-**Estado:** implementada en su rama; pendiente de revisión manual y aprobación antes de integrar. Sin migraciones ni nuevas dependencias. Lint, tipos y build de producción correctos.
+**Estado:** implementada en su rama; pendiente de revisión manual y aprobación antes de integrar. Migración 0006 aplicada en Neon para confirmación por sello y avisos en el hilo de Gmail; sin nuevas dependencias. Lint, tipos y build de producción correctos.
 
 **Entrega:** pedidos con búsqueda, filtros, paginación y detalle; comprobantes Drive, aprobación/rechazo independiente por sello; preparación condicionada, despacho con courier y entrega. Inventario en tabla con edición y alta inline, confirmación breve de borrado, precios/stock/estado, protección del historial y control de concurrencia. Configuración en `/admin` separada en pestañas de correos, campus, cuentas e integraciones.
 
