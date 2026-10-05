@@ -104,7 +104,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Las tablas de acceso y negocio están implementadas/aplicadas y ambas fases integradas en `main`. El wizard de fase 3 utiliza ese catálogo; creación/pagos/despacho pertenecen a fases posteriores.
+Fases 1–3 aprobadas e integradas en `main`. Fase 4 implementa creación/pagos/seguimiento sobre ese catálogo; despacho/aprobación e inventario pertenecen a fase 5.
 
 ## Integración Google prevista
 

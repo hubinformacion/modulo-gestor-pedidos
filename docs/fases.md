@@ -2,7 +2,7 @@
 
 ## Estado vigente
 
-Fases 1–3 aprobadas; fase 3 lista para integrar. Próxima rama: `feat/04-pedidos-pagos-drive`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. El usuario autorizó integrar fase 3 y continuar con fase 4.
+Fases 1–3 aprobadas e integradas localmente en `main`. Rama vigente: `feat/04-pedidos-pagos-drive`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Fase 4 implementada, pendiente de configuración y revisión operativa; no integrar ni avanzar a fase 5 sin aprobación.
 
 ## Regla de entrega
 
@@ -16,17 +16,19 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **3. Wizard:** aprobada por el usuario. Cuatro pasos, catálogo compacto, precios dinámicos, ubigeo, campus administrables, persona alternativa, resumen en tarjetas y consentimiento único. Migración de campus aplicada; lint/tipos/build correctos. Contrato de interfaz en [wizard.md](wizard.md).
 
-## Fase siguiente
-
-## Fases pendientes
+## Fase vigente
 
 ## 4. feat/04-pedidos-pagos-drive
+
+**Estado:** código implementado. Migraciones 0003–0005 aplicadas en Neon; cuatro cuentas sembradas. Lint, tipos y build correctos. Tracing incluye los tres PDF. Drive/Gmail, pedidos reales y adjunto en Vercel pendientes: faltan credenciales y catálogo operativo.
 
 **Entrega:** Server Action de creación, recálculo de precios server-side, stock y numeración por año en transacción; seguimiento por token; FilePond multiarchivo por sello; Drive, correo y PDFs.
 
 **Revisión manual:** crear cada tipo de pedido, abortar por stock insuficiente, revisar consecutivos por año y totales por cuenta, cargar/reintentar comprobantes por sello y confirmar recepción del correo con su PDF. Revisar manualmente el adjunto en Vercel.
 
-**Datos necesarios:** credenciales y refresh token de cuenta propietaria, carpeta Drive y PDFs definitivos.
+**Datos necesarios:** completar/activar Universidad en el CRUD de cuentas, refresh token/propietario y carpeta Drive, reemplazar PDF mixto cuando el responsable lo tenga listo, y proyecto Vercel. Estado detallado y revisión en [pedidos-pagos.md](pedidos-pagos.md).
+
+## Fases pendientes
 
 ## 5. feat/05-admin-dashboard
 

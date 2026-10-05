@@ -22,6 +22,27 @@
       "when": 1791223251784,
       "tag": "0002_magenta_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791231651026,
+      "tag": "0003_stormy_bullseye",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791232116922,
+      "tag": "0004_groovy_starjammers",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791232331473,
+      "tag": "0005_wet_redwing",
+      "breakpoints": true
     }
   ]
 }

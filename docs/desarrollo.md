@@ -25,7 +25,7 @@ src/
 docs/                     Contexto, requisitos, fases y decisiones
 ```
 
-En fases posteriores, PDFs en `src/assets/pdfs` e integración Google en `src/lib/google.ts`. No mantener carpetas `drizzle`, `scripts` o pruebas en raíz.
+PDFs en `src/assets/pdfs` e integración Google en `src/lib/google.ts`. No mantener carpetas `drizzle`, `scripts` o pruebas en raíz.
 
 En la raíz permanecen `package.json`, lockfile/configuración pnpm, `tsconfig.json`, configuraciones Next/PostCSS/ESLint, `components.json` de shadcn, `.env.example`, `.gitignore`, README y AGENTS. Estas ubicaciones permiten el descubrimiento normal de las herramientas. No existe `CLAUDE.md`.
 
@@ -60,7 +60,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Compra pública en `/pedido`; revisión con DEMO en `/admin/vista-previa`, protegida y sin escritura de pedidos. Datos del comprador solo en memoria durante el recorrido.
+Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Compra pública en `/pedido`; revisión con DEMO en `/admin/vista-previa`, protegida y sin escritura de pedidos. Datos del comprador en memoria durante el recorrido y persistidos solo al confirmar un pedido real.
 
 Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
 
@@ -99,3 +99,5 @@ Usar frontend-design respetando estas preferencias, incluso si la habilidad prop
 ## Despliegue posterior
 
 En Vercel: pnpm, Node compatible, variables de entorno y callback HTTPS del dominio estable. Aplicar migraciones explícitamente, fuera del build. La cuenta propietaria Drive/Gmail requerirá refresh token y carpeta adicionales en fase 4; completar variables de ejemplo en fase 6. Los dominios WordPress/CSP deben provenir de la configuración real, no de valores inventados.
+
+Fase 4: configuración de banco/propietario y revisión en [pedidos-pagos.md](pedidos-pagos.md). FilePond acepta 3 MiB por archivo; Server Actions 4 MiB. PDFs incluidos por tracing; verificar en Vercel.

@@ -1,0 +1,53 @@
+import "server-only";
+import { and, count, eq } from "drizzle-orm";
+import { withDatabase } from "@/db";
+import { orders, paymentReceipts, paymentUploads } from "@/db/schema";
+import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
+import { OrderInputError } from "@/lib/orders/submission";
+import type { z } from "zod";
+import { receiptMetadataSchema } from "./validation";
+import { validateReceipt } from "./inspect";
+
+function ensureWritable(order: typeof orders.$inferSelect, imprint: "universidad" | "instituto") {
+  const status = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
+  if (order.orderStatus !== "PENDIENTE_PAGO" || status === "NO_APLICA" || status === "VERIFICADO") throw new OrderInputError("Este sello no admite nuevos comprobantes.");
+}
+
+export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSchema>, file: File) {
+  const { bytes, filename, hash } = await validateReceipt(file);
+  const current = await withDatabase(async (db) => {
+    const [order] = await db.select().from(orders).where(eq(orders.trackingToken, metadata.token));
+    if (!order) throw new OrderInputError("No encontramos el pedido.");
+    const [intent] = await db.select().from(paymentUploads).where(eq(paymentUploads.id, metadata.uploadId));
+    if (intent && (intent.orderId !== order.id || intent.publisherImprint !== metadata.imprint || intent.contentHash !== hash)) throw new OrderInputError("El archivo o sello cambió durante el intento. Retira el archivo y añádelo nuevamente.");
+    const [receipt] = await db.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, metadata.uploadId));
+    return { order, intent, receipt };
+  });
+  if (current.receipt) return current.receipt.id;
+  ensureWritable(current.order, metadata.imprint);
+  const driveId = current.intent?.driveFileId ?? await reserveDriveFileId();
+  const intent = await withDatabase((db) => db.transaction(async (tx) => {
+    const [order] = await tx.select().from(orders).where(eq(orders.id, current.order.id)).for("update");
+    ensureWritable(order, metadata.imprint);
+    const [existing] = await tx.select().from(paymentUploads).where(eq(paymentUploads.id, metadata.uploadId));
+    if (existing) {
+      if (existing.orderId !== order.id || existing.publisherImprint !== metadata.imprint || existing.contentHash !== hash) throw new OrderInputError("El archivo o sello cambió. Retíralo y añádelo nuevamente.");
+      return existing;
+    }
+    const [usage] = await tx.select({ count: count() }).from(paymentUploads).where(eq(paymentUploads.orderId, order.id));
+    if (usage.count >= 30) throw new OrderInputError("Se alcanzó el límite de comprobantes del pedido. Contacta al equipo para continuar.");
+    const [created] = await tx.insert(paymentUploads).values({ id: metadata.uploadId, orderId: order.id, publisherImprint: metadata.imprint, contentHash: hash, driveFileId: driveId, fileName: filename, mimeType: file.type, size: file.size }).returning();
+    return created;
+  }));
+  // External calls never hold the order lock. Keep the intent if Drive or DB fails.
+  const uploaded = await uploadFileToDrive({ id: intent.driveFileId, name: `${current.order.orderNumber}-${metadata.imprint}-${filename}`, mimeType: intent.mimeType, bytes });
+  return withDatabase((db) => db.transaction(async (tx) => {
+    const [order] = await tx.select().from(orders).where(eq(orders.id, current.order.id)).for("update");
+    const [existing] = await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, metadata.uploadId));
+    if (existing) return existing.id;
+    ensureWritable(order, metadata.imprint);
+    const [receipt] = await tx.insert(paymentReceipts).values({ orderId: order.id, uploadId: intent.id, publisherImprint: metadata.imprint, ...uploaded, fileName: intent.fileName }).returning({ id: paymentReceipts.id });
+    await tx.update(orders).set(metadata.imprint === "universidad" ? { paymentStatusUniversidad: "EN_REVISION" } : { paymentStatusInstituto: "EN_REVISION" }).where(and(eq(orders.id, order.id), eq(orders.orderStatus, "PENDIENTE_PAGO")));
+    return receipt.id;
+  }));
+}

@@ -1,7 +1,9 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, useTransition, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { createOrderAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { PreviewCompletion } from "./preview-completion";
@@ -24,8 +26,12 @@ const steps = [
   { name: "Confirmación", title: "Revisa tu pedido", description: "Comprueba las publicaciones, tus datos y el detalle de pago por cuenta." },
 ] as const;
 
-export function OrderWizard({ catalog, campuses, preview = false }: { catalog: CatalogBook[]; campuses: Campus[]; preview?: boolean }) {
+export function OrderWizard({ catalog, campuses, preview = false, submissionEnabled = false }: { catalog: CatalogBook[]; campuses: Campus[]; preview?: boolean; submissionEnabled?: boolean }) {
   const [step, setStep] = useState(0);
+  const [submitting, startTransition] = useTransition();
+  const requestId = useRef<string | null>(null);
+  const sending = useRef(false);
+  const router = useRouter();
   const [cart, setCart] = useState<CartSelection[]>([]);
   const [buyer, setBuyer] = useState<BuyerDraft>(initialBuyer);
   const [delivery, setDelivery] = useState<DeliveryDraft>(initialDelivery);
@@ -85,7 +91,6 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
       if (!result.success) return showErrors(result.error.issues);
       setDelivery(result.data); goTo(3);
     } else {
-      if (!preview) return;
       const result = createOrderDraftSchema(catalog, campuses).safeParse({ cart, buyer, delivery });
       if (!result.success) {
         const firstPath = result.error.issues[0]?.path[0];
@@ -96,9 +101,23 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
       }
       const accepted = consentSchema.safeParse({ accepted: consentAccepted });
       if (!accepted.success) return showErrors(accepted.error.issues);
-      // Phase 3 preview: intentionally no order creation, stock changes or email.
-      setPreviewComplete(true);
-      sileo.success({ title: "Revisión completada", description: "Este recorrido no crea un pedido ni realiza un cobro." });
+      if (preview) {
+        setPreviewComplete(true);
+        sileo.success({ title: "Revisión completada", description: "Este recorrido no crea un pedido ni realiza un cobro." });
+        return;
+      }
+      if (!submissionEnabled || sending.current) return;
+      requestId.current ??= crypto.randomUUID();
+      sending.current = true;
+      const payload = { requestId: requestId.current, cart, buyer, delivery, consent: { accepted: consentAccepted } };
+      startTransition(async () => {
+        try {
+          const created = await createOrderAction(payload);
+          if (!created.success) { showErrors([{ path: ["form"], message: created.message }]); return; }
+          router.push(`/seguimiento/${created.trackingToken}`);
+        } catch { showErrors([{ path: ["form"], message: "No pudimos confirmar la respuesta. Reintenta sin cambiar tus datos para evitar duplicados." }]); }
+        finally { sending.current = false; }
+      });
     }
   }
 
@@ -108,14 +127,15 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>
-            <button type="button" disabled={index > step} onClick={() => goTo(index)} aria-current={index === step ? "step" : undefined} className={cn("-mb-px flex min-h-16 w-full flex-col items-center justify-center gap-1.5 border-b-2 px-1 pb-3 text-[10px] font-medium sm:flex-row sm:gap-2 sm:text-xs", index === step ? "border-primary text-primary" : "border-transparent text-muted-foreground", index > step && "opacity-50")}>
+            <button type="button" disabled={index > step || submitting} onClick={() => goTo(index)} aria-current={index === step ? "step" : undefined} className={cn("-mb-px flex min-h-16 w-full flex-col items-center justify-center gap-1.5 border-b-2 px-1 pb-3 text-[10px] font-medium sm:flex-row sm:gap-2 sm:text-xs", index === step ? "border-primary text-primary" : "border-transparent text-muted-foreground", index > step && "opacity-50")}>
               <span className={cn("flex size-6 items-center justify-center rounded-full text-[10px] tabular-nums", index === step ? "bg-primary text-white" : index < step ? "bg-secondary text-primary" : "bg-muted")}>{index < step ? <Check className="size-3" aria-hidden="true" /> : index + 1}</span>{item.name}
             </button>
           </li>)}
         </ol>
       </nav>
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
-        <form id="order-wizard-form" noValidate onSubmit={submit} className="min-w-0">
+        <form id="order-wizard-form" noValidate onSubmit={submit} className="min-w-0" aria-busy={submitting}>
+          <fieldset disabled={submitting} className="min-w-0">
           <div className="mb-7">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paso {step + 1} de 4</p>
             <h1 ref={headingRef} tabIndex={-1} className="page-heading scroll-mt-6 outline-none">{steps[step].title}</h1>
@@ -133,10 +153,11 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
             {step < 3 ? <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 && catalog.length === 0}>Continuar<ArrowRight aria-hidden="true" /></Button> : null}
           </div>
+          </fieldset>
         </form>
         <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
-        <OrderSummary quote={quote} editable={step === 0} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
-          {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || !preview} preview={preview} /> : null}
+        <OrderSummary quote={quote} editable={step === 0 && !submitting} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
+          {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || submitting || (!preview && !submissionEnabled)} pending={submitting} preview={preview} enabled={submissionEnabled} /> : null}
           <AccountBreakdown quote={quote} />
         </aside>
       </div>

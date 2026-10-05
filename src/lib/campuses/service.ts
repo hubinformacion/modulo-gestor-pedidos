@@ -1,21 +1,11 @@
 import "server-only";
-import { and, eq, gt, or } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 import type { Database } from "@/db";
-import { authorizedEmails, campuses, orders, session, user } from "@/db/schema";
-import { AccessError, type AuthorizedActor } from "@/lib/access-policy";
+import { campuses, orders } from "@/db/schema";
+import { type AuthorizedActor } from "@/lib/access-policy";
+import { assertAuthorized } from "@/lib/transaction-access";
 import type { CampusActionResult, CampusForm } from "./validation";
 
-type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
-
-async function assertAuthorized(tx: Transaction, actor: AuthorizedActor) {
-  // Share lock coordinates with revocation: permissions remain valid through commit.
-  const [allowed] = await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.email, actor.email)).for("share");
-  if (!allowed) throw new AccessError("FORBIDDEN");
-  const [current] = await tx.select({ id: session.id }).from(session).innerJoin(user, eq(user.id, session.userId)).where(and(
-    eq(session.id, actor.sessionId), eq(session.userId, actor.userId), gt(session.expiresAt, new Date()), eq(user.email, actor.email), eq(user.emailVerified, true),
-  ));
-  if (!current) throw new AccessError("UNAUTHENTICATED");
-}
 
 export async function saveCampus(db: Database, actor: AuthorizedActor, data: CampusForm, id?: string): Promise<CampusActionResult> {
   return db.transaction(async (tx) => {

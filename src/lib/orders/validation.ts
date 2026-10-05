@@ -63,7 +63,7 @@ export function createDeliverySchema(campuses: Campus[]) {
     reference: z.string().trim().max(300),
     recipientType: z.enum(["comprador", "otra_persona"]),
     recipient: z.string().trim().max(160),
-    recipientDocument: z.string().trim().max(8),
+    recipientDocument: z.string().trim().max(20),
     recipientPhone: z.string().trim().max(24),
   }).superRefine((delivery, ctx) => {
     if (delivery.type === "recojo_campus") {

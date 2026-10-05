@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export * from "./auth-schema";
 
@@ -67,6 +67,12 @@ export const orderCounters = pgTable("order_counters", {
 export const orders = pgTable("orders", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderNumber: text("order_number").notNull().unique(),
+  requestId: uuid("request_id").unique(),
+  draftHash: text("draft_hash"),
+  consentAcceptedAt: timestamp("consent_accepted_at", { withTimezone: true }),
+  consentVersion: text("consent_version"),
+  paymentAccounts: jsonb("payment_accounts"),
+  paymentGuideHash: text("payment_guide_hash").references(() => paymentGuides.hash, { onDelete: "restrict" }),
   trackingToken: text("tracking_token").notNull().unique(),
   orderType: orderType("order_type").notNull(),
   customerType: customerType("customer_type").notNull(),
@@ -150,6 +156,7 @@ export const orderItems = pgTable("order_items", {
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   bookId: uuid("book_id").notNull().references(() => books.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  bookTitle: text("book_title"),
   unitPrice: money("unit_price").notNull(),
   quantity: integer("quantity").notNull(),
   subtotal: money("subtotal").notNull(),
@@ -164,6 +171,7 @@ export const paymentReceipts = pgTable("payment_receipts", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  uploadId: uuid("upload_id").unique().references(() => paymentUploads.id, { onDelete: "restrict" }),
   driveFileId: text("drive_file_id").notNull().unique(),
   driveViewUrl: text("drive_view_url").notNull(),
   fileName: text("file_name").notNull(),
@@ -181,3 +189,49 @@ export const authorizedEmails = pgTable("authorized_emails", {
 }, (table) => [
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
 ]);
+
+// Durable upload intent: re-use the same Drive ID after network/database failures.
+export const paymentUploads = pgTable("payment_uploads", {
+  id: uuid("id").primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  contentHash: text("content_hash").notNull(),
+  driveFileId: text("drive_file_id").notNull().unique(),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("payment_uploads_order_idx").on(table.orderId)]);
+
+// A committed order remains recoverable even if Gmail is temporarily unavailable.
+export const orderEmails = pgTable("order_emails", {
+  orderId: uuid("order_id").primaryKey().references(() => orders.id, { onDelete: "restrict" }),
+  status: text("status").default("PENDIENTE").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  gmailMessageId: text("gmail_message_id"),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+}, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
+
+export const bankAccounts = pgTable("bank_accounts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  bank: text("bank").notNull(),
+  holder: text("holder").notNull(),
+  currency: text("currency").default("PEN").notNull(),
+  account: text("account").notNull(),
+  cci: text("cci").notNull(),
+  status: bookStatus("status").default("INACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("bank_accounts_unique").on(table.publisherImprint, sql`lower(btrim(${table.bank}))`, sql`regexp_replace(${table.account}, '[ -]', '', 'g')`),
+  check("bank_accounts_currency", sql`${table.currency} = 'PEN'`),
+  check("bank_accounts_active_fields", sql`${table.status} <> 'ACTIVO' OR (btrim(${table.bank}) <> '' AND btrim(${table.holder}) <> '' AND ${table.account} ~ '^[0-9 -]{5,40}$' AND ${table.cci} ~ '^[0-9]{20}$')`),
+]);
+
+// Immutable PDF versions keep old orders consistent after bank/guide changes.
+export const paymentGuides = pgTable("payment_guides", {
+  hash: text("hash").primaryKey(),
+  contentBase64: text("content_base64").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
