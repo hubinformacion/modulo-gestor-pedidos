@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, numeric, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { check, index, integer, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export * from "./auth-schema";
 
@@ -11,6 +11,7 @@ export const deliveryType = pgEnum("delivery_type", ["recojo_campus", "delivery"
 export const deliveryZone = pgEnum("delivery_zone", ["lima_callao", "provincia"]);
 export const orderStatus = pgEnum("order_status", ["PENDIENTE_PAGO", "EN_PREPARACION", "DESPACHADO", "ENTREGADO", "CANCELADO"]);
 export const paymentStatus = pgEnum("payment_status", ["NO_APLICA", "PENDIENTE", "EN_REVISION", "VERIFICADO", "RECHAZADO"]);
+export const recipientType = pgEnum("recipient_type", ["comprador", "otra_persona"]);
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -19,6 +20,22 @@ const timestamps = () => ({
 
 // Exact decimal strings: convert to integer céntimos for application arithmetic.
 const money = (name: string) => numeric(name, { precision: 12, scale: 2 });
+
+export const campuses = pgTable("campuses", {
+  id: text("id").default(sql`gen_random_uuid()::text`).primaryKey(),
+  name: text("name").notNull(),
+  libraryAddress: text("library_address").notNull(),
+  latitude: numeric("latitude", { precision: 10, scale: 7 }),
+  longitude: numeric("longitude", { precision: 10, scale: 7 }),
+  googleMapsEmbedUrl: text("google_maps_embed_url"),
+  status: bookStatus("status").default("ACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("campuses_name_unique").on(sql`lower(btrim(${table.name}))`),
+  check("campuses_nonempty_fields", sql`btrim(${table.name}) <> '' AND btrim(${table.libraryAddress}) <> ''`),
+  check("campuses_valid_coordinates", sql`(${table.latitude} IS NULL AND ${table.longitude} IS NULL) OR (${table.latitude} IS NOT NULL AND ${table.longitude} IS NOT NULL AND ${table.latitude} BETWEEN -90 AND 90 AND ${table.longitude} BETWEEN -180 AND 180)`),
+  check("campuses_valid_map_url", sql`${table.googleMapsEmbedUrl} IS NULL OR ${table.googleMapsEmbedUrl} ~ '^https://(www[.]google[.]com|maps[.]google[.]com)/maps/embed([?]|/)'`),
+]);
 
 export const books = pgTable("books", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -53,20 +70,26 @@ export const orders = pgTable("orders", {
   trackingToken: text("tracking_token").notNull().unique(),
   orderType: orderType("order_type").notNull(),
   customerType: customerType("customer_type").notNull(),
-  customerCampus: text("customer_campus"),
+  customerCampus: text("customer_campus").references(() => campuses.id, { onDelete: "restrict" }),
   customerName: text("customer_name").notNull(),
   customerEmail: text("customer_email").notNull(),
   customerPhone: text("customer_phone").notNull(),
   customerDocument: text("customer_document").notNull(),
   deliveryType: deliveryType("delivery_type").notNull(),
-  deliveryCampus: text("delivery_campus"),
+  deliveryCampus: text("delivery_campus").references(() => campuses.id, { onDelete: "restrict" }),
   deliveryZone: deliveryZone("delivery_zone"),
   deliveryDepartment: text("delivery_department"),
   deliveryCity: text("delivery_city"),
+  deliveryProvince: text("delivery_province"),
+  deliveryDistrict: text("delivery_district"),
+  deliveryUbigeo: text("delivery_ubigeo"),
   // Also stores the library address snapshot for campus pickup.
   deliveryAddress: text("delivery_address").notNull(),
   deliveryReference: text("delivery_reference"),
   deliveryRecipient: text("delivery_recipient").notNull(),
+  deliveryRecipientType: recipientType("delivery_recipient_type").default("comprador").notNull(),
+  deliveryRecipientDocument: text("delivery_recipient_document"),
+  deliveryRecipientPhone: text("delivery_recipient_phone"),
   subtotalUniversidad: money("subtotal_universidad").notNull(),
   subtotalInstituto: money("subtotal_instituto").notNull(),
   shippingCost: money("shipping_cost").notNull(),
@@ -87,6 +110,10 @@ export const orders = pgTable("orders", {
   index("orders_created_at_idx").on(table.createdAt),
   index("orders_status_created_at_idx").on(table.orderStatus, table.createdAt),
   index("orders_payment_status_idx").on(table.paymentStatusUniversidad, table.paymentStatusInstituto),
+  index("orders_customer_campus_idx").on(table.customerCampus),
+  index("orders_delivery_campus_idx").on(table.deliveryCampus),
+  check("orders_other_recipient_fields", sql`${table.deliveryRecipientType} <> 'otra_persona' OR (coalesce(${table.deliveryRecipientDocument}, '') ~ '^[0-9]{8}$' AND coalesce(${table.deliveryRecipientPhone}, '') ~ '^[+]?[0-9 ()-]{7,24}$')`),
+  check("orders_ubigeo_zone", sql`${table.deliveryUbigeo} IS NULL OR (${table.deliveryType} = 'delivery' AND ${table.deliveryUbigeo} ~ '^[0-9]{6}$' AND ((${table.deliveryZone} = 'lima_callao' AND left(${table.deliveryUbigeo}, 4) IN ('1501', '0701')) OR (${table.deliveryZone} = 'provincia' AND left(${table.deliveryUbigeo}, 4) NOT IN ('1501', '0701'))))`),
   check("orders_number_format", sql`${table.orderNumber} ~ '^[1-9][0-9]*-[0-9]{4}$'`),
   check("orders_tracking_token_format", sql`${table.trackingToken} ~ '^[A-Za-z0-9_-]{24,}$'`),
   check("orders_customer_fields", sql`btrim(${table.customerName}) <> '' AND btrim(${table.customerPhone}) <> '' AND btrim(${table.customerDocument}) <> '' AND ${table.customerEmail} = lower(btrim(${table.customerEmail})) AND ${table.customerEmail} ~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'`),

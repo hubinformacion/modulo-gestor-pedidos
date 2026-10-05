@@ -4,18 +4,22 @@ import { formatMoney } from "@/lib/orders/money";
 import { imprintNames, type BuyerDraft, type Campus, type DeliveryDraft } from "@/lib/orders/types";
 import type { OrderQuote } from "@/lib/orders/pricing";
 import { CampusLocation } from "./campus-location";
+import { resolveLocation } from "@/lib/orders/geography";
+import { resolveRecipient } from "@/lib/orders/recipient";
 
 export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, reviewed, onReviewed }: {
   buyer: BuyerDraft; delivery: DeliveryDraft; campuses: Campus[]; quote: OrderQuote;
   onEdit: (step: number) => void; reviewed: boolean; onReviewed: (value: boolean) => void;
 }) {
   const campus = campuses.find((option) => option.id === delivery.campus);
+  const location = resolveLocation(delivery.district);
+  const recipient = resolveRecipient(delivery, buyer);
   return (
     <div className="space-y-6">
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-publications">
         <div className="mb-4 flex items-center justify-between gap-3"><h3 id="confirm-publications" className="text-sm font-semibold">Publicaciones</h3><EditButton onClick={() => onEdit(0)} label="Editar publicaciones" /></div>
         <ul className="divide-y divide-border">
-          {quote.lines.map((line) => <li key={line.book.id} className="flex justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="text-sm leading-6">{line.quantity} × {line.book.title}</p><p className="mt-1 text-xs text-muted-foreground">{imprintNames[line.book.publisherImprint]} · {formatMoney(line.unitPrice)} c/u</p></div><p className="shrink-0 text-sm font-medium tabular-nums">{formatMoney(line.subtotal)}</p></li>)}
+          {quote.lines.map((line) => <li key={line.book.id} className="flex justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="text-sm leading-6">{line.quantity} × {line.book.title}</p><p className="mt-1 text-xs text-muted-foreground">Sello editorial: {imprintNames[line.book.publisherImprint]} · {formatMoney(line.unitPrice)} c/u</p></div><p className="shrink-0 text-sm font-medium tabular-nums">{formatMoney(line.subtotal)}</p></li>)}
         </ul>
       </section>
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-buyer">
@@ -31,11 +35,13 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, rev
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-delivery">
         <div className="mb-4 flex items-center justify-between gap-3"><h3 id="confirm-delivery" className="text-sm font-semibold">Entrega</h3><EditButton onClick={() => onEdit(2)} label="Editar entrega" /></div>
         <dl className="grid gap-x-5 gap-y-4 text-sm sm:grid-cols-2">
-          <Detail label="Modalidad" value={delivery.type === "recojo_campus" ? "Recojo en biblioteca" : delivery.zone === "lima_callao" ? "Delivery · Lima / Callao" : "Delivery · Provincia"} />
-          <Detail label={delivery.type === "recojo_campus" ? "Recoge" : "Recibe"} value={delivery.recipient} />
+          <Detail label="Modalidad" value={delivery.type === "recojo_campus" ? "Recojo en biblioteca" : location?.zone === "lima_callao" ? "Delivery · Lima / Callao" : "Delivery · Provincia"} />
+          <Detail label={delivery.type === "recojo_campus" ? "Recoge" : "Recibe"} value={recipient.name} />
+          <Detail label={delivery.type === "recojo_campus" ? "Documento de quien recoge" : "Documento de quien recibe"} value={recipient.document} />
+          <Detail label={delivery.type === "recojo_campus" ? "Teléfono de quien recoge" : "Teléfono de quien recibe"} value={recipient.phone} />
           {delivery.type === "delivery" ? <>
             <div className="sm:col-span-2"><Detail label="Dirección" value={delivery.address} /></div>
-            {delivery.zone === "provincia" ? <><Detail label="Departamento" value={delivery.department} /><Detail label="Ciudad" value={delivery.city} /></> : null}
+            <Detail label="Departamento" value={location?.department.name ?? ""} /><Detail label="Provincia" value={location?.province.name ?? ""} /><Detail label="Distrito" value={location?.district.name ?? ""} />
             {delivery.reference ? <div className="sm:col-span-2"><Detail label="Referencia" value={delivery.reference} /></div> : null}
           </> : null}
         </dl>

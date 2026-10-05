@@ -38,12 +38,15 @@ export type BuyerDraft = {
 export type DeliveryDraft = {
   type: DeliveryKind;
   campus: string;
-  zone: ShippingZone | "";
   department: string;
-  city: string;
+  province: string;
+  district: string;
   address: string;
   reference: string;
   recipient: string;
+  recipientType: "comprador" | "otra_persona";
+  recipientDocument: string;
+  recipientPhone: string;
 };
 
 export const imprintNames: Record<Imprint, string> = {
@@ -57,6 +60,6 @@ export const initialBuyer: BuyerDraft = {
 };
 
 export const initialDelivery: DeliveryDraft = {
-  type: "delivery", campus: "", zone: "", department: "", city: "",
-  address: "", reference: "", recipient: "",
+  type: "delivery", campus: "", department: "", province: "", district: "",
+  address: "", reference: "", recipientType: "comprador", recipient: "", recipientDocument: "", recipientPhone: "",
 };

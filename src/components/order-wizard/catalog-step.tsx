@@ -51,18 +51,17 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
             return (
               <li key={book.id} className={cn("rounded-xl border p-4 transition-colors sm:p-5", quantity ? "border-primary/45" : "border-border")}>
                 <div className="flex items-start gap-4">
-                  <div className={cn("hidden h-20 w-14 shrink-0 items-center justify-center rounded-md border-l-4 bg-muted sm:flex", book.publisherImprint === "universidad" ? "border-primary" : "border-foreground/50")} aria-hidden="true"><BookOpen className="size-5 text-muted-foreground" /></div>
+
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{imprintNames[book.publisherImprint]}</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Sello editorial: {imprintNames[book.publisherImprint]}</p>
                     <h3 className="mt-1.5 text-sm font-semibold leading-6">{book.title}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{book.inventoryCode} · {book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4 sm:ml-18">
+                <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4 ">
                   <div>
                     <p className="text-base font-semibold tabular-nums">{formatMoney(price)}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{community ? "Precio comunidad" : `Comunidad: ${formatMoney(toCents(book.communityPrice))}`}</p>
                   </div>
                   {quantity ? (
                     <div className="flex items-center gap-1 rounded-lg border border-border p-0.5" role="group" aria-label={`Cantidad de ${book.title}`}>
@@ -79,7 +78,6 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
           })}
         </ul>
       )}
-      <p className="mt-5 text-xs leading-5 text-muted-foreground">Los precios se ajustan al indicar si perteneces a la comunidad Continental en el siguiente paso.</p>
     </div>
   );
 }

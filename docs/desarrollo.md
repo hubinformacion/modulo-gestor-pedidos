@@ -13,12 +13,14 @@ src/
     auth-schema.config.ts Configuración exclusiva de generación auth
     drizzle.config.ts     Configuración de Drizzle Kit
     migrations/           SQL e historial de migraciones
+    migrate.ts            Ejecutor transaccional HTTP de Neon
     seed.ts               Entrada CLI para seed idempotente
     seeds/                Catálogo ficticio de demostración (opcional)
     index.ts              Conexión Neon para peticiones server-side
-  config/                 Campus, bibliotecas y ajustes precisos de mapas
+  data/ubigeo/            Snapshot nacional para geografía y tarifa de delivery
   lib/                    Autenticación, acceso, validaciones e integraciones
-    orders/               Catálogo servidor, validaciones y cálculo compartido
+    orders/               Catálogo servidor, validaciones, geografía y cálculo
+    campuses/             Lectura/CRUD seguro y validación de campus
   proxy.ts                Middleware/proxy de rutas administrativas
 docs/                     Contexto, requisitos, fases y decisiones
 ```
@@ -73,6 +75,8 @@ Sin configuración válida, el ingreso queda temporalmente no disponible y se de
 | pnpm db:seed:demo | Maestro y cuatro libros DEMO inactivos, sin sobrescribir datos |
 
 La generación auth usa una configuración de esquema sin credenciales ni conexión externa. No editar sus tablas a mano. Preservar el historial en `src/db/migrations`; no regenerar migraciones ya aplicadas para reorganizar carpetas.
+
+`db:migrate` lee el SQL/historial generado por Drizzle Kit y aplica lo pendiente con Neon HTTP en una transacción, incluyendo su registro. Usa lock de migraciones y verifica que otro ejecutor no haya adelantado el historial. Se adoptó este transporte después de que el CLI por WebSocket quedara esperando durante DDL; esa ejecución se revirtió sin cambios parciales. No ejecutar dos herramientas de migración simultáneamente.
 
 El Pool de Neon es propio de cada petición y se cierra al terminar. Los hooks auth comparten el contexto transaccional del adaptador para leer datos consistentes. No sustituir la verificación de BD por controles del navegador.
 

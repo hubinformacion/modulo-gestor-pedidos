@@ -76,7 +76,6 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
       const result = createBuyerSchema(campuses).safeParse(buyer);
       if (!result.success) return showErrors(result.error.issues);
       setBuyer(result.data);
-      if (!delivery.recipient) setDelivery((current) => ({ ...current, recipient: result.data.name }));
       goTo(2);
     } else if (step === 2) {
       const result = createDeliverySchema(campuses).safeParse(delivery);
@@ -122,7 +121,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
           <div key={step} className="enter-page">
             {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
-            {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyerName={buyer.name} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
+            {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
             {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setReviewed(false); setPreviewComplete(false); goTo(value); }} reviewed={reviewed} onReviewed={(value) => { setReviewed(value); setErrorMessage(""); setPreviewComplete(false); }} /> : null}
           </div>
           {previewComplete ? <div role="status" className="mt-6 rounded-xl border border-primary/25 bg-secondary/30 p-5"><ClipboardCheck className="mb-3 size-5 text-primary" aria-hidden="true" /><h2 className="text-sm font-semibold">Revisión completada</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Los datos están listos. Este recorrido es una vista previa: no se ha creado un pedido, reservado stock ni enviado un correo.</p></div> : null}
@@ -132,7 +131,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
           </div>
           {step === 3 && !preview ? <p className="mt-4 text-xs leading-5 text-muted-foreground">El registro de pedidos aún no está habilitado. Conserva esta página para revisar tus datos; todavía no se ha reservado stock.</p> : null}
         </form>
-        <OrderSummary quote={quote} community={buyer.type === "comunidad_continental"} editable={step === 0} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
+        <OrderSummary quote={quote} editable={step === 0} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
       </div>
     </div>
   );

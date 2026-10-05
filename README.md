@@ -2,7 +2,7 @@
 
 Aplicación para el Fondo Editorial Continental, integrada en WordPress mediante iframe. Interfaz funcional sin landing ni marca duplicada: Inter, tema claro, fondo blanco y `#6802C1`.
 
-Fase actual: `feat/03-wizard-frontend`. Fases 1 y 2 integradas localmente en `main`. Wizard público en `/pedido`; vista previa DEMO protegida en `/admin/vista-previa`, sin activar libros ficticios ni registrar pedidos. Pendiente de aprobación al cerrar.
+Fase actual: `feat/03-wizard-frontend`. Fases 1 y 2 integradas localmente en `main`. Wizard público en `/pedido`; vista previa DEMO protegida en `/admin/vista-previa`, sin activar libros ficticios ni registrar pedidos. Campus/bibliotecas y mapas editables en `/admin`. Ubigeo nacional local y datos de quien recibe/recoge. Pendiente de aprobación al cerrar.
 
 ## Inicio local
 

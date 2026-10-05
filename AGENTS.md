@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fase vigente: `feat/03-wizard-frontend`, implementada y pendiente de aprobación; lint, tipos y build correctos. Fases 1 y 2 aprobadas e integradas localmente en `main`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni iniciar fase 4 sin nueva aprobación.
+- Fase vigente: `feat/03-wizard-frontend`, en revisión por cambios solicitados, pendiente de aprobación. Fases 1 y 2 aprobadas e integradas localmente en `main`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni iniciar fase 4 sin nueva aprobación.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
@@ -49,7 +49,9 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
 - Drive/Gmail: cuenta propietaria con refresh token; try/catch y un reintento sin perder la carga. MIME HTML + PDF según tipo; PDFs en `src/assets/pdfs`, fuera de public. Revisar adjunto en Vercel.
-- Campus/direcciones reales en `src/config/fulfillment.ts`; recojo siempre en biblioteca. Mapas embebidos por dirección con `coordinates` o `googleMapsEmbedUrl` opcionales para precisión. No inventar coordenadas.
+- Campus dinámicos en BD (`campuses`), CRUD en `/admin` por cualquier autorizado; solo el maestro gestiona correos. Ocho iniciales sembrados una vez por migración. Inactivos fuera del wizard; pedidos asociados impiden borrado. Coordenadas/URL de mapa editables por interfaz. No inventar coordenadas.
+- Ubigeo local nacional en `src/data/ubigeo`: departamento/provincia/distrito, zona derivada de provincia `1501`/`0701` para Lima/Callao. Costos solo en resumen. Precio único aplicado, sin portada/comparación de tarifas; sello editorial explícito.
+- Quien recibe/recoge: comprador actual u otra persona (nombres, DNI, teléfono), con validación Zod y derivación server-side en fase 4.
 - No X-Frame-Options contradictorio con CSP del iframe.
 
 ## Estructura principal

@@ -18,9 +18,9 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 ## 3. feat/03-wizard-frontend — implementada, pendiente de revisión
 
-**Entrega:** cuatro pasos, Zod, filtros/cantidades/stock, precios por comprador, facturación opcional, envío y desglose por cuenta. Ocho campus reales con biblioteca/mapa y configuración opcional de coordenadas/URL embebida. Vista previa DEMO protegida sin publicar libros ficticios ni crear pedidos.
+**Entrega:** cuatro pasos, Zod, filtros/cantidades/stock, precios por comprador, facturación opcional, envío y desglose por cuenta. Ocho campus iniciales en BD con CRUD, biblioteca/mapa, coordenadas/URL editables desde `/admin`. Ubigeo local con tres desplegables y tarifa derivada; «Yo/Otra persona» con contacto; catálogo sin portada ni comparación de precios. Vista previa DEMO protegida sin publicar libros ficticios ni crear pedidos.
 
-**Comprobado:** `pnpm lint`, `pnpm typecheck` y `pnpm build` correctos. Endpoint de mapa por dirección respondió HTTP 200 sin X-Frame-Options; precisión de pines y recorrido visual pendientes de revisión manual. No se ejecutaron suites de pruebas ni se modificó stock.
+**Revisión actual:** ajustes solicitados implementados, sin aprobación de merge. Migración de campus/datos de entrega aplicada en Neon (ocho campus iniciales). Lint, tipos y build correctos; revisión manual pendiente. Ejecución de migraciones por Neon HTTP transaccional, conservando SQL e historial de Drizzle Kit.
 
 **Revisión manual:** pasos concretos en [wizard.md](wizard.md). Revisar ambos sellos y carrito mixto, comunidad con sede/correo institucional, entrega por las tres modalidades, validaciones y mapas en móvil/escritorio.
 

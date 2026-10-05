@@ -4,8 +4,8 @@ import { formatMoney } from "@/lib/orders/money";
 import { imprintNames } from "@/lib/orders/types";
 import type { OrderQuote } from "@/lib/orders/pricing";
 
-export function OrderSummary({ quote, community, onRemove, editable = true }: {
-  quote: OrderQuote; community: boolean; onRemove: (bookId: string) => void; editable?: boolean;
+export function OrderSummary({ quote, onRemove, editable = true }: {
+  quote: OrderQuote; onRemove: (bookId: string) => void; editable?: boolean;
 }) {
   return (
     <aside className="overflow-hidden rounded-xl border border-border lg:sticky lg:top-6" aria-labelledby="order-summary-title">
@@ -18,7 +18,7 @@ export function OrderSummary({ quote, community, onRemove, editable = true }: {
           <ul className="space-y-4">
             {quote.lines.map((line) => <li key={line.book.id} className="flex items-start gap-2">
               <span className="mt-0.5 min-w-6 rounded bg-muted px-1 text-center text-xs leading-6 tabular-nums">{line.quantity}×</span>
-              <div className="min-w-0 flex-1"><p className="text-xs font-medium leading-5">{line.book.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{line.book.publisherImprint === "universidad" ? "Universidad" : "Instituto"} · {formatMoney(line.unitPrice)} c/u</p></div>
+              <div className="min-w-0 flex-1"><p className="text-xs font-medium leading-5">{line.book.title}</p><p className="mt-1 text-[11px] text-muted-foreground">{formatMoney(line.unitPrice)} c/u</p></div>
               <div className="text-right"><p className="text-xs font-semibold leading-6 tabular-nums">{formatMoney(line.subtotal)}</p>{editable ? <Button size="icon-sm" variant="ghost" className="mt-0.5 text-muted-foreground" onClick={() => onRemove(line.book.id)} aria-label={`Eliminar ${line.book.title} de la selección`}><X className="size-3" aria-hidden="true" /></Button> : null}</div>
             </li>)}
           </ul>
@@ -29,7 +29,6 @@ export function OrderSummary({ quote, community, onRemove, editable = true }: {
             <div className="flex justify-between gap-3 text-xs"><span className="text-muted-foreground">Envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(quote.shippingCost) : "Por seleccionar"}</span></div>
             <div className="flex justify-between gap-3 border-t border-border pt-4"><span className="text-sm font-semibold">{quote.shippingKnown ? "Total" : "Subtotal"}</span><span className="text-xl font-semibold tracking-tight tabular-nums">{formatMoney(quote.total)}</span></div>
           </div>
-          <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{community ? "Precio comunidad aplicado. Requiere sede y correo institucional." : "Precios para público general."}</p>
           <div className="mt-5 space-y-4 rounded-lg bg-muted p-4">
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Desglose por cuenta</h3>
             {quote.accounts.map((account) => <div key={account.imprint} className="space-y-2">

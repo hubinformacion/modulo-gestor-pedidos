@@ -1,9 +1,10 @@
 import { toCents } from "./money";
+import { resolveShippingZone } from "./geography";
 import type { CatalogBook, CartSelection, CustomerKind, DeliveryDraft, Imprint } from "./types";
 
 export function calculateQuote(
   catalog: CatalogBook[], cart: CartSelection[], customer: CustomerKind,
-  delivery: Pick<DeliveryDraft, "type" | "zone">,
+  delivery: Pick<DeliveryDraft, "type" | "district">,
 ) {
   const catalogById = new Map(catalog.map((book) => [book.id, book]));
   const seen = new Set<string>();
@@ -21,8 +22,9 @@ export function calculateQuote(
   const hasUniversidad = lines.some((line) => line.book.publisherImprint === "universidad");
   const hasInstituto = lines.some((line) => line.book.publisherImprint === "instituto");
   const orderType = hasUniversidad && hasInstituto ? "mixto" : hasUniversidad ? "solo_universidad" : hasInstituto ? "solo_instituto" : null;
-  const shippingKnown = delivery.type === "recojo_campus" || delivery.zone !== "";
-  const shippingCost = lines.length === 0 || delivery.type === "recojo_campus" ? 0 : delivery.zone === "lima_callao" ? 1500 : delivery.zone === "provincia" ? 2500 : 0;
+  const zone = resolveShippingZone(delivery.district);
+  const shippingKnown = delivery.type === "recojo_campus" || zone !== "";
+  const shippingCost = lines.length === 0 || delivery.type === "recojo_campus" ? 0 : zone === "lima_callao" ? 1500 : zone === "provincia" ? 2500 : 0;
   const accounts = (Object.keys({ universidad: 0, instituto: 0 }) as Imprint[])
     .filter((imprint) => lines.some((line) => line.book.publisherImprint === imprint))
     .map((imprint) => {

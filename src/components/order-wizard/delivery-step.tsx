@@ -1,21 +1,28 @@
 import { CampusLocation } from "./campus-location";
 import { Field, RadioCard, SelectField, type FieldErrors } from "./fields";
-import type { Campus, DeliveryDraft } from "@/lib/orders/types";
+import { departments, districtsFor, provincesFor, resolveLocation } from "@/lib/orders/geography";
+import { resolveRecipient } from "@/lib/orders/recipient";
+import type { BuyerDraft, Campus, DeliveryDraft } from "@/lib/orders/types";
 
-export function DeliveryStep({ delivery, campuses, errors, onChange, buyerName }: {
+export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
   delivery: DeliveryDraft; campuses: Campus[]; errors: FieldErrors;
-  onChange: (value: DeliveryDraft) => void; buyerName: string;
+  onChange: (value: DeliveryDraft) => void; buyer: BuyerDraft;
 }) {
   const pickupCampuses = campuses.filter((campus) => campus.libraryAddress.trim());
   const campus = pickupCampuses.find((option) => option.id === delivery.campus);
+  const location = resolveLocation(delivery.district);
+  const recipient = resolveRecipient(delivery, buyer);
   function set<K extends keyof DeliveryDraft>(key: K, value: DeliveryDraft[K]) { onChange({ ...delivery, [key]: value }); }
+  function changeType(type: DeliveryDraft["type"]) {
+    onChange({ ...delivery, type, campus: "", department: "", province: "", district: "", address: "", reference: "" });
+  }
   return (
     <div className="space-y-7">
       <fieldset>
         <legend className="mb-3 text-xs font-medium">Modalidad de entrega</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <RadioCard name="delivery-type" value="delivery" checked={delivery.type === "delivery"} onChange={() => set("type", "delivery")} title="Envío a domicilio" description="Lima/Callao S/15 · Provincia S/25" />
-          <RadioCard name="delivery-type" value="recojo_campus" checked={delivery.type === "recojo_campus"} onChange={() => set("type", "recojo_campus")} disabled={pickupCampuses.length === 0} title="Recojo en campus" description="Recoge en biblioteca. Sin costo." />
+          <RadioCard name="delivery-type" value="delivery" checked={delivery.type === "delivery"} onChange={() => changeType("delivery")} title="Envío a domicilio" description="Recibe tu pedido en la dirección indicada." />
+          <RadioCard name="delivery-type" value="recojo_campus" checked={delivery.type === "recojo_campus"} onChange={() => changeType("recojo_campus")} disabled={pickupCampuses.length === 0} title="Recojo en campus" description="Recoge en la biblioteca del campus elegido." />
         </div>
         {pickupCampuses.length === 0 ? <p className="mt-3 text-xs leading-5 text-muted-foreground">El recojo estará disponible cuando se habiliten las bibliotecas.</p> : null}
       </fieldset>
@@ -29,23 +36,38 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyerName }
         </div>
       ) : (
         <>
-          <SelectField id="delivery-zone" label="Zona de entrega" value={delivery.zone} onChange={(event) => set("zone", event.target.value as DeliveryDraft["zone"])} error={errors.zone} required>
-            <option value="">Selecciona la zona</option>
-            <option value="lima_callao">Lima / Callao — S/15</option>
-            <option value="provincia">Provincia — S/25</option>
-          </SelectField>
-          {delivery.zone === "provincia" ? <div className="grid gap-5 sm:grid-cols-2">
-            <Field id="delivery-department" label="Departamento" autoComplete="address-level1" value={delivery.department} onChange={(event) => set("department", event.target.value)} error={errors.department} maxLength={100} required />
-            <Field id="delivery-city" label="Ciudad" autoComplete="address-level2" value={delivery.city} onChange={(event) => set("city", event.target.value)} error={errors.city} maxLength={100} required />
-          </div> : null}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <SelectField id="delivery-department" label="Departamento" value={delivery.department} onChange={(event) => onChange({ ...delivery, department: event.target.value, province: "", district: "" })} error={errors.department} required>
+              <option value="">Selecciona el departamento</option>
+              {departments.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+            </SelectField>
+            <SelectField id="delivery-province" label="Provincia" value={delivery.province} onChange={(event) => onChange({ ...delivery, province: event.target.value, district: "" })} disabled={!delivery.department} error={errors.province} required>
+              <option value="">Selecciona la provincia</option>
+              {provincesFor(delivery.department).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+            </SelectField>
+            <SelectField id="delivery-district" label="Distrito" value={delivery.district} onChange={(event) => set("district", event.target.value)} disabled={!delivery.province} error={errors.district} required>
+              <option value="">Selecciona el distrito</option>
+              {districtsFor(delivery.province).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
+            </SelectField>
+          </div>
+          {location ? <p className="text-xs text-muted-foreground">Zona de entrega: <span className="font-medium text-foreground">{location.zone === "lima_callao" ? "Lima / Callao" : "Provincia"}</span></p> : null}
           <Field id="delivery-address" label="Dirección completa" autoComplete="street-address" value={delivery.address} onChange={(event) => set("address", event.target.value)} error={errors.address} maxLength={300} hint="Calle, número y departamento, si corresponde." required />
           <Field id="delivery-reference" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
         </>
       )}
-      <div className="border-t border-border pt-6">
-        <Field id="delivery-recipient" label={delivery.type === "recojo_campus" ? "Persona que recoge" : "Persona que recibe"} autoComplete="section-recipient name" value={delivery.recipient} onChange={(event) => set("recipient", event.target.value)} error={errors.recipient} maxLength={160} required />
-        {buyerName && delivery.recipient !== buyerName ? <button className="mt-2 min-h-10 text-xs font-medium text-primary underline underline-offset-4" type="button" onClick={() => set("recipient", buyerName)}>Usar mis datos</button> : null}
-      </div>
+      <fieldset className="border-t border-border pt-6">
+        <legend className="sr-only">Persona que {delivery.type === "recojo_campus" ? "recoge" : "recibe"}</legend>
+        <p className="mb-3 text-xs font-medium">¿Quién {delivery.type === "recojo_campus" ? "recoge" : "recibe"} el pedido?</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <RadioCard name="recipient-type" value="comprador" checked={delivery.recipientType === "comprador"} onChange={() => set("recipientType", "comprador")} title="Yo" description={buyer.name || "Usar mis datos de comprador."} />
+          <RadioCard name="recipient-type" value="otra_persona" checked={delivery.recipientType === "otra_persona"} onChange={() => set("recipientType", "otra_persona")} title="Otra persona" description="Indica sus datos para la entrega." />
+        </div>
+        {delivery.recipientType === "otra_persona" ? <div className="mt-5 grid gap-5 sm:grid-cols-2">
+          <div className="sm:col-span-2"><Field id="delivery-recipient" label="Nombres y apellidos" autoComplete="section-recipient name" value={delivery.recipient} onChange={(event) => set("recipient", event.target.value)} error={errors.recipient} maxLength={160} required /></div>
+          <Field id="delivery-recipient-document" label="DNI" inputMode="numeric" value={delivery.recipientDocument} onChange={(event) => set("recipientDocument", event.target.value)} error={errors.recipientDocument} maxLength={8} required />
+          <Field id="delivery-recipient-phone" label="Teléfono" type="tel" autoComplete="section-recipient tel" value={delivery.recipientPhone} onChange={(event) => set("recipientPhone", event.target.value)} error={errors.recipientPhone} maxLength={24} required />
+        </div> : <p className="mt-4 text-xs leading-6 text-muted-foreground">Documento: {recipient.document} · Teléfono: {recipient.phone}</p>}
+      </fieldset>
     </div>
   );
 }

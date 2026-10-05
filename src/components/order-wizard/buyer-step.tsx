@@ -11,7 +11,7 @@ export function BuyerStep({ buyer, campuses, errors, onChange }: {
       <fieldset>
         <legend className="mb-3 text-xs font-medium">Tipo de comprador</legend>
         <div className="grid gap-3 sm:grid-cols-2">
-          <RadioCard name="buyer-type" value="publico_general" checked={buyer.type === "publico_general"} onChange={() => set("type", "publico_general")} title="Público general" description="Precios de venta estándar." />
+          <RadioCard name="buyer-type" value="publico_general" checked={buyer.type === "publico_general"} onChange={() => set("type", "publico_general")} title="Público general" description="Indica tus datos de contacto." />
           <RadioCard name="buyer-type" value="comunidad_continental" checked={buyer.type === "comunidad_continental"} onChange={() => set("type", "comunidad_continental")} disabled={campuses.length === 0} title="Comunidad Continental" description="Con sede y correo institucional." />
         </div>
         {campuses.length === 0 ? <p className="mt-3 text-xs leading-5 text-muted-foreground">La opción de comunidad estará disponible cuando se habiliten sus sedes.</p> : null}
