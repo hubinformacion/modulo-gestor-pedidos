@@ -44,23 +44,23 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
           <Button variant="link" className="mt-3 h-10" onClick={() => { setSearch(""); setFilter("todos"); }}>Limpiar búsqueda</Button>
         </div>
       ) : (
-        <ul className="grid gap-3">
+        <ul className="divide-y divide-border border-y border-border">
           {filtered.map((book) => {
             const quantity = cart.find((item) => item.bookId === book.id)?.quantity ?? 0;
             const community = customerType === "comunidad_continental";
             const price = toCents(community ? book.communityPrice : book.standardPrice);
             return (
-              <li key={book.id} className={cn("overflow-hidden rounded-xl border transition-colors", quantity ? "border-primary/45" : "border-border")}>
-                <div className="flex items-start gap-4 p-5">
+              <li key={book.id} className={cn("grid gap-4 px-3 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center", quantity ? "bg-secondary/25" : "bg-white")}>
+                <div className="min-w-0">
 
                   <div className="min-w-0 flex-1">
                     <ImprintBadge imprint={book.publisherImprint} />
-                    <h3 className="mt-1.5 text-sm font-semibold leading-6">{book.title}</h3>
+                    <h3 className="mt-2 text-base font-semibold leading-6">{book.title}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-t border-border/70 bg-muted/50 px-5 py-3">
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
                   <div>
                     <p className="text-base font-semibold tabular-nums">{formatMoney(price)}</p>
                   </div>
@@ -71,7 +71,7 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
                       <Button variant="ghost" size="icon" className="size-9" aria-label={`Añadir una unidad de ${book.title}`} disabled={quantity >= book.stock} onClick={() => onQuantity(book, quantity + 1)}><Plus aria-hidden="true" /></Button>
                     </div>
                   ) : (
-                    <Button variant="outline" className="h-10 gap-2 px-4" disabled={book.stock < 1} onClick={() => onQuantity(book, 1)}><Plus aria-hidden="true" />{book.stock > 0 ? "Añadir" : "Agotado"}</Button>
+                    <Button variant="outline" className="h-10 gap-2 px-4 sm:w-full" disabled={book.stock < 1} onClick={() => onQuantity(book, 1)}><Plus aria-hidden="true" />{book.stock > 0 ? "Añadir" : "Agotado"}</Button>
                   )}
                 </div>
               </li>

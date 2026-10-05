@@ -1,6 +1,6 @@
 import { CampusLocation } from "./campus-location";
 import { Field, RadioCard, SelectField, type FieldErrors } from "./fields";
-import { departments, districtsFor, provincesFor, resolveLocation } from "@/lib/orders/geography";
+import { departments, districtsFor, provincesFor } from "@/lib/orders/geography";
 import { resolveRecipient } from "@/lib/orders/recipient";
 import type { BuyerDraft, Campus, DeliveryDraft } from "@/lib/orders/types";
 
@@ -10,7 +10,6 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
 }) {
   const pickupCampuses = campuses.filter((campus) => campus.libraryAddress.trim());
   const campus = pickupCampuses.find((option) => option.id === delivery.campus);
-  const location = resolveLocation(delivery.district);
   const recipient = resolveRecipient(delivery, buyer);
   function set<K extends keyof DeliveryDraft>(key: K, value: DeliveryDraft[K]) { onChange({ ...delivery, [key]: value }); }
   function changeType(type: DeliveryDraft["type"]) {
@@ -50,7 +49,6 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
               {districtsFor(delivery.province).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
             </SelectField>
           </div>
-          {location ? <p className="text-xs text-muted-foreground">Zona de entrega: <span className="font-medium text-foreground">{location.zone === "lima_callao" ? "Lima / Callao" : "Provincia"}</span></p> : null}
           <Field id="delivery-address" placeholder="Ej. Av. Los Cedros 123, departamento 402" label="Dirección completa" autoComplete="street-address" value={delivery.address} onChange={(event) => set("address", event.target.value)} error={errors.address} maxLength={300} hint="Calle, número y departamento, si corresponde." required />
           <Field id="delivery-reference" placeholder="Ej. Frente al parque, puerta azul" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
         </>
