@@ -2,7 +2,7 @@
 
 ## Estado vigente
 
-Fases 1 y 2 aprobadas e integradas localmente en `main`. Rama vigente: `feat/03-wizard-frontend`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni avanzar a fase 4 sin nueva aprobación.
+Fases 1–3 aprobadas; fase 3 lista para integrar. Próxima rama: `feat/04-pedidos-pagos-drive`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. El usuario autorizó integrar fase 3 y continuar con fase 4.
 
 ## Regla de entrega
 
@@ -14,17 +14,9 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **2. Esquema y seed:** diez tablas, importes exactos/restricciones, migración en Neon y cuatro DEMO inactivos. Lint y tipos correctos. Aprobada e integrada; catálogo oficial pendiente. [Contrato de esquema](esquema.md).
 
-## Fase vigente
+- **3. Wizard:** aprobada por el usuario. Cuatro pasos, catálogo compacto, precios dinámicos, ubigeo, campus administrables, persona alternativa, resumen en tarjetas y consentimiento único. Migración de campus aplicada; lint/tipos/build correctos. Contrato de interfaz en [wizard.md](wizard.md).
 
-## 3. feat/03-wizard-frontend — implementada, pendiente de revisión
-
-**Entrega:** cuatro pasos, Zod, filtros/cantidades/stock, precios por comprador, facturación opcional, envío y desglose por cuenta. Ocho campus iniciales en BD con CRUD, biblioteca/mapa, coordenadas/URL editables desde `/admin`. Ubigeo local con tres desplegables y tarifa derivada; «Yo/Otra persona» con contacto; catálogo sin portada ni comparación de precios. Vista previa DEMO protegida sin publicar libros ficticios ni crear pedidos.
-
-**Revisión actual:** ajustes solicitados implementados, sin aprobación de merge. Migración de campus/datos de entrega aplicada en Neon (ocho campus iniciales). Lint, tipos y build correctos; revisión manual pendiente. Ejecución de migraciones por Neon HTTP transaccional, conservando SQL e historial de Drizzle Kit.
-
-**Revisión manual:** pasos concretos en [wizard.md](wizard.md). Revisar ambos sellos y carrito mixto, comunidad con sede/correo institucional, entrega por las tres modalidades, validaciones y mapas en móvil/escritorio.
-
-**Pendiente:** catálogo oficial y precisión de pines; cuentas bancarias, creación transaccional, comprobantes/correos/PDFs pertenecen a fase 4. Registro público deshabilitado hasta entonces.
+## Fase siguiente
 
 ## Fases pendientes
 

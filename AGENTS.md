@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fase vigente: `feat/03-wizard-frontend`, en revisión por cambios solicitados, pendiente de aprobación. Fases 1 y 2 aprobadas e integradas localmente en `main`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni iniciar fase 4 sin nueva aprobación.
+- Fase 3 aprobada por el usuario y lista para integrar. Próxima rama: `feat/04-pedidos-pagos-drive`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. Fases 1 y 2 integradas en `main`.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.

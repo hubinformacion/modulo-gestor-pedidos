@@ -16,7 +16,7 @@ La vista previa `/admin/vista-previa` requiere sesión y autorización vigentes,
 - Recojo S/0, Lima/Callao S/15, provincia S/25. Costos únicamente en el resumen. Delivery exige departamento → provincia → distrito mediante desplegables dependientes, más calle/número. La zona se deriva del distrito: provincias INEI `1501`/`0701` = Lima/Callao; otras = provincia, incluidas otras provincias del departamento Lima. No se acepta una tarifa elegida por el cliente.
 - Persona que recoge/recibe: «Yo» obtiene nombre/documento/teléfono del comprador actual; «Otra persona» exige nombres y apellidos, DNI de 8 dígitos y teléfono de 9–15 dígitos. La validación completa vuelve a derivar los datos de «Yo» para evitar valores antiguos o manipulados.
 - Desglose por cuenta: publicaciones, flete, total. Mixto exige dos depósitos y asigna todo el flete a Universidad. Pedido de un solo sello asigna el flete a su cuenta. Sin zona elegida, se muestra subtotal y envío por seleccionar.
-- Confirmación con datos y controles para editar cada paso; dos aceptaciones obligatorias de privacidad/tratamiento. No crea pedido, número/token, reserva, comprobante ni correo: esas operaciones pertenecen a fase 4.
+- Confirmación con datos y controles para editar cada paso; consentimiento único. No crea pedido, número/token, reserva, comprobante ni correo: esas operaciones pertenecen a fase 4.
 
 Validaciones/cálculo compartidos en `src/lib/orders`; interfaz en `src/components/order-wizard`. Las próximas Server Actions deberán usar Zod y recuperar catálogo, precios, stock y campus desde fuentes del servidor: el resultado del navegador no es una orden confiable.
 
@@ -36,28 +36,8 @@ Los tres desplegables usan `src/data/ubigeo/peru.json`: snapshot 2026 de 25 depa
 
 Las nuevas columnas de pedidos conservan provincia/distrito/ubigeo y datos de la otra persona. Fase 4 debe recuperar campus activos desde BD, validar ubigeo y derivar zona/nombres e importes en servidor; `delivery_city` mantiene compatibilidad con el esquema inicial como localidad, no sustituye el ubigeo.
 
-## Estado de entrega
+## Estado
 
-Cambios solicitados implementados; fase 3 pendiente de revisión manual y aprobación. Lint, tipos y build de producción completados sin errores. Migración `0002_magenta_purifiers` aplicada en Neon; ocho campus iniciales y nuevas columnas disponibles. No activa DEMO ni crea pedidos. No se ejecutaron suites de pruebas ni operaciones de CRUD con datos ficticios.
+Fase 3 aprobada. Este documento conserva únicamente el contrato vigente de la interfaz; el registro real, seguimiento y comprobantes se implementan en fase 4. Consentimiento único: «He leído y acepto la Política de Confidencialidad y Protección de Datos Personales, y autorizo a la Universidad Continental al tratamiento de mis datos.» Enlace de política visible y en negrita.
 
-## Revisión manual
-
-1. En `/admin`, crear un campus con biblioteca; editar su dirección/mapa, desactivarlo y comprobar que desaparece del wizard al recargar. Reactivarlo; eliminar un campus de revisión sin pedidos. Probar nombre repetido, coordenada suelta/fuera de rango y URL que no sea de Google Maps embebido.
-2. En `/admin/vista-previa`, seleccionar ambos sellos: sin portada, sin precios alternativos ni texto sobre ajuste de precios; sellos identificados con badges. Comprobar búsqueda/cantidades y único precio aplicado.
-3. Comparar público/comunidad manteniendo su regla de cálculo y exigencia de sede/correo institucional, sin mensajes de diferenciación de precios.
-4. Delivery: seleccionar Lima → Lima → un distrito, y Callao → Callao → un distrito: flete S/15 solo en sidebar. Seleccionar Lima → otra provincia: S/25. Seleccionar otra región: S/25. Cambiar departamento/provincia vacía selecciones dependientes; campos incompletos impiden avanzar. En mixto todo el flete va a Universidad.
-5. Recojo: campus/biblioteca/mapa, flete cero solo en resumen. «Yo» usa los datos de comprador; «Otra persona» exige nombre, DNI y teléfono. Volver y cambiar comprador: «Yo» debe reflejar los datos actuales, no los anteriores.
-6. Confirmación: geografía con nombres legibles, persona que recoge/recibe con documento/teléfono, edición de pasos y dos checkbox de consentimiento. Completar revisión no genera pedido ni modifica stock.
-7. Revisar a 375 px/escritorio y con teclado. `/pedido` público excluye todos los DEMO; sin catálogo real se muestra vacío. Un no autorizado no accede a campus/vista previa/acciones.
-
-Sin suites de pruebas automatizadas. No integrar fase 3 ni avanzar a fase 4 hasta aprobación explícita.
-
-Ajuste visual: catálogo con filas compactas (precio/cantidad a la derecha en escritorio), sellos en badges sin prefijo, placeholders en campos libres y cursor de acción en controles habilitados. Una sola línea de envío en el resumen; los totales por cuenta conservan su asignación de flete. Confirmación exige dos consentimientos independientes con Zod; enlace de privacidad abre en otra pestaña. Botón «Enviar pedido» mantiene el alcance de vista previa de fase 3. Fase 4 deberá exigir ambos consentimientos también en su Server Action.
-
-Revisión visual posterior: tarjetas sin SKU con franja inferior de precio/cantidad; badge Instituto rojo `#e4000b`, compartido con confirmación. Política en negrita en ambas aceptaciones. Universidad aparece primero y recibe el flete en mixtos; se indica su inclusión en el total de cuenta sin añadir otra fila de envío. Cierre de vista previa con total, correo, entrega y próximos pasos; sin inventar número, enlace ni carga funcional de comprobantes.
-
-Último ajuste: catálogo en filas abiertas separadas por líneas, sin franja inferior; zona de entrega sin etiqueta pública (derivación interna intacta). Desglose solo para mixtos: fila «Costo» en Universidad para el envío, sin duplicarlo en la sección general ni mostrar cero en Instituto. Un solo sello conserva publicaciones, envío y total generales.
-
-Panel lateral: tres tarjetas independientes en orden detalle de compra, consentimientos/botón (solo confirmación), desglose (solo mixtos). Checkboxes y botón externos vinculados al formulario por atributo `form`, conservando validación y envío. En móvil se apilan tras el detalle de confirmación.
-
-Consentimiento simplificado a un checkbox: expresa lectura y aceptación de la política y autorización del tratamiento en una misma declaración, con enlace visible. El resumen de Universidad presenta Publicaciones antes de Envío.
+Panel lateral: tarjetas independientes de compra, consentimiento/botón (solo confirmación) y cuentas (solo mixtos). En cuentas: Publicaciones → Envío (solo Universidad) → Total. Campus y ubigeo siguen las fuentes del servidor. Catálogo en filas sin portada/SKU; badges violeta y rojo Instituto `#e4000b`.
