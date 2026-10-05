@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { UsersRound } from "lucide-react";
+import { AdminNav } from "@/components/admin-nav";
 import { LogoutButton } from "@/components/logout-button";
 import { requirePageAccess } from "@/lib/access";
 
@@ -18,12 +18,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             <LogoutButton />
           </div>
         </div>
-        <nav aria-label="Administración" className="mx-auto flex max-w-6xl px-6 sm:px-10">
-          <Link href="/admin" aria-current="page" className="-mb-px inline-flex min-h-11 items-center gap-2 border-b-2 border-primary px-1 text-sm font-medium text-primary">
-            <UsersRound className="size-4" aria-hidden="true" />
-            Configuración
-          </Link>
-        </nav>
+        <AdminNav />
       </header>
       <main id="contenido" className="enter-page mx-auto max-w-6xl px-6 py-8 sm:px-10 sm:py-10">{children}</main>
     </div>

@@ -2,7 +2,7 @@
 
 Aplicación para el Fondo Editorial Continental, integrada en WordPress mediante iframe. Interfaz funcional sin landing ni marca duplicada: Inter, tema claro, fondo blanco y `#6802C1`.
 
-Fase actual: `feat/02-schema-y-seed`. Fase 1 integrada en `main`: Google OAuth, autorización en BD y configuración en `/admin`, con acceso del maestro y rechazo de otra cuenta confirmados por el usuario. Esquema de negocio y cuatro libros DEMO inactivos aplicados en Neon. Fase 2 pendiente de aprobación para integrar y seguir.
+Fase actual: `feat/03-wizard-frontend`. Fases 1 y 2 integradas localmente en `main`. Wizard público en `/pedido`; vista previa DEMO protegida en `/admin/vista-previa`, sin activar libros ficticios ni registrar pedidos. Campus/bibliotecas y mapas editables en `/admin`. Ubigeo nacional local y datos de quien recibe/recoge. Pendiente de aprobación al cerrar.
 
 ## Inicio local
 
@@ -23,7 +23,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`. Sin configuración válida el acceso se deniega y se muestra un mensaje recuperable.
+Abrir `http://localhost:3000` para administración. El catálogo público está en `/pedido`; para recorrer los cuatro pasos con los DEMO inactivos, abrir **Vista previa del pedido** en administración. Sin configuración válida el acceso se deniega y se muestra un mensaje recuperable.
 
 ## Acceso y estructura
 

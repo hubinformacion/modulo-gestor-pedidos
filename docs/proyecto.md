@@ -35,7 +35,7 @@ Instalar paquetes de fases posteriores cuando corresponda, sin adelantar sus fun
 - Seed inicial idempotente: `distribucionfe@continental.edu.pe`.
 - Una cuenta Google verificada previamente autorizada puede crear su usuario de better-auth al ingresar por primera vez. Un correo no autorizado no puede crear usuario ni sesión.
 - Validar también el correo recibido de Google en ingresos posteriores y consultar la autorización vigente con cada petición protegida.
-- Todos los autorizados operan el sistema y consultan la lista; solo el maestro añade o elimina correos. El maestro no se elimina desde la aplicación.
+- Todos los autorizados operan el sistema, gestionan campus y consultan la lista; solo el maestro añade o elimina correos. El maestro no se elimina desde la aplicación.
 - Configuración en `/admin`: lista sencilla con alta/baja, sin gestor de usuarios ni de roles. Pedidos e inventario conservan rutas propias.
 - Normalizar correos a minúsculas y quitar espacios externos; `added_by` procede de la sesión, nunca del cliente.
 - Comprobar sesión válida y tabla en el middleware (`src/proxy.ts` en Next 16), páginas y Server Actions. Una cookie presente no demuestra autorización.
@@ -66,7 +66,7 @@ Conservar el precio aplicado en cada `order_item`; los cambios posteriores en in
 | Lima / Callao | S/15 | Zona, dirección y datos de entrega |
 | Provincia | S/25 | Departamento, ciudad, dirección y datos de entrega |
 
-Registrar referencia y receptor según corresponda. Facturación opcional: RUC y razón social.
+Departamento/provincia/distrito por ubigeo local en delivery; la zona y tarifa se derivan del distrito, sin selección de precio. Costos solo en resumen. Calle/número y referencia permanecen libres. Quien recibe/recoge es el comprador actual u otra persona con nombres, DNI y teléfono. Facturación opcional: RUC y razón social.
 
 Pedido mixto: dos depósitos independientes. El flete se cobra **solo en la cuenta de Universidad**, únicamente si es delivery. En recojo campus, cero. Mostrar subtotales, flete y total por cuenta, además del total general.
 
@@ -95,6 +95,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 
 | Tabla | Campos y restricciones |
 | --- | --- |
+| campuses | id, nombre único normalizado, dirección biblioteca, latitud/longitud opcionales, URL Google Maps embebido, estado activo/inactivo y timestamps; CRUD por autorizados, borrado restringido si hay pedidos |
 | books | id, inventory_code único, title, author, publisher_imprint, standard_price, community_price, stock, status, timestamps |
 | order_counters | year PK, last_number |
 | orders | id, order_number único, tracking_token único/indexado, order_type; comprador (tipo, sede si aplica, nombre, correo, teléfono, documento); entrega (tipo, campus/zona, departamento/ciudad si aplica, dirección, referencia, receptor); subtotales, envío, totales por sello y general; facturación opcional (RUC, razón social); order_status, payment_status_universidad, payment_status_instituto, courier, timestamps |
@@ -103,7 +104,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Las tablas de acceso de fase 1 están implementadas y aplicadas. El esquema de negocio corresponde a fase 2.
+Las tablas de acceso y negocio están implementadas/aplicadas y ambas fases integradas en `main`. El wizard de fase 3 utiliza ese catálogo; creación/pagos/despacho pertenecen a fases posteriores.
 
 ## Integración Google prevista
 
@@ -129,4 +130,4 @@ La autorización Google del administrador usa únicamente identidad; no sustituy
 
 ## Información externa aún necesaria
 
-Credenciales Neon/Google y acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; sedes/campus y direcciones de bibliotecas; PDFs de pago aprobados. No inventar estos datos para producción ni escribir secretos en documentación, commits o mensajes.
+Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas, editables en `/admin`, si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario se migran a la tabla `campuses`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.

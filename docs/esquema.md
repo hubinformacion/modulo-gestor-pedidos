@@ -27,7 +27,7 @@ Fuente de verdad: `src/db/schema.ts`. Auth conserva su esquema generado en `src/
 
 La BD exige stock/precios no negativos, cantidades positivas y `subtotal = unit_price × quantity`. En pedidos exige datos de comprador/entrega, sede y correo institucional para comunidad, departamento/ciudad para provincia, RUC de 11 dígitos junto a razón social y desglose económico consistente.
 
-El flete se guarda como total y por cuenta (`shipping_cost`, `shipping_universidad`, `shipping_instituto`): recojo 0, Lima/Callao 15, provincia 25. En mixtos se asigna exclusivamente a Universidad; en pedidos de un sello se asigna a su cuenta. La dirección de entrega conserva también la dirección de biblioteca al recoger.
+El flete se guarda como total y por cuenta (`shipping_cost`, `shipping_universidad`, `shipping_instituto`): recojo 0, Lima/Callao 15, provincia 25. En mixtos se asigna exclusivamente a Universidad; en pedidos de un sello se asigna a su cuenta. La dirección de entrega conserva también la dirección de biblioteca al recoger. La revisión de fase 3 añade campus dinámicos y FKs restrictivas, provincia/distrito/ubigeo y tipo/documento/teléfono de quien recibe. La migración inicial de campus incorpora los ocho proporcionados por el usuario una sola vez; `db:seed` no restaura campus eliminados.
 
 Los estados de pago se proporcionan explícitamente al crear: el sello que no corresponde exige `NO_APLICA`. La BD impide preparación, despacho o entrega sin verificación de todos los pagos aplicables. Las transiciones operativas y el recálculo/derivación desde los ítems se implementarán en las fases 4 y 5; el esquema por sí solo no crea pedidos ni descuenta stock. La consistencia entre filas (totales vs. ítems, sello del libro/comprobante vs. pedido) corresponde a esas transacciones, además de Zod en cada acción.
 
@@ -39,7 +39,7 @@ Los libros usan códigos `DEMO-UC-*`/`DEMO-IC-*`, títulos `[DEMO]`, autor de de
 
 ## Estado de entrega
 
-El 2026-10-05 se aplicaron la migración de negocio y el seed DEMO en Neon; una consulta confirmó diez tablas, dos migraciones y los cuatro libros inactivos con sus precios/stock. Lint y tipos correctos. Fase 2 pendiente de aprobación del usuario para integrar y seguir.
+El 2026-10-05 se aplicaron la migración de negocio y el seed DEMO en Neon; una consulta confirmó diez tablas, dos migraciones y los cuatro libros inactivos con sus precios/stock. Lint y tipos correctos. Fase 2 aprobada por el usuario e integrada en `main`; conservar este contrato para las acciones posteriores.
 
 ## Revisión manual al cerrar
 

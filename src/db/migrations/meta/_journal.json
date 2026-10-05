@@ -15,6 +15,13 @@
       "when": 1791220059603,
       "tag": "0001_public_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791223251784,
+      "tag": "0002_magenta_purifiers",
+      "breakpoints": true
     }
   ]
 }
