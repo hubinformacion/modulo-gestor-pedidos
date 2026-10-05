@@ -2,7 +2,7 @@
 
 Aplicación para el Fondo Editorial Continental, integrada en WordPress mediante iframe. Interfaz funcional sin landing ni marca duplicada: Inter, tema claro, fondo blanco y `#6802C1`.
 
-Fase 1 completada y aprobada: Google OAuth, autorización en BD y configuración en `/admin`. Migración y seed aplicados en Neon; el usuario confirmó ingreso del maestro y rechazo de otra cuenta. Autorizado el inicio de fase 2: esquema de negocio y seed.
+Fase actual: `feat/02-schema-y-seed`. Fase 1 integrada en `main`: Google OAuth, autorización en BD y configuración en `/admin`, con acceso del maestro y rechazo de otra cuenta confirmados por el usuario. Esquema de negocio y cuatro libros DEMO inactivos aplicados en Neon. Fase 2 pendiente de aprobación para integrar y seguir.
 
 ## Inicio local
 

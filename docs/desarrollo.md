@@ -14,6 +14,7 @@ src/
     drizzle.config.ts     Configuración de Drizzle Kit
     migrations/           SQL e historial de migraciones
     seed.ts               Entrada CLI para seed idempotente
+    seeds/                Catálogo ficticio de demostración (opcional)
     index.ts              Conexión Neon para peticiones server-side
   lib/                    Autenticación, acceso, validaciones e integraciones
   proxy.ts                Middleware/proxy de rutas administrativas
@@ -55,7 +56,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`: dirige a administración o al ingreso, sin landing. Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
+Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
 
 ## Comandos de BD
 
@@ -64,7 +65,8 @@ Abrir `http://localhost:3000`: dirige a administración o al ingreso, sin landin
 | pnpm db:auth:generate | Generar tablas better-auth con src/db/auth-schema.config.ts |
 | pnpm db:generate | Generar SQL con src/db/drizzle.config.ts |
 | pnpm db:migrate | Aplicar migraciones versionadas a la BD configurada |
-| pnpm db:seed | Sembrar el maestro idempotentemente |
+| pnpm db:seed | Sembrar el maestro idempotentemente, sin catálogo ficticio |
+| pnpm db:seed:demo | Maestro y cuatro libros DEMO inactivos, sin sobrescribir datos |
 
 La generación auth usa una configuración de esquema sin credenciales ni conexión externa. No editar sus tablas a mano. Preservar el historial en `src/db/migrations`; no regenerar migraciones ya aplicadas para reorganizar carpetas.
 

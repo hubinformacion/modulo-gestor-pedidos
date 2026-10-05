@@ -16,7 +16,8 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fase 1 completada y aprobada el 2026-10-05: migración/seed en Neon, ingreso del maestro y rechazo de correo no autorizado confirmados. Configuración en `/admin`; pedidos e inventario tendrán rutas propias. Autorizados el merge inicial a `main` y el inicio de `feat/02-schema-y-seed`.
+- Fase vigente: `feat/02-schema-y-seed`, implementada y pendiente de aprobación. Migración de negocio y cuatro DEMO inactivos aplicados/verificados en Neon; lint y tipos correctos. Fase 1 completada, aprobada e integrada en `main` el 2026-10-05; el usuario confirmó acceso del maestro y rechazo de otro correo. Configuración en `/admin`; pedidos e inventario tendrán rutas propias. No integrar fase 2 ni iniciar fase 3 sin nueva aprobación.
+- Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
 - Mantener código, migraciones y utilidades en `src`. Configuración de herramientas en raíz solo por convención necesaria. No crear `CLAUDE.md`.
@@ -31,7 +32,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 ## Orden de fases
 
-1. `feat/01-auth-y-google`: setup pnpm/Next/UI, Neon/Drizzle mínimo, tablas auth + autorizados, seed maestro, OAuth, protección de rutas y pantalla de correos.
+1. `feat/01-auth-y-google`: completada e integrada; acceso y configuración en `/admin`.
 2. `feat/02-schema-y-seed`: esquema de negocio completo y seed de libros de ambos sellos.
 3. `feat/03-wizard-frontend`: publicaciones → comprador → entrega → confirmación, Zod y precios/flete dinámicos.
 4. `feat/04-pedidos-pagos-drive`: creación transaccional, numeración anual/stock, tracking, FilePond, Drive/Gmail y PDFs.
