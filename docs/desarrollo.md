@@ -16,7 +16,9 @@ src/
     seed.ts               Entrada CLI para seed idempotente
     seeds/                Catálogo ficticio de demostración (opcional)
     index.ts              Conexión Neon para peticiones server-side
+  config/                 Campus, bibliotecas y ajustes precisos de mapas
   lib/                    Autenticación, acceso, validaciones e integraciones
+    orders/               Catálogo servidor, validaciones y cálculo compartido
   proxy.ts                Middleware/proxy de rutas administrativas
 docs/                     Contexto, requisitos, fases y decisiones
 ```
@@ -56,7 +58,9 @@ pnpm db:seed
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
+Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Compra pública en `/pedido`; revisión con DEMO en `/admin/vista-previa`, protegida y sin escritura de pedidos. Datos del comprador solo en memoria durante el recorrido.
+
+Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
 
 ## Comandos de BD
 

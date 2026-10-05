@@ -103,7 +103,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Las tablas de acceso de fase 1 están implementadas y aplicadas. El esquema de negocio corresponde a fase 2.
+Las tablas de acceso y negocio están implementadas/aplicadas y ambas fases integradas en `main`. El wizard de fase 3 utiliza ese catálogo; creación/pagos/despacho pertenecen a fases posteriores.
 
 ## Integración Google prevista
 
@@ -129,4 +129,4 @@ La autorización Google del administrador usa únicamente identidad; no sustituy
 
 ## Información externa aún necesaria
 
-Credenciales Neon/Google y acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; sedes/campus y direcciones de bibliotecas; PDFs de pago aprobados. No inventar estos datos para producción ni escribir secretos en documentación, commits o mensajes.
+Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario e incorporados en `src/config/fulfillment.ts`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.

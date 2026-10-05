@@ -39,7 +39,7 @@ Los libros usan códigos `DEMO-UC-*`/`DEMO-IC-*`, títulos `[DEMO]`, autor de de
 
 ## Estado de entrega
 
-El 2026-10-05 se aplicaron la migración de negocio y el seed DEMO en Neon; una consulta confirmó diez tablas, dos migraciones y los cuatro libros inactivos con sus precios/stock. Lint y tipos correctos. Fase 2 pendiente de aprobación del usuario para integrar y seguir.
+El 2026-10-05 se aplicaron la migración de negocio y el seed DEMO en Neon; una consulta confirmó diez tablas, dos migraciones y los cuatro libros inactivos con sus precios/stock. Lint y tipos correctos. Fase 2 aprobada por el usuario e integrada en `main`; conservar este contrato para las acciones posteriores.
 
 ## Revisión manual al cerrar
 

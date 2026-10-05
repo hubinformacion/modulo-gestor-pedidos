@@ -2,7 +2,7 @@
 
 ## Estado vigente
 
-Fase 1 completada y aprobada el 2026-10-05. Migración y seed aplicados en Neon; el usuario confirmó ingreso del maestro y rechazo de un correo no autorizado. Configuración centralizada en `/admin`. Integrada en `main`. Rama vigente: `feat/02-schema-y-seed`; no integrar ni avanzar a fase 3 sin nueva aprobación.
+Fases 1 y 2 aprobadas e integradas localmente en `main`. Rama vigente: `feat/03-wizard-frontend`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni avanzar a fase 4 sin nueva aprobación.
 
 ## Regla de entrega
 
@@ -12,27 +12,21 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **1. Auth y Google:** pnpm/Next/UI, Neon/Drizzle, tablas better-auth generadas, autorizados, seed, Google OAuth y protección de páginas/acciones. Solo el maestro gestiona correos; la revocación elimina sesiones atómicamente. Aprobada por el usuario; sin pruebas automatizadas.
 
+- **2. Esquema y seed:** diez tablas, importes exactos/restricciones, migración en Neon y cuatro DEMO inactivos. Lint y tipos correctos. Aprobada e integrada; catálogo oficial pendiente. [Contrato de esquema](esquema.md).
+
 ## Fase vigente
 
-## 2. feat/02-schema-y-seed — implementada, pendiente de aprobación
+## 3. feat/03-wizard-frontend — implementada, pendiente de revisión
 
-**Entrega:** esquema completo de negocio descrito en [proyecto.md](proyecto.md), migraciones y seed de libros de ambos sellos.
+**Entrega:** cuatro pasos, Zod, filtros/cantidades/stock, precios por comprador, facturación opcional, envío y desglose por cuenta. Ocho campus reales con biblioteca/mapa y configuración opcional de coordenadas/URL embebida. Vista previa DEMO protegida sin publicar libros ficticios ni crear pedidos.
 
-**Comprobado el 2026-10-05:** lint y tipos correctos. Migración `0001_public_havok` aplicada en Neon; diez tablas y dos migraciones registradas. Cuatro libros DEMO inactivos sembrados y consultados, con precios/stock por sello. No se ejecutaron suites de pruebas. No hay todavía interfaz de inventario ni creación de pedidos.
+**Comprobado:** `pnpm lint`, `pnpm typecheck` y `pnpm build` correctos. Endpoint de mapa por dirección respondió HTTP 200 sin X-Frame-Options; precisión de pines y recorrido visual pendientes de revisión manual. No se ejecutaron suites de pruebas ni se modificó stock.
 
-**Revisión manual:** revisar tablas/restricciones e inventario de ambos sellos; confirmar precios estándar/comunidad y repetición de seed sin duplicar datos.
+**Revisión manual:** pasos concretos en [wizard.md](wizard.md). Revisar ambos sellos y carrito mixto, comunidad con sede/correo institucional, entrega por las tres modalidades, validaciones y mapas en móvil/escritorio.
 
-**Catálogo:** oficial pendiente. Seed opcional `pnpm db:seed:demo`: cuatro libros ficticios (dos por sello), prefijo `DEMO-`/`[DEMO]`, inicialmente inactivos. No sobrescribe precios, stock ni estado al repetirlo. Detalles en [esquema.md](esquema.md).
+**Pendiente:** catálogo oficial y precisión de pines; cuentas bancarias, creación transaccional, comprobantes/correos/PDFs pertenecen a fase 4. Registro público deshabilitado hasta entonces.
 
 ## Fases pendientes
-
-## 3. feat/03-wizard-frontend
-
-**Entrega:** wizard de cuatro pasos: publicaciones, comprador, entrega, confirmación. Validación Zod y cálculo dinámico de precios/envío.
-
-**Revisión manual:** probar ambos sellos y carrito mixto; comunidad con sede/correo institucional; público general; recojo, Lima/Callao y provincia; verificar desglose y obligatoriedad de departamento/ciudad.
-
-**Datos necesarios:** sedes, campus, direcciones de bibliotecas y cuentas bancarias para mostrar instrucciones correctas.
 
 ## 4. feat/04-pedidos-pagos-drive
 

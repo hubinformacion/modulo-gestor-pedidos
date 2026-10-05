@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fase vigente: `feat/02-schema-y-seed`, implementada y pendiente de aprobación. Migración de negocio y cuatro DEMO inactivos aplicados/verificados en Neon; lint y tipos correctos. Fase 1 completada, aprobada e integrada en `main` el 2026-10-05; el usuario confirmó acceso del maestro y rechazo de otro correo. Configuración en `/admin`; pedidos e inventario tendrán rutas propias. No integrar fase 2 ni iniciar fase 3 sin nueva aprobación.
+- Fase vigente: `feat/03-wizard-frontend`, implementada y pendiente de aprobación; lint, tipos y build correctos. Fases 1 y 2 aprobadas e integradas localmente en `main`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 3 ni iniciar fase 4 sin nueva aprobación.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
@@ -33,7 +33,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 ## Orden de fases
 
 1. `feat/01-auth-y-google`: completada e integrada; acceso y configuración en `/admin`.
-2. `feat/02-schema-y-seed`: esquema de negocio completo y seed de libros de ambos sellos.
+2. `feat/02-schema-y-seed`: completada e integrada; esquema y seed DEMO en Neon.
 3. `feat/03-wizard-frontend`: publicaciones → comprador → entrega → confirmación, Zod y precios/flete dinámicos.
 4. `feat/04-pedidos-pagos-drive`: creación transaccional, numeración anual/stock, tracking, FilePond, Drive/Gmail y PDFs.
 5. `feat/05-admin-dashboard`: pedidos/filtros, pagos independientes por sello, despacho e inventario CRUD.
@@ -49,6 +49,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
 - Drive/Gmail: cuenta propietaria con refresh token; try/catch y un reintento sin perder la carga. MIME HTML + PDF según tipo; PDFs en `src/assets/pdfs`, fuera de public. Revisar adjunto en Vercel.
+- Campus/direcciones reales en `src/config/fulfillment.ts`; recojo siempre en biblioteca. Mapas embebidos por dirección con `coordinates` o `googleMapsEmbedUrl` opcionales para precisión. No inventar coordenadas.
 - No X-Frame-Options contradictorio con CSP del iframe.
 
 ## Estructura principal
