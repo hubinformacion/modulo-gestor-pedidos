@@ -2,7 +2,7 @@
 
 ## Estado vigente
 
-Fases 1–3 aprobadas e integradas localmente en `main`. Rama vigente: `feat/04-pedidos-pagos-drive`. Configuración en `/admin`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Fase 4 implementada, pendiente de configuración y revisión operativa; no integrar ni avanzar a fase 5 sin aprobación.
+Fases 1–4 aprobadas e integradas localmente en `main`. Rama vigente: `feat/05-admin-dashboard`, implementada y pendiente de revisión. Configuración en `/admin`, pedidos en `/admin/pedidos`, inventario en `/admin/inventario`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Las revisiones reales de Drive/Gmail/PDF/Vercel de fase 4 siguen pendientes de configuración.
 
 ## Regla de entrega
 
@@ -16,25 +16,19 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **3. Wizard:** aprobada por el usuario. Cuatro pasos, catálogo compacto, precios dinámicos, ubigeo, campus administrables, persona alternativa, resumen en tarjetas y consentimiento único. Migración de campus aplicada; lint/tipos/build correctos. Contrato de interfaz en [wizard.md](wizard.md).
 
+- **4. Pedidos, pagos y Google:** aprobada para integrar y continuar por el usuario. Creación transaccional, contador anual, snapshots, tracking, cargas recuperables y outbox. Migraciones 0003–0005 aplicadas; cuatro cuentas sembradas. Lint/tipos/build correctos. Integrada localmente; configuración y revisión real Google/PDF/Vercel pendientes según [pedidos-pagos.md](pedidos-pagos.md).
+
 ## Fase vigente
-
-## 4. feat/04-pedidos-pagos-drive
-
-**Estado:** código implementado. Migraciones 0003–0005 aplicadas en Neon; cuatro cuentas sembradas. Lint, tipos y build correctos. Tracing incluye los tres PDF. Drive/Gmail, pedidos reales y adjunto en Vercel pendientes: faltan credenciales y catálogo operativo.
-
-**Entrega:** Server Action de creación, recálculo de precios server-side, stock y numeración por año en transacción; seguimiento por token; FilePond multiarchivo por sello; Drive, correo y PDFs.
-
-**Revisión manual:** crear cada tipo de pedido, abortar por stock insuficiente, revisar consecutivos por año y totales por cuenta, cargar/reintentar comprobantes por sello y confirmar recepción del correo con su PDF. Revisar manualmente el adjunto en Vercel.
-
-**Datos necesarios:** completar/activar Universidad en el CRUD de cuentas, refresh token/propietario y carpeta Drive, reemplazar PDF mixto cuando el responsable lo tenga listo, y proyecto Vercel. Estado detallado y revisión en [pedidos-pagos.md](pedidos-pagos.md).
-
-## Fases pendientes
 
 ## 5. feat/05-admin-dashboard
 
-**Entrega:** `/admin/pedidos` con tabla/filtros, aprobación independiente por sello y despacho; `/admin/inventario` con CRUD de stock/precios. Configuración permanece en `/admin`; navegación hacia pedidos e inventario sin desplazarla.
+**Estado:** implementada en su rama; pendiente de revisión manual y aprobación antes de integrar. Sin migraciones ni nuevas dependencias. Lint, tipos y build de producción correctos.
 
-**Revisión manual:** aprobaciones de ambos sellos y `NO_APLICA`; ningún mixto pasa a preparación con un pago pendiente/rechazado; rechazo/re-subida de un sello conserva el otro; actualizar inventario y despachar.
+**Entrega:** pedidos con búsqueda, filtros, paginación y detalle; comprobantes Drive, aprobación/rechazo independiente por sello; preparación condicionada, despacho con courier y entrega. Inventario CRUD con precios/stock/estado, protección del historial y control de concurrencia. Configuración permanece en `/admin`.
+
+**Revisión manual:** [admin-dashboard.md](admin-dashboard.md) contiene los pasos concretos, restricciones y requisitos de configuración. No se crearon pedidos ficticios ni se enviaron correos para esta entrega.
+
+## Fases pendientes
 
 ## 6. feat/06-iframe-wp-polish
 

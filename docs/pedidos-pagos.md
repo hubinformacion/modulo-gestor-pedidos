@@ -1,6 +1,6 @@
 # Pedidos, seguimiento y comprobantes — fase 4
 
-Rama `feat/04-pedidos-pagos-drive`. Fases 1–3 integradas y aprobadas. Código implementado y compilado, pendiente de completar cuentas/Google/catálogo operativo y revisión real en Vercel. No integrar fase 4 ni comenzar fase 5 sin aprobación.
+Fase 4 aprobada e integrada localmente en `main`. Contrato técnico vigente; completar cuentas/Google/catálogo operativo y revisión real en Vercel sigue pendiente. La administración de pedidos e inventario se implementa en fase 5, según [admin-dashboard.md](admin-dashboard.md).
 
 ## Creación
 
@@ -20,7 +20,7 @@ Una zona FilePond, hasta ocho archivos por lote y 3 MiB por archivo (bajo los l�
 
 El intento de carga guarda UUID, hash, sello e ID de Drive reservado. Drive usa ese mismo ID y un reintento; si el archivo existe, finaliza permisos/link y registra el comprobante. Si falla Drive o BD, el archivo del cliente permanece seleccionado y el intento recuperable; retirar/re-añadir crea otro intento. No persiste los bytes en el navegador después de recargar.
 
-El pedido se bloquea al reservar y confirmar la carga. Solo `PENDIENTE_PAGO` admite comprobantes de sellos requeridos no verificados. El sello cargado pasa a `EN_REVISION`; el otro conserva su estado, incluido `VERIFICADO`. No aprueba pagos ni cambia a preparación (fase 5). Rechazo permite re-subir ese sello; se conserva el historial. Retirar un archivo de FilePond no borra comprobantes ya registrados. Drive y BD no forman una transacción distribuida: las intenciones conservan el ID para reconciliar una carga incompleta, incluso un archivo que quedó en Drive mientras el estado del pedido cambió.
+El pedido se bloquea al reservar y confirmar la carga. Solo `PENDIENTE_PAGO` admite comprobantes de sellos requeridos no verificados. El sello cargado pasa a `EN_REVISION`; el otro conserva su estado, incluido `VERIFICADO`. La carga no aprueba pagos ni cambia a preparación; esas operaciones corresponden al dashboard administrativo. Rechazo permite re-subir ese sello; se conserva el historial. Retirar un archivo de FilePond no borra comprobantes ya registrados. Drive y BD no forman una transacción distribuida: las intenciones conservan el ID para reconciliar una carga incompleta, incluso un archivo que quedó en Drive mientras el estado del pedido cambió.
 
 ## Google y correo
 
@@ -40,10 +40,10 @@ PDF: `guia_pago_universidad.pdf`, `guia_pago_instituto.pdf`, `guia_pago_mixta.pd
 
 ## Revisión manual al configurar
 
-1. En `/admin`, editar/crear/activar/desactivar/eliminar una cuenta. Completar titular y CCI Universidad, y activar al menos una cuenta de ese sello. Verificar validación de CCI, duplicados y acceso de otros autorizados. Comprobar todos los elementos configurados. Recorrer `/admin/vista-previa`: sigue sin crear pedidos. Cargar catálogo real autorizado por responsable; el CRUD de inventario pertenece a fase 5.
+1. En `/admin`, editar/crear/activar/desactivar/eliminar una cuenta. Completar titular y CCI Universidad, y activar al menos una cuenta de ese sello. Verificar validación de CCI, duplicados y acceso de otros autorizados. Comprobar todos los elementos configurados. Recorrer `/admin/vista-previa`: sigue sin crear pedidos. Cargar catálogo real autorizado por responsable; usar `/admin/inventario` para el catálogo operativo.
 2. Crear pedidos Universidad, Instituto y mixto en una rama Neon de revisión con libros reales de revisión aprobados. Ver número anual, enlace, snapshots, precios público/comunidad, recojo S/0, Lima/Callao S/15 y otras provincias S/25. Mixto: dos depósitos y envío solo Universidad.
 3. Mantener un carrito abierto y reducir stock desde BD; enviar: no debe quedar pedido/ítems ni reducir otros libros. Dos clientes concurrentes con última unidad: solo uno confirma. Reintento de la misma solicitud: mismo pedido, sin segunda reducción. Revisar filas del contador, no alterar el reloj de producción.
-4. Cargar PDF/JPG/PNG con sellos distintos. Rechazar tipos/tamaños inválidos. Interrumpir conexión/reintentar sin retirar: un ID Drive y un comprobante por intento. Ver `EN_REVISION` solo del sello cargado. El flujo de aprobación/rechazo desde UI llega en fase 5.
+4. Cargar PDF/JPG/PNG con sellos distintos. Rechazar tipos/tamaños inválidos. Interrumpir conexión/reintentar sin retirar: un ID Drive y un comprobante por intento. Ver `EN_REVISION` solo del sello cargado. Revisar aprobación/rechazo desde `/admin/pedidos` según el contrato del dashboard.
 5. Forzar fallo Google en el entorno de revisión: el pedido persiste, el archivo permanece y el correo puede reintentarse. Restaurar credenciales; comprobar permisos/link en Drive y destinatario/adjunto correcto por tipo.
 6. Desplegar rama en Vercel con configuración real aprobada; crear pedido de revisión y abrir el adjunto recibido. Descargar PDF desde seguimiento y contrastar cuentas/importes. Confirmar que el tracing incluye los PDF. Falta proyecto/credenciales Vercel para realizar esta revisión desde el entorno actual.
 
@@ -51,4 +51,4 @@ Sin suites de pruebas automatizadas. Registrar solo comprobaciones realmente rea
 
 ## Comprobaciones realizadas
 
-Lint, tipos y build de producción correctos tras el CRUD bancario y snapshots PDF. Migraciones 0003–0005 aplicadas: historial Neon con seis migraciones; cuatro cuentas (dos Instituto activas, dos Universidad inactivas), cero pedidos. Tracing de `/pedido` y descarga incluye los tres PDF. No se crearon pedidos, enviaron correos ni subieron comprobantes reales durante la implementación. No hay remoto Git ni proyecto Vercel configurado; integración de fase 3 realizada localmente.
+Lint, tipos y build de producción correctos tras el CRUD bancario y snapshots PDF. Migraciones 0003–0005 aplicadas: historial Neon con seis migraciones; cuatro cuentas (dos Instituto activas, dos Universidad inactivas), cero pedidos. Tracing de `/pedido` y descarga incluye los tres PDF. No se crearon pedidos, enviaron correos ni subieron comprobantes reales durante la implementación. No hay remoto Git ni proyecto Vercel configurado; integraciones de fases 3 y 4 realizadas localmente.

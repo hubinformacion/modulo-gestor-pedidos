@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fases 1–3 aprobadas e integradas localmente en `main`. Fase vigente: `feat/04-pedidos-pagos-drive`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 4 ni comenzar fase 5 sin aprobación al cierre.
+- Fases 1–4 aprobadas e integradas localmente en `main`. Fase vigente: `feat/05-admin-dashboard`, pendiente de revisión. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 5 ni comenzar fase 6 sin aprobación al cierre. Revisiones reales Google/PDF/Vercel de fase 4 siguen pendientes de configuración.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
@@ -68,3 +68,11 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 - UUID de intento único, hash y locks: reintento no duplica pedido/stock. Snapshot de título/cuentas/consentimiento. Numeración por año de Lima desde BD.
 - Tracking nanoid 32, privado por token; no referrer/no-store. FilePond 3 MiB por archivo, una zona múltiple y asociación por sello. Intentos persistidos con ID Drive reservado; no quitar archivo si hay error.
 - Correo en outbox persistente con after/reintento desde seguimiento; fallo no borra pedido. Sin pruebas automatizadas. Validación real Google/PDF en Vercel pendiente de configuración. [Detalle vigente](docs/pedidos-pagos.md).
+
+## Contrato de fase 5
+
+- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario`; configuración en `/admin`. Cualquier autorizado opera pedidos/inventario.
+- Aprobar/rechazar solo pagos `EN_REVISION` de pedidos `PENDIENTE_PAGO`, con comprobante más reciente del sello. Lock del pedido y control de versión evitan revisión obsoleta; conservar el otro sello. Preparación solo con todos los requeridos verificados.
+- Despacho desde preparación, courier obligatorio para delivery; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
+- Stock absoluto editable con lock y versión; una compra concurrente obliga a recargar. Precios/títulos de pedidos conservan snapshots. No eliminar publicaciones con pedidos ni cambiarles sello; permitir desactivar. DEMO sigue fuera de compra real.
+- Sin migraciones nuevas en fase 5. Contrato y revisión manual en [docs/admin-dashboard.md](docs/admin-dashboard.md).

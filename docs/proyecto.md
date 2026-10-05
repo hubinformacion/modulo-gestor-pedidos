@@ -104,7 +104,7 @@ Fuente: `src/db/schema.ts`. Las tablas de better-auth permanecen separadas en `s
 | authorized_emails | email PK, added_by, created_at |
 | better-auth | user, session, account, verification; generadas por CLI |
 
-Fases 1–3 aprobadas e integradas en `main`. Fase 4 implementa creación/pagos/seguimiento sobre ese catálogo; despacho/aprobación e inventario pertenecen a fase 5.
+Fases 1–4 aprobadas e integradas localmente en `main`. Creación/pagos/seguimiento implementados; aprobación/despacho e inventario CRUD implementados en la rama de fase 5, pendiente de revisión. Configuración y validación real de Google/PDF/Vercel siguen pendientes.
 
 ## Integración Google prevista
 

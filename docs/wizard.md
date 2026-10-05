@@ -34,7 +34,7 @@ Sin ubicación precisa, el mapa busca por dirección y advierte que debe confirm
 
 Los tres desplegables usan `src/data/ubigeo/peru.json`: snapshot 2026 de 25 departamentos, 196 provincias y 1893 distritos, transformado del [listado SISCONCODE extraído por Peru-maps](https://github.com/Rodasluis/Peru-maps/blob/main/salida/ubigeos_2026.csv). Origen, checksum y actualización en [README del dataset](../src/data/ubigeo/README.md). No se llama una API al comprar; revisar/actualizar el snapshot cuando cambie la división administrativa. La calle/número permanece libre: elegir un distrito válido no geocodifica ni verifica automáticamente la calle.
 
-Las nuevas columnas de pedidos conservan provincia/distrito/ubigeo y datos de la otra persona. Fase 4 debe recuperar campus activos desde BD, validar ubigeo y derivar zona/nombres e importes en servidor; `delivery_city` mantiene compatibilidad con el esquema inicial como localidad, no sustituye el ubigeo.
+Las nuevas columnas de pedidos conservan provincia/distrito/ubigeo y datos de la otra persona. La creación recupera campus activos desde BD, valida ubigeo y deriva zona/nombres e importes en servidor; `delivery_city` mantiene compatibilidad con el esquema inicial como localidad, no sustituye el ubigeo.
 
 ## Estado
 
