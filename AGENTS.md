@@ -71,7 +71,7 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 
 ## Contrato de fase 5
 
-- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario`; configuración en `/admin`. Cualquier autorizado opera pedidos/inventario.
+- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario` como tabla con edición inline y alta por modal; configuración en `/admin` con pestañas de correos, campus, cuentas e integraciones. Cualquier autorizado opera pedidos/inventario.
 - Aprobar/rechazar solo pagos `EN_REVISION` de pedidos `PENDIENTE_PAGO`, con comprobante más reciente del sello. Lock del pedido y control de versión evitan revisión obsoleta; conservar el otro sello. Preparación solo con todos los requeridos verificados.
 - Despacho desde preparación, courier obligatorio para delivery; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
 - Stock absoluto editable con lock y versión; una compra concurrente obliga a recargar. Precios/títulos de pedidos conservan snapshots. No eliminar publicaciones con pedidos ni cambiarles sello; permitir desactivar. DEMO sigue fuera de compra real.
