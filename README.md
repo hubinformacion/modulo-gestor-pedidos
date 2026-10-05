@@ -1,70 +1,48 @@
-# Fondo Editorial Continental
+# Gestor de pedidos
 
-La fase 1 implementa Google OAuth y administración de correos autorizados en Neon. Pedidos, inventario, Drive/Gmail y WordPress se incorporan en las fases siguientes.
+Aplicación para el Fondo Editorial Continental, integrada en WordPress mediante iframe. Interfaz funcional sin landing ni marca duplicada: Inter, tema claro, fondo blanco y `#6802C1`.
+
+Fase actual: `feat/01-auth-y-google`. Google OAuth, autorización en BD y gestión de correos implementados; variables requeridas configuradas en `.env.local`, sin revisión del ingreso contra Google/Neon reales. No se ha integrado la rama ni iniciado fase 2.
 
 ## Inicio local
 
-Requisitos: Node.js 22 o superior (verificado con Node 24), pnpm 11.3.0, una BD Postgres en Neon y un cliente Google OAuth de tipo aplicación web.
+Node.js 22 o superior y pnpm 11.3.0. Exclusivamente pnpm.
 
 ```bash
 pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-Completa las variables de `.env.local` fuera de Git:
+Completa `DATABASE_URL`, `BETTER_AUTH_SECRET` (mínimo 32 caracteres), `BETTER_AUTH_URL=http://localhost:3000`, `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
 
-| Variable | Valor |
-| --- | --- |
-| DATABASE_URL | Conexión Postgres de Neon con su configuración SSL; usa una rama de desarrollo. |
-| BETTER_AUTH_SECRET | Secreto aleatorio de al menos 32 caracteres; generar con `openssl rand -base64 32`. |
-| BETTER_AUTH_URL | `http://localhost:3000` |
-| GOOGLE_CLIENT_ID | ID del cliente web de Google. |
-| GOOGLE_CLIENT_SECRET | Secreto del mismo cliente web. |
-
-En Google configura el origen `http://localhost:3000` y el URI de redirección exacto `http://localhost:3000/api/auth/callback/google`. Si el consentimiento está en modo de pruebas, añade las cuentas de prueba en Google. Esto es independiente de autorizarlas en nuestra BD.
+En Google registra el origen `http://localhost:3000` y callback exacto `http://localhost:3000/api/auth/callback/google`. Si usa consentimiento de pruebas, habilita las cuentas también en Google.
 
 ```bash
 pnpm db:migrate
 pnpm db:seed
-pnpm db:seed
 pnpm dev
 ```
 
-Abre [http://localhost:3000/login](http://localhost:3000/login). El seed repetido conserva un único maestro: `distribucionfe@continental.edu.pe`.
+Abrir `http://localhost:3000`. Sin configuración válida el acceso se deniega y se muestra un mensaje recuperable.
 
-Sin credenciales el proyecto compila y muestra el ingreso temporalmente no disponible. Las rutas y acciones administrativas se deniegan. La aplicación no tiene un bypass de autenticación para pruebas.
+## Acceso y estructura
 
-## Acceso y arquitectura
+Todos los autorizados consultan el panel; solo `distribucionfe@continental.edu.pe` añade/quita correos. El maestro está protegido y revocar un correo cierra sus sesiones en la misma transacción.
 
-- Solo Google OAuth, sin registro abierto ni contraseñas. Una cuenta verificada puede crear usuario/sesión únicamente si está en `authorized_emails`.
-- Se valida también la identidad entrante en cada ingreso Google de retorno.
-- Todos los autorizados consultan el panel y la lista. Solo el maestro añade o elimina correos, y el maestro no se puede eliminar.
-- Se permiten cuentas Google de cualquier dominio. Añadir un correo no crea una cuenta Google ni envía una invitación.
-- Se verifican sesión y lista en `proxy.ts`, páginas y cada Server Action, sin caché de autorizaciones entre peticiones.
-- La revocación elimina autorización y sesiones en una misma transacción. Reautorizar permite ingresar con una sesión nueva.
-- Las sesiones duran siete días. Los Pools de Neon se cierran al terminar cada petición para su uso en funciones serverless.
-- Next App Router, TS estricto, Tailwind, shadcn/ui sobre Base UI, `sileo` y `boneyard-js`. Fuentes alojadas con la aplicación.
-
-## Comprobaciones
-
-Las tablas de better-auth fueron **generadas por su CLI**, no escritas a mano. La configuración de generación no requiere credenciales ni conexión externa.
+Código, configuración de BD, migraciones y seed viven en `src`. Tablas better-auth generadas por CLI, no a mano:
 
 ```bash
 pnpm db:auth:generate
 pnpm db:generate
-pnpm check
-pnpm exec playwright install chromium
-pnpm test:e2e
 ```
 
-`pnpm check` ejecuta lint, tipos, tests y build. Los tests aplican las migraciones reales sobre PostgreSQL embebido (PGlite), con better-auth, callbacks, hooks y cookies reales. El intercambio externo con Google y el transporte Neon se sustituyen exclusivamente en tests. PGlite es una dependencia de desarrollo.
+El proyecto no incluye ni exige suites de pruebas automatizadas, por decisión del usuario. Las comprobaciones puntuales disponibles son `pnpm lint`, `pnpm typecheck` y `pnpm build`; realizar primero todos los cambios solicitados.
 
-Playwright arranca el build de producción en el puerto 3100 sin credenciales: comprueba escritorio, móvil y denegación de peticiones. No reemplaza la prueba real de Google/Neon.
+## Contexto persistente
 
-Ver [protocolo de aceptación](docs/phase-01-testing.md) y [diseño aprobado](docs/plans/2026-10-05-fase-01-design.md).
+- [Documentación del proyecto](docs/README.md)
+- [Requisitos y reglas de negocio](docs/proyecto.md)
+- [Fases y estado actual](docs/fases.md)
+- [Estructura, configuración y flujo de desarrollo](docs/desarrollo.md)
 
-## Git y despliegue
-
-Rama actual: `feat/01-auth-y-google`. Nunca hacer commits en `main`; no integrar ni iniciar la fase 2 sin aprobación. El directorio inicialmente no tenía repositorio ni `main`: la primera integración aprobada establecerá `main` desde esta rama.
-
-Para Vercel se usarán pnpm, runtime Node compatible, URL HTTPS estable y callback Google de ese dominio. Aplicar migraciones explícitamente, fuera del build. El despliegue y las pruebas de PDFs/iframe se completarán en sus fases.
+Al cerrar una fase: entregar pasos de revisión manual y esperar aprobación antes de integrar o continuar. Nunca hacer commits en `main`.

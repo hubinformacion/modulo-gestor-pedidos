@@ -2,7 +2,7 @@ import { Pool } from "@neondatabase/serverless";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { drizzle } from "drizzle-orm/neon-serverless";
-import * as schema from "../src/db/auth-schema";
+import * as schema from "./auth-schema";
 
 // Schema generation only: the CLI never connects to this database.
 // No environment credentials or server-only application modules are required.

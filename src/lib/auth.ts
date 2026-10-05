@@ -34,7 +34,7 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
   }
 
   return betterAuth({
-    appName: "Fondo Editorial Continental",
+    appName: "Gestor de pedidos",
     baseURL: env.BETTER_AUTH_URL,
     secret: env.BETTER_AUTH_SECRET,
     trustedOrigins: [new URL(env.BETTER_AUTH_URL).origin],

@@ -29,9 +29,8 @@ export function LoginButton({ configured }: { configured: boolean }) {
 
   return (
     <div>
-      <Button size="lg" className="h-12 w-full justify-between px-5 text-sm" disabled={!configured || pending} onClick={signIn}>
-        <span className="flex items-center gap-3">
-          <span aria-hidden="true" className="flex size-6 items-center justify-center rounded-full bg-white text-sm font-semibold text-primary">G</span>
+      <Button size="lg" className="h-11 w-full justify-between rounded-lg px-4 text-sm" disabled={!configured || pending} onClick={signIn}>
+        <span>
           {pending ? "Conectando con Google…" : "Continuar con Google"}
         </span>
         {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}

@@ -23,9 +23,9 @@ export default async function AuthorizedEmailsPage() {
   });
   return (
     <>
-      <p className="eyebrow text-muted-foreground">Administración / Acceso</p>
-      <h1 className="editorial-heading mt-4 text-4xl sm:text-5xl">Correos autorizados.</h1>
-      <p className="mt-5 max-w-xl text-sm leading-7 text-muted-foreground">El acceso del equipo se controla desde esta lista. Cada persona ingresa con su propia cuenta de Google.</p>
+      <p className="mb-3 text-xs font-medium text-muted-foreground">Acceso del equipo</p>
+      <h1 className="page-heading">Correos autorizados</h1>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
     </>
   );

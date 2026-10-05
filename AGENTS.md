@@ -8,17 +8,52 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-## Reglas del proyecto
+## Contexto del proyecto
 
-- Usar exclusivamente pnpm y mantener su lockfile.
-- Nunca hacer commits en `main`. Una rama por fase; entregar pruebas y esperar aprobación explícita antes de integrar o seguir.
-- Fase actual: `feat/01-auth-y-google`. Negocio y pedidos se implementan en fases posteriores.
-- Google OAuth con better-auth y Drizzle; generar sus tablas mediante CLI, no a mano.
-- `authorized_emails` controla el acceso. Solo `distribucionfe@continental.edu.pe` añade o quita correos; los demás autorizados consultan la lista. El maestro no se elimina en la aplicación.
-- Autenticar y autorizar cada Server Action en el servidor; validar entradas con Zod. No confiar en controles de UI ni en la existencia de cookies.
-- No versionar secretos ni añadir bypasses de autenticación para pruebas.
-- Las futuras rutas de compra y seguimiento serán públicas; administración protegida.
+Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado en WordPress con iframe responsivo. Consultar [docs/proyecto.md](docs/proyecto.md) para requisitos completos, [docs/fases.md](docs/fases.md) para estado/entregas y [docs/desarrollo.md](docs/desarrollo.md) para estructura/configuración.
+
+## Instrucciones vigentes
+
+- Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
+- Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
+- Rama/fase vigente: `feat/01-auth-y-google`, todavía sin merge ni autorización para fase 2. `.env.local` tiene las variables requeridas; conexión e ingreso contra Neon/Google reales pendientes de revisión manual.
+- No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
+- Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
+- Mantener código, migraciones y utilidades en `src`. Configuración de herramientas en raíz solo por convención necesaria. No crear `CLAUDE.md`.
+- UI sin landing, logos ni contenido corporativo: WordPress proporciona ese contexto.
+- Inter por defecto, tema claro fijo, fondo blanco y principal `#6802C1`. Usar frontend-design respetando estas preferencias sobre sus sugerencias genéricas.
+- No eliminar nombres de sellos/cuentas/correos que sean datos operativos necesarios.
+- No versionar secretos ni añadir bypasses de autenticación. Validar cada Server Action con Zod y comprobar autorización en el servidor.
+- Acceso en tabla `authorized_emails`, no solo env. Google OAuth mediante better-auth y Drizzle; tablas auth generadas por CLI, no a mano.
+- Maestro: `distribucionfe@continental.edu.pe`. Solo él añade/quita correos y no puede eliminarse desde la aplicación. Todos los demás autorizados tienen iguales funciones operativas y pueden consultar la lista.
+- Revocar autorización y sesiones atómicamente. No confiar en UI, presencia de cookies ni caché de permisos.
+- Compra/seguimiento conservan el acuerdo de rutas públicas; administración protegida. No cambiar permisos como parte de un ajuste visual.
+
+## Orden de fases
+
+1. `feat/01-auth-y-google`: setup pnpm/Next/UI, Neon/Drizzle mínimo, tablas auth + autorizados, seed maestro, OAuth, protección de rutas y pantalla de correos.
+2. `feat/02-schema-y-seed`: esquema de negocio completo y seed de libros de ambos sellos.
+3. `feat/03-wizard-frontend`: publicaciones → comprador → entrega → confirmación, Zod y precios/flete dinámicos.
+4. `feat/04-pedidos-pagos-drive`: creación transaccional, numeración anual/stock, tracking, FilePond, Drive/Gmail y PDFs.
+5. `feat/05-admin-dashboard`: pedidos/filtros, pagos independientes por sello, despacho e inventario CRUD.
+6. `feat/06-iframe-wp-polish`: CSP frame-ancestors, altura postMessage, variables completas y revisión manual de embebido/Vercel.
+
+## Invariantes de negocio
+
+- Sellos Universidad e Instituto Continental con cuentas propias. Tipo derivado del carrito: `solo_universidad`, `solo_instituto`, `mixto`.
+- Mixto: dos depósitos; flete solo en Universidad si delivery. Recojo S/0, Lima/Callao S/15, provincia S/25 con departamento/ciudad. Recojo muestra biblioteca del campus.
+- Comunidad: sede y correo `@continental.edu.pe`, precio comunidad; público: precio estándar. Recalcular en comprador y creación server-side; nunca confiar en precios del cliente.
+- Pagos por sello independientes; sello no aplicable empieza en `NO_APLICA`. `EN_PREPARACION` solo con todos los pagos requeridos verificados. Rechazo/re-subida conserva el otro sello.
+- Una zona FilePond, múltiples comprobantes asociables a sello; validación tipo/tamaño y preview.
+- Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
+- Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
+- Drive/Gmail: cuenta propietaria con refresh token; try/catch y un reintento sin perder la carga. MIME HTML + PDF según tipo; PDFs en `src/assets/pdfs`, fuera de public. Revisar adjunto en Vercel.
+- No X-Frame-Options contradictorio con CSP del iframe.
+
+## Estructura principal
+
+`src/app`: rutas/acciones; `src/components`: interfaz; `src/db`: conexión, esquemas, configuración CLI, seed y `migrations`; `src/lib`: acceso/integraciones; `src/proxy.ts`: protección administrativa; `docs`: contexto persistente.
 
 ## Context7
 
-Consultar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs, CLIs y servicios cloud. Resolver primero el ID con `resolve-library-id`, salvo ID exacto dado por el usuario; luego usar `query-docs` por concepto. Preferirlo a búsqueda web. No se requiere para refactorización, scripts propios, lógica de negocio, revisión de código ni conceptos generales.
+Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs, CLIs y servicios cloud, incluso los conocidos. Resolver primero el ID con `resolve-library-id` salvo ID exacto dado por el usuario; elegir el mejor match por nombre/relevancia/reputación y consultar `query-docs` por concepto. Preferirlo a búsqueda web. No es necesario para refactorización, scripts propios, lógica de negocio, revisión de código ni conceptos generales.
