@@ -105,6 +105,5 @@ export function createOrderDraftSchema(catalog: CatalogBook[], campuses: Campus[
 }
 
 export const consentSchema = z.object({
-  privacyAccepted: z.literal(true, { error: "Acepta haber leído la política de confidencialidad y protección de datos personales." }),
-  treatmentAuthorized: z.literal(true, { error: "Autoriza el tratamiento de tus datos personales para continuar." }),
+  accepted: z.literal(true, { error: "Lee y acepta la política y autoriza el tratamiento de tus datos personales para continuar." }),
 });

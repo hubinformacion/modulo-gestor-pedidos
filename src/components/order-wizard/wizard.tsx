@@ -31,17 +31,17 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
   const [delivery, setDelivery] = useState<DeliveryDraft>(initialDelivery);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
-  const [consent, setConsent] = useState({ privacyAccepted: false, treatmentAuthorized: false });
-  const reviewed = consent.privacyAccepted && consent.treatmentAuthorized;
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  const reviewed = consentAccepted;
   const [previewComplete, setPreviewComplete] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const quote = calculateQuote(catalog, cart, buyer.type, delivery);
 
-  function resetValidation() { setErrors({}); setErrorMessage(""); setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); }
+  function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); setPreviewComplete(false); }
 
   function goTo(next: number) {
-    if (next < step) { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); }
+    if (next < step) { setConsentAccepted(false); setPreviewComplete(false); }
     setStep(next); setErrors({}); setErrorMessage("");
     requestAnimationFrame(() => {
       headingRef.current?.focus({ preventScroll: true });
@@ -94,7 +94,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
         showErrors(result.error.issues.filter((issue) => issue.path[0] === firstPath).map((issue) => ({ ...issue, path: issue.path.slice(1) })));
         return;
       }
-      const accepted = consentSchema.safeParse(consent);
+      const accepted = consentSchema.safeParse({ accepted: consentAccepted });
       if (!accepted.success) return showErrors(accepted.error.issues);
       // Phase 3 preview: intentionally no order creation, stock changes or email.
       setPreviewComplete(true);
@@ -126,7 +126,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
             {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
-            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); goTo(value); }} /> : null}
+            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsentAccepted(false); setPreviewComplete(false); goTo(value); }} /> : null}
           </div>
           {previewComplete ? <PreviewCompletion quote={quote} buyer={buyer} delivery={delivery} campuses={campuses} /> : null}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
@@ -136,7 +136,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
         </form>
         <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
         <OrderSummary quote={quote} editable={step === 0} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
-          {step === 3 ? <OrderConsent privacyAccepted={consent.privacyAccepted} treatmentAuthorized={consent.treatmentAuthorized} onConsent={(key, value) => { setConsent((current) => ({ ...current, [key]: value })); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || !preview} preview={preview} /> : null}
+          {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || !preview} preview={preview} /> : null}
           <AccountBreakdown quote={quote} />
         </aside>
       </div>

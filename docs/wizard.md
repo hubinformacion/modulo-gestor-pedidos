@@ -59,3 +59,5 @@ Revisión visual posterior: tarjetas sin SKU con franja inferior de precio/canti
 Último ajuste: catálogo en filas abiertas separadas por líneas, sin franja inferior; zona de entrega sin etiqueta pública (derivación interna intacta). Desglose solo para mixtos: fila «Costo» en Universidad para el envío, sin duplicarlo en la sección general ni mostrar cero en Instituto. Un solo sello conserva publicaciones, envío y total generales.
 
 Panel lateral: tres tarjetas independientes en orden detalle de compra, consentimientos/botón (solo confirmación), desglose (solo mixtos). Checkboxes y botón externos vinculados al formulario por atributo `form`, conservando validación y envío. En móvil se apilan tras el detalle de confirmación.
+
+Consentimiento simplificado a un checkbox: expresa lectura y aceptación de la política y autorización del tratamiento en una misma declaración, con enlace visible. El resumen de Universidad presenta Publicaciones antes de Envío.
