@@ -55,3 +55,8 @@
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+.filepond--root { font-family: var(--font-sans); font-size: 0.8125rem; }
+.filepond--panel-root { background: var(--muted); border: 1px dashed var(--border); border-radius: 0.75rem; }
+.filepond--drop-label { color: var(--muted-foreground); }
+.filepond--label-action { color: var(--primary); text-decoration-color: var(--primary); }

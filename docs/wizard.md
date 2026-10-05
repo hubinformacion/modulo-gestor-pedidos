@@ -4,9 +4,9 @@
 
 `/pedido` es público y no requiere Google. `/` conserva su entrada administrativa. El wizard tiene cuatro pasos con validación Zod antes de avanzar: publicaciones, comprador, entrega y confirmación. Volver o editar conserva los datos en memoria y exige validar nuevamente antes de avanzar; una recarga inicia otro borrador. No se guarda información personal en localStorage.
 
-La página servidor consulta solo libros activos, excluyendo códigos `DEMO-*`, y campus activos de la BD; no envía configuración privada ni datos auth al cliente. Búsqueda por título/autor/código, filtros por sello, cantidades limitadas al stock mostrado, estados vacío/agotado/error y skeleton `boneyard-js`. La disponibilidad final y los precios volverán a comprobarse en la transacción de fase 4.
+La página servidor consulta solo libros activos, excluyendo códigos `DEMO-*`, y campus activos de la BD; no envía configuración privada ni datos auth al cliente. Búsqueda por título/autor, filtros por sello, cantidades limitadas al stock mostrado, estados vacío/agotado/error y skeleton `boneyard-js`. La disponibilidad final y los precios volverán a comprobarse en la transacción de fase 4.
 
-La vista previa `/admin/vista-previa` requiere sesión y autorización vigentes, también al leer la BD. Permite recorrer los cuatro libros DEMO inactivos sin activarlos ni modificar stock. Comparte el mismo componente/cálculo/validación y las direcciones reales del wizard público. El botón final solo completa la revisión local, con una aclaración explícita. El registro público de pedidos permanece deshabilitado hasta fase 4.
+La vista previa `/admin/vista-previa` requiere sesión y autorización vigentes, también al leer la BD. Permite recorrer los cuatro libros DEMO inactivos sin activarlos ni modificar stock. Comparte el mismo componente/cálculo/validación y las direcciones reales del wizard público. El botón final solo completa la revisión local, con una aclaración explícita. El registro público real se habilita al completar la configuración de fase 4.
 
 ## Reglas implementadas
 
@@ -16,7 +16,7 @@ La vista previa `/admin/vista-previa` requiere sesión y autorización vigentes,
 - Recojo S/0, Lima/Callao S/15, provincia S/25. Costos únicamente en el resumen. Delivery exige departamento → provincia → distrito mediante desplegables dependientes, más calle/número. La zona se deriva del distrito: provincias INEI `1501`/`0701` = Lima/Callao; otras = provincia, incluidas otras provincias del departamento Lima. No se acepta una tarifa elegida por el cliente.
 - Persona que recoge/recibe: «Yo» obtiene nombre/documento/teléfono del comprador actual; «Otra persona» exige nombres y apellidos, DNI de 8 dígitos y teléfono de 9–15 dígitos. La validación completa vuelve a derivar los datos de «Yo» para evitar valores antiguos o manipulados.
 - Desglose por cuenta: publicaciones, flete, total. Mixto exige dos depósitos y asigna todo el flete a Universidad. Pedido de un solo sello asigna el flete a su cuenta. Sin zona elegida, se muestra subtotal y envío por seleccionar.
-- Confirmación con datos y controles para editar cada paso; consentimiento único. No crea pedido, número/token, reserva, comprobante ni correo: esas operaciones pertenecen a fase 4.
+- Confirmación con datos y controles para editar cada paso; consentimiento único. En vista previa no crea pedido. El registro real y su seguimiento están descritos en [pedidos-pagos.md](pedidos-pagos.md).
 
 Validaciones/cálculo compartidos en `src/lib/orders`; interfaz en `src/components/order-wizard`. Las próximas Server Actions deberán usar Zod y recuperar catálogo, precios, stock y campus desde fuentes del servidor: el resultado del navegador no es una orden confiable.
 

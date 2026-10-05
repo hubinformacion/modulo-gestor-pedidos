@@ -21,7 +21,7 @@ export function calculateQuote(
   });
   const hasUniversidad = lines.some((line) => line.book.publisherImprint === "universidad");
   const hasInstituto = lines.some((line) => line.book.publisherImprint === "instituto");
-  const orderType = hasUniversidad && hasInstituto ? "mixto" : hasUniversidad ? "solo_universidad" : hasInstituto ? "solo_instituto" : null;
+  const orderType: "solo_universidad" | "solo_instituto" | "mixto" | null = hasUniversidad && hasInstituto ? "mixto" : hasUniversidad ? "solo_universidad" : hasInstituto ? "solo_instituto" : null;
   const zone = resolveShippingZone(delivery.district);
   const shippingKnown = delivery.type === "recojo_campus" || zone !== "";
   const shippingCost = lines.length === 0 || delivery.type === "recojo_campus" ? 0 : zone === "lima_callao" ? 1500 : zone === "provincia" ? 2500 : 0;

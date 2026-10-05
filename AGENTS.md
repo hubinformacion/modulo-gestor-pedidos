@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fase 3 aprobada por el usuario y lista para integrar. Próxima rama: `feat/04-pedidos-pagos-drive`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. Fases 1 y 2 integradas en `main`.
+- Fases 1–3 aprobadas e integradas localmente en `main`. Fase vigente: `feat/04-pedidos-pagos-drive`. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 4 ni comenzar fase 5 sin aprobación al cierre.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
@@ -61,3 +61,10 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 ## Context7
 
 Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs, CLIs y servicios cloud, incluso los conocidos. Resolver primero el ID con `resolve-library-id` salvo ID exacto dado por el usuario; elegir el mejor match por nombre/relevancia/reputación y consultar `query-docs` por concepto. Preferirlo a búsqueda web. No es necesario para refactorización, scripts propios, lógica de negocio, revisión de código ni conceptos generales.
+
+## Contrato de fase 4
+
+- Creación real solo con cuentas activas de ambos sellos en BD, Google propietario, APP_URL y tres PDF. `/admin` gestiona cuentas; BCP Universidad CCI/titular pendientes, no inventar. PDF se selecciona por nombre/tipo; usuario acepta temporalmente Universidad/Mixto idénticos y los reemplazará.
+- UUID de intento único, hash y locks: reintento no duplica pedido/stock. Snapshot de título/cuentas/consentimiento. Numeración por año de Lima desde BD.
+- Tracking nanoid 32, privado por token; no referrer/no-store. FilePond 3 MiB por archivo, una zona múltiple y asociación por sello. Intentos persistidos con ID Drive reservado; no quitar archivo si hay error.
+- Correo en outbox persistente con after/reintento desde seguimiento; fallo no borra pedido. Sin pruebas automatizadas. Validación real Google/PDF en Vercel pendiente de configuración. [Detalle vigente](docs/pedidos-pagos.md).
