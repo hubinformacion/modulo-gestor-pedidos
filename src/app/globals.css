@@ -42,6 +42,8 @@
   body { @apply bg-background text-foreground font-sans; margin: 0; }
   button, input, a { -webkit-tap-highlight-color: transparent; }
   a:focus-visible, button:focus-visible { outline: 2px solid var(--ring); outline-offset: 4px; }
+  button:not(:disabled), a[href], select:not(:disabled), input[type="checkbox"]:not(:disabled), input[type="radio"]:not(:disabled), summary { cursor: pointer; }
+  button:disabled, select:disabled, input:disabled { cursor: not-allowed; }
   ::selection { background: #e9d6fb; color: #39006a; }
 }
 

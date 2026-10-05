@@ -23,10 +23,10 @@ export function BuyerStep({ buyer, campuses, errors, onChange }: {
         </SelectField>
       ) : null}
       <div className="grid gap-5 sm:grid-cols-2">
-        <div className="sm:col-span-2"><Field id="buyer-name" label="Nombre completo" autoComplete="name" value={buyer.name} onChange={(event) => set("name", event.target.value)} error={errors.name} maxLength={160} required /></div>
-        <Field id="buyer-email" label="Correo electrónico" type="email" autoComplete="email" value={buyer.email} onChange={(event) => set("email", event.target.value)} error={errors.email} hint={buyer.type === "comunidad_continental" ? "Usa tu correo @continental.edu.pe." : "Aquí recibirás la confirmación y el seguimiento."} maxLength={254} required />
-        <Field id="buyer-phone" label="Teléfono" type="tel" autoComplete="tel" value={buyer.phone} onChange={(event) => set("phone", event.target.value)} error={errors.phone} maxLength={24} required />
-        <Field id="buyer-document" label="DNI, CE o pasaporte" value={buyer.document} onChange={(event) => set("document", event.target.value)} error={errors.document} maxLength={20} required />
+        <div className="sm:col-span-2"><Field id="buyer-name" placeholder="Ej. María Pérez García" label="Nombre completo" autoComplete="name" value={buyer.name} onChange={(event) => set("name", event.target.value)} error={errors.name} maxLength={160} required /></div>
+        <Field id="buyer-email" placeholder="Ej. maria@correo.com" label="Correo electrónico" type="email" autoComplete="email" value={buyer.email} onChange={(event) => set("email", event.target.value)} error={errors.email} hint={buyer.type === "comunidad_continental" ? "Usa tu correo @continental.edu.pe." : "Aquí recibirás la confirmación y el seguimiento."} maxLength={254} required />
+        <Field id="buyer-phone" placeholder="Ej. 987654321" label="Teléfono" type="tel" autoComplete="tel" value={buyer.phone} onChange={(event) => set("phone", event.target.value)} error={errors.phone} maxLength={24} required />
+        <Field id="buyer-document" placeholder="Ej. 12345678" label="DNI, CE o pasaporte" value={buyer.document} onChange={(event) => set("document", event.target.value)} error={errors.document} maxLength={20} required />
       </div>
       <fieldset className="border-t border-border pt-6">
         <legend className="sr-only">Facturación</legend>
@@ -37,8 +37,8 @@ export function BuyerStep({ buyer, campuses, errors, onChange }: {
         <p className="ml-7 text-xs leading-5 text-muted-foreground">Añade los datos fiscales de la empresa.</p>
         {buyer.wantsInvoice ? (
           <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <Field id="buyer-ruc" label="RUC" inputMode="numeric" value={buyer.billingRuc} onChange={(event) => set("billingRuc", event.target.value)} error={errors.billingRuc} maxLength={11} required />
-            <Field id="buyer-business-name" label="Razón social" value={buyer.billingBusinessName} onChange={(event) => set("billingBusinessName", event.target.value)} error={errors.billingBusinessName} maxLength={200} required />
+            <Field id="buyer-ruc" placeholder="Ej. 20123456789" label="RUC" inputMode="numeric" value={buyer.billingRuc} onChange={(event) => set("billingRuc", event.target.value)} error={errors.billingRuc} maxLength={11} required />
+            <Field id="buyer-business-name" placeholder="Nombre legal de la empresa" label="Razón social" value={buyer.billingBusinessName} onChange={(event) => set("billingBusinessName", event.target.value)} error={errors.billingBusinessName} maxLength={200} required />
           </div>
         ) : null}
       </fieldset>

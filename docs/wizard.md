@@ -11,12 +11,12 @@ La vista previa `/admin/vista-previa` requiere sesión y autorización vigentes,
 ## Reglas implementadas
 
 - Cada selección conserva solo `bookId` y cantidad. Tipo de pedido y sellos se derivan de los libros; los importes se recalculan desde el catálogo recibido del servidor.
-- Importes en céntimos enteros; formateo en soles al mostrar. Público general usa `standard_price`; comunidad usa `community_price` al seleccionar su tipo y exige sede/correo `@continental.edu.pe` para continuar. La interfaz muestra solo el importe aplicado, sin comparar precios ni etiquetar tarifas por comprador. Catálogo sin portada; nombres precedidos por «Sello editorial».
+- Importes en céntimos enteros; formateo en soles al mostrar. Público general usa `standard_price`; comunidad usa `community_price` al seleccionar su tipo y exige sede/correo `@continental.edu.pe` para continuar. La interfaz muestra solo el importe aplicado, sin comparar precios ni etiquetar tarifas por comprador. Catálogo sin portada; nombres de sellos en badges.
 - Comprador: nombre, correo, teléfono, documento. Factura opcional: exige RUC de 11 dígitos y razón social. Normalización de espacios/correo y descarte de campos que no aplican al validar.
 - Recojo S/0, Lima/Callao S/15, provincia S/25. Costos únicamente en el resumen. Delivery exige departamento → provincia → distrito mediante desplegables dependientes, más calle/número. La zona se deriva del distrito: provincias INEI `1501`/`0701` = Lima/Callao; otras = provincia, incluidas otras provincias del departamento Lima. No se acepta una tarifa elegida por el cliente.
 - Persona que recoge/recibe: «Yo» obtiene nombre/documento/teléfono del comprador actual; «Otra persona» exige nombres y apellidos, DNI de 8 dígitos y teléfono de 9–15 dígitos. La validación completa vuelve a derivar los datos de «Yo» para evitar valores antiguos o manipulados.
 - Desglose por cuenta: publicaciones, flete, total. Mixto exige dos depósitos y asigna todo el flete a Universidad. Pedido de un solo sello asigna el flete a su cuenta. Sin zona elegida, se muestra subtotal y envío por seleccionar.
-- Confirmación con datos y controles para editar cada paso; checkbox de revisión. No crea pedido, número/token, reserva, comprobante ni correo: esas operaciones pertenecen a fase 4.
+- Confirmación con datos y controles para editar cada paso; dos aceptaciones obligatorias de privacidad/tratamiento. No crea pedido, número/token, reserva, comprobante ni correo: esas operaciones pertenecen a fase 4.
 
 Validaciones/cálculo compartidos en `src/lib/orders`; interfaz en `src/components/order-wizard`. Las próximas Server Actions deberán usar Zod y recuperar catálogo, precios, stock y campus desde fuentes del servidor: el resultado del navegador no es una orden confiable.
 
@@ -43,11 +43,13 @@ Cambios solicitados implementados; fase 3 pendiente de revisión manual y aproba
 ## Revisión manual
 
 1. En `/admin`, crear un campus con biblioteca; editar su dirección/mapa, desactivarlo y comprobar que desaparece del wizard al recargar. Reactivarlo; eliminar un campus de revisión sin pedidos. Probar nombre repetido, coordenada suelta/fuera de rango y URL que no sea de Google Maps embebido.
-2. En `/admin/vista-previa`, seleccionar ambos sellos: sin portada, sin precios alternativos ni texto sobre ajuste de precios; nombres identificados como sello editorial. Comprobar búsqueda/cantidades y único precio aplicado.
+2. En `/admin/vista-previa`, seleccionar ambos sellos: sin portada, sin precios alternativos ni texto sobre ajuste de precios; sellos identificados con badges. Comprobar búsqueda/cantidades y único precio aplicado.
 3. Comparar público/comunidad manteniendo su regla de cálculo y exigencia de sede/correo institucional, sin mensajes de diferenciación de precios.
 4. Delivery: seleccionar Lima → Lima → un distrito, y Callao → Callao → un distrito: flete S/15 solo en sidebar. Seleccionar Lima → otra provincia: S/25. Seleccionar otra región: S/25. Cambiar departamento/provincia vacía selecciones dependientes; campos incompletos impiden avanzar. En mixto todo el flete va a Universidad.
 5. Recojo: campus/biblioteca/mapa, flete cero solo en resumen. «Yo» usa los datos de comprador; «Otra persona» exige nombre, DNI y teléfono. Volver y cambiar comprador: «Yo» debe reflejar los datos actuales, no los anteriores.
-6. Confirmación: geografía con nombres legibles, persona que recoge/recibe con documento/teléfono, edición de pasos y checkbox. Completar revisión no genera pedido ni modifica stock.
+6. Confirmación: geografía con nombres legibles, persona que recoge/recibe con documento/teléfono, edición de pasos y dos checkbox de consentimiento. Completar revisión no genera pedido ni modifica stock.
 7. Revisar a 375 px/escritorio y con teclado. `/pedido` público excluye todos los DEMO; sin catálogo real se muestra vacío. Un no autorizado no accede a campus/vista previa/acciones.
 
 Sin suites de pruebas automatizadas. No integrar fase 3 ni avanzar a fase 4 hasta aprobación explícita.
+
+Ajuste visual: catálogo con filas compactas (precio/cantidad a la derecha en escritorio), sellos en badges sin prefijo, placeholders en campos libres y cursor de acción en controles habilitados. Una sola línea de envío en el resumen; los totales por cuenta conservan su asignación de flete. Confirmación exige dos consentimientos independientes con Zod; enlace de privacidad abre en otra pestaña. Botón «Enviar pedido» mantiene el alcance de vista previa de fase 3. Fase 4 deberá exigir ambos consentimientos también en su Server Action.

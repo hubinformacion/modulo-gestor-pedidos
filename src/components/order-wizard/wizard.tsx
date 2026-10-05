@@ -6,7 +6,7 @@ import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { calculateQuote } from "@/lib/orders/pricing";
 import { initialBuyer, initialDelivery, type BuyerDraft, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
-import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema } from "@/lib/orders/validation";
+import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema, consentSchema } from "@/lib/orders/validation";
 import { cn } from "@/lib/utils";
 import { CatalogStep } from "./catalog-step";
 import { BuyerStep } from "./buyer-step";
@@ -29,16 +29,17 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
   const [delivery, setDelivery] = useState<DeliveryDraft>(initialDelivery);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
-  const [reviewed, setReviewed] = useState(false);
+  const [consent, setConsent] = useState({ privacyAccepted: false, treatmentAuthorized: false });
+  const reviewed = consent.privacyAccepted && consent.treatmentAuthorized;
   const [previewComplete, setPreviewComplete] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const quote = calculateQuote(catalog, cart, buyer.type, delivery);
 
-  function resetValidation() { setErrors({}); setErrorMessage(""); setReviewed(false); setPreviewComplete(false); }
+  function resetValidation() { setErrors({}); setErrorMessage(""); setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); }
 
   function goTo(next: number) {
-    if (next < step) { setReviewed(false); setPreviewComplete(false); }
+    if (next < step) { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); }
     setStep(next); setErrors({}); setErrorMessage("");
     requestAnimationFrame(() => {
       headingRef.current?.focus({ preventScroll: true });
@@ -91,7 +92,8 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
         showErrors(result.error.issues.filter((issue) => issue.path[0] === firstPath).map((issue) => ({ ...issue, path: issue.path.slice(1) })));
         return;
       }
-      if (!reviewed) return showErrors([{ path: ["reviewed"], message: "Confirma que has revisado los datos." }]);
+      const accepted = consentSchema.safeParse(consent);
+      if (!accepted.success) return showErrors(accepted.error.issues);
       // Phase 3 preview: intentionally no order creation, stock changes or email.
       setPreviewComplete(true);
       sileo.success({ title: "Revisión completada", description: "Este recorrido no crea un pedido ni realiza un cobro." });
@@ -122,12 +124,12 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
             {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
-            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setReviewed(false); setPreviewComplete(false); goTo(value); }} reviewed={reviewed} onReviewed={(value) => { setReviewed(value); setErrorMessage(""); setPreviewComplete(false); }} /> : null}
+            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); goTo(value); }} privacyAccepted={consent.privacyAccepted} treatmentAuthorized={consent.treatmentAuthorized} onConsent={(key, value) => { setConsent((current) => ({ ...current, [key]: value })); setErrorMessage(""); setPreviewComplete(false); }} /> : null}
           </div>
           {previewComplete ? <div role="status" className="mt-6 rounded-xl border border-primary/25 bg-secondary/30 p-5"><ClipboardCheck className="mb-3 size-5 text-primary" aria-hidden="true" /><h2 className="text-sm font-semibold">Revisión completada</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Los datos están listos. Este recorrido es una vista previa: no se ha creado un pedido, reservado stock ni enviado un correo.</p></div> : null}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
-            <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 ? catalog.length === 0 : step === 3 ? !reviewed || previewComplete || !preview : false}>{step === 3 ? "Completar revisión" : "Continuar"}{step < 3 ? <ArrowRight aria-hidden="true" /> : <Check aria-hidden="true" />}</Button>
+            <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 ? catalog.length === 0 : step === 3 ? !reviewed || previewComplete || !preview : false}>{step === 3 ? "Enviar pedido" : "Continuar"}{step < 3 ? <ArrowRight aria-hidden="true" /> : <Check aria-hidden="true" />}</Button>
           </div>
           {step === 3 && !preview ? <p className="mt-4 text-xs leading-5 text-muted-foreground">El registro de pedidos aún no está habilitado. Conserva esta página para revisar tus datos; todavía no se ha reservado stock.</p> : null}
         </form>

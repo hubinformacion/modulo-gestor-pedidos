@@ -51,8 +51,8 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
             </SelectField>
           </div>
           {location ? <p className="text-xs text-muted-foreground">Zona de entrega: <span className="font-medium text-foreground">{location.zone === "lima_callao" ? "Lima / Callao" : "Provincia"}</span></p> : null}
-          <Field id="delivery-address" label="Dirección completa" autoComplete="street-address" value={delivery.address} onChange={(event) => set("address", event.target.value)} error={errors.address} maxLength={300} hint="Calle, número y departamento, si corresponde." required />
-          <Field id="delivery-reference" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
+          <Field id="delivery-address" placeholder="Ej. Av. Los Cedros 123, departamento 402" label="Dirección completa" autoComplete="street-address" value={delivery.address} onChange={(event) => set("address", event.target.value)} error={errors.address} maxLength={300} hint="Calle, número y departamento, si corresponde." required />
+          <Field id="delivery-reference" placeholder="Ej. Frente al parque, puerta azul" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
         </>
       )}
       <fieldset className="border-t border-border pt-6">
@@ -63,9 +63,9 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
           <RadioCard name="recipient-type" value="otra_persona" checked={delivery.recipientType === "otra_persona"} onChange={() => set("recipientType", "otra_persona")} title="Otra persona" description="Indica sus datos para la entrega." />
         </div>
         {delivery.recipientType === "otra_persona" ? <div className="mt-5 grid gap-5 sm:grid-cols-2">
-          <div className="sm:col-span-2"><Field id="delivery-recipient" label="Nombres y apellidos" autoComplete="section-recipient name" value={delivery.recipient} onChange={(event) => set("recipient", event.target.value)} error={errors.recipient} maxLength={160} required /></div>
-          <Field id="delivery-recipient-document" label="DNI" inputMode="numeric" value={delivery.recipientDocument} onChange={(event) => set("recipientDocument", event.target.value)} error={errors.recipientDocument} maxLength={8} required />
-          <Field id="delivery-recipient-phone" label="Teléfono" type="tel" autoComplete="section-recipient tel" value={delivery.recipientPhone} onChange={(event) => set("recipientPhone", event.target.value)} error={errors.recipientPhone} maxLength={24} required />
+          <div className="sm:col-span-2"><Field id="delivery-recipient" placeholder="Ej. Ana Torres López" label="Nombres y apellidos" autoComplete="section-recipient name" value={delivery.recipient} onChange={(event) => set("recipient", event.target.value)} error={errors.recipient} maxLength={160} required /></div>
+          <Field id="delivery-recipient-document" placeholder="Ej. 12345678" label="DNI" inputMode="numeric" value={delivery.recipientDocument} onChange={(event) => set("recipientDocument", event.target.value)} error={errors.recipientDocument} maxLength={8} required />
+          <Field id="delivery-recipient-phone" placeholder="Ej. 987654321" label="Teléfono" type="tel" autoComplete="section-recipient tel" value={delivery.recipientPhone} onChange={(event) => set("recipientPhone", event.target.value)} error={errors.recipientPhone} maxLength={24} required />
         </div> : <p className="mt-4 text-xs leading-6 text-muted-foreground">Documento: {recipient.document} · Teléfono: {recipient.phone}</p>}
       </fieldset>
     </div>

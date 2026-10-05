@@ -103,3 +103,8 @@ export function createOrderDraftSchema(catalog: CatalogBook[], campuses: Campus[
       return { ...draft, delivery: { ...draft.delivery, recipient: recipient.name, recipientDocument: recipient.document, recipientPhone: recipient.phone } };
     });
 }
+
+export const consentSchema = z.object({
+  privacyAccepted: z.literal(true, { error: "Acepta haber leído la política de confidencialidad y protección de datos personales." }),
+  treatmentAuthorized: z.literal(true, { error: "Autoriza el tratamiento de tus datos personales para continuar." }),
+});

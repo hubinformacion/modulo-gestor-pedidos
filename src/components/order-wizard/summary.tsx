@@ -34,7 +34,6 @@ export function OrderSummary({ quote, onRemove, editable = true }: {
             {quote.accounts.map((account) => <div key={account.imprint} className="space-y-2">
               <p className="text-xs font-semibold">{imprintNames[account.imprint]}</p>
               <div className="flex justify-between text-[11px] text-muted-foreground"><span>Publicaciones</span><span className="tabular-nums">{formatMoney(account.subtotal)}</span></div>
-              <div className="flex justify-between text-[11px] text-muted-foreground"><span>Envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(account.shipping) : "Por seleccionar"}</span></div>
               <div className="flex justify-between text-xs font-semibold"><span>Total de la cuenta</span><span className="tabular-nums">{formatMoney(account.total)}</span></div>
             </div>)}
           </div>

@@ -49,17 +49,17 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
             const community = customerType === "comunidad_continental";
             const price = toCents(community ? book.communityPrice : book.standardPrice);
             return (
-              <li key={book.id} className={cn("rounded-xl border p-4 transition-colors sm:p-5", quantity ? "border-primary/45" : "border-border")}>
+              <li key={book.id} className={cn("grid gap-4 rounded-xl border p-4 transition-colors sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-5", quantity ? "border-primary/45" : "border-border")}>
                 <div className="flex items-start gap-4">
 
                   <div className="min-w-0 flex-1">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">Sello editorial: {imprintNames[book.publisherImprint]}</p>
+                    <span className={cn("inline-flex rounded-md px-2 py-1 text-[10px] font-medium", book.publisherImprint === "universidad" ? "bg-secondary text-primary" : "bg-muted text-muted-foreground")}>{imprintNames[book.publisherImprint]}</span>
                     <h3 className="mt-1.5 text-sm font-semibold leading-6">{book.title}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{book.inventoryCode} · {book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
                   </div>
                 </div>
-                <div className="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-border/70 pt-4 ">
+                <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-4 sm:flex-col sm:items-end sm:border-0 sm:pt-0">
                   <div>
                     <p className="text-base font-semibold tabular-nums">{formatMoney(price)}</p>
                   </div>

@@ -7,9 +7,9 @@ import { CampusLocation } from "./campus-location";
 import { resolveLocation } from "@/lib/orders/geography";
 import { resolveRecipient } from "@/lib/orders/recipient";
 
-export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, reviewed, onReviewed }: {
+export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, privacyAccepted, treatmentAuthorized, onConsent }: {
   buyer: BuyerDraft; delivery: DeliveryDraft; campuses: Campus[]; quote: OrderQuote;
-  onEdit: (step: number) => void; reviewed: boolean; onReviewed: (value: boolean) => void;
+  onEdit: (step: number) => void; privacyAccepted: boolean; treatmentAuthorized: boolean; onConsent: (key: "privacyAccepted" | "treatmentAuthorized", value: boolean) => void;
 }) {
   const campus = campuses.find((option) => option.id === delivery.campus);
   const location = resolveLocation(delivery.district);
@@ -19,7 +19,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, rev
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-publications">
         <div className="mb-4 flex items-center justify-between gap-3"><h3 id="confirm-publications" className="text-sm font-semibold">Publicaciones</h3><EditButton onClick={() => onEdit(0)} label="Editar publicaciones" /></div>
         <ul className="divide-y divide-border">
-          {quote.lines.map((line) => <li key={line.book.id} className="flex justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="text-sm leading-6">{line.quantity} × {line.book.title}</p><p className="mt-1 text-xs text-muted-foreground">Sello editorial: {imprintNames[line.book.publisherImprint]} · {formatMoney(line.unitPrice)} c/u</p></div><p className="shrink-0 text-sm font-medium tabular-nums">{formatMoney(line.subtotal)}</p></li>)}
+          {quote.lines.map((line) => <li key={line.book.id} className="flex justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="text-sm leading-6">{line.quantity} × {line.book.title}</p><p className="mt-1 text-xs text-muted-foreground"><span className="inline-flex rounded-md bg-secondary px-2 py-0.5 text-primary">{imprintNames[line.book.publisherImprint]}</span> · {formatMoney(line.unitPrice)} c/u</p></div><p className="shrink-0 text-sm font-medium tabular-nums">{formatMoney(line.subtotal)}</p></li>)}
         </ul>
       </section>
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-buyer">
@@ -47,10 +47,17 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, rev
         </dl>
         {delivery.type === "recojo_campus" && campus ? <div className="mt-5"><CampusLocation campus={campus} /></div> : null}
       </section>
-      <label className="flex cursor-pointer items-start gap-3 text-sm leading-6">
-        <input type="checkbox" className="mt-1 size-4 shrink-0 accent-primary" checked={reviewed} onChange={(event) => onReviewed(event.target.checked)} />
-        He revisado las publicaciones, los datos del comprador y la entrega.
-      </label>
+      <fieldset className="space-y-4 border-t border-border pt-6">
+        <legend className="sr-only">Consentimiento para el tratamiento de datos personales</legend>
+        <div className="flex items-start gap-3 text-sm leading-6">
+          <input id="privacy-accepted" type="checkbox" required className="mt-1 size-4 shrink-0 accent-primary" checked={privacyAccepted} onChange={(event) => onConsent("privacyAccepted", event.target.checked)} />
+          <div><label htmlFor="privacy-accepted" className="cursor-pointer">Acepto haber leído la </label><a href="https://ucontinental.edu.pe/politica-de-privacidad/" target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">Política de confidencialidad y protección de datos personales</a></div>
+        </div>
+        <label className="flex cursor-pointer items-start gap-3 text-sm leading-6">
+          <input type="checkbox" required className="mt-1 size-4 shrink-0 accent-primary" checked={treatmentAuthorized} onChange={(event) => onConsent("treatmentAuthorized", event.target.checked)} />
+          <span>Al presionar <strong className="font-bold text-primary">Enviar pedido</strong>, autorizo a la Universidad Continental al tratamiento de mis datos personales, según la Política de confidencialidad y protección de datos personales.</span>
+        </label>
+      </fieldset>
     </div>
   );
 }
