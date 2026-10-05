@@ -8,9 +8,9 @@ import { CampusLocation } from "./campus-location";
 import { resolveLocation } from "@/lib/orders/geography";
 import { resolveRecipient } from "@/lib/orders/recipient";
 
-export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, privacyAccepted, treatmentAuthorized, onConsent }: {
+export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
   buyer: BuyerDraft; delivery: DeliveryDraft; campuses: Campus[]; quote: OrderQuote;
-  onEdit: (step: number) => void; privacyAccepted: boolean; treatmentAuthorized: boolean; onConsent: (key: "privacyAccepted" | "treatmentAuthorized", value: boolean) => void;
+  onEdit: (step: number) => void;
 }) {
   const campus = campuses.find((option) => option.id === delivery.campus);
   const location = resolveLocation(delivery.district);
@@ -48,17 +48,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit, pri
         </dl>
         {delivery.type === "recojo_campus" && campus ? <div className="mt-5"><CampusLocation campus={campus} /></div> : null}
       </section>
-      <fieldset className="space-y-4 border-t border-border pt-6">
-        <legend className="sr-only">Consentimiento para el tratamiento de datos personales</legend>
-        <div className="flex items-start gap-3 text-sm leading-6">
-          <input id="privacy-accepted" type="checkbox" required className="mt-1 size-4 shrink-0 accent-primary" checked={privacyAccepted} onChange={(event) => onConsent("privacyAccepted", event.target.checked)} />
-          <div><label htmlFor="privacy-accepted" className="cursor-pointer">Acepto haber leído la </label><a href="https://ucontinental.edu.pe/politica-de-privacidad/" target="_blank" rel="noopener noreferrer" className="font-bold text-primary underline underline-offset-4">Política de confidencialidad y protección de datos personales</a></div>
-        </div>
-        <label className="flex cursor-pointer items-start gap-3 text-sm leading-6">
-          <input type="checkbox" required className="mt-1 size-4 shrink-0 accent-primary" checked={treatmentAuthorized} onChange={(event) => onConsent("treatmentAuthorized", event.target.checked)} />
-          <span>Al presionar <strong className="font-bold text-primary">Enviar pedido</strong>, autorizo a la Universidad Continental al tratamiento de mis datos personales, según la <strong className="font-bold">Política de confidencialidad y protección de datos personales</strong>.</span>
-        </label>
-      </fieldset>
+
     </div>
   );
 }

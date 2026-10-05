@@ -13,7 +13,8 @@ import { CatalogStep } from "./catalog-step";
 import { BuyerStep } from "./buyer-step";
 import { DeliveryStep } from "./delivery-step";
 import { ConfirmationStep } from "./confirmation-step";
-import { OrderSummary } from "./summary";
+import { OrderConsent } from "./order-consent";
+import { OrderSummary, AccountBreakdown } from "./summary";
 import type { FieldErrors } from "./fields";
 
 const steps = [
@@ -114,7 +115,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
         </ol>
       </nav>
       <div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10">
-        <form noValidate onSubmit={submit} className="min-w-0">
+        <form id="order-wizard-form" noValidate onSubmit={submit} className="min-w-0">
           <div className="mb-7">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paso {step + 1} de 4</p>
             <h1 ref={headingRef} tabIndex={-1} className="page-heading scroll-mt-6 outline-none">{steps[step].title}</h1>
@@ -125,16 +126,19 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
             {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
-            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); goTo(value); }} privacyAccepted={consent.privacyAccepted} treatmentAuthorized={consent.treatmentAuthorized} onConsent={(key, value) => { setConsent((current) => ({ ...current, [key]: value })); setErrorMessage(""); setPreviewComplete(false); }} /> : null}
+            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); goTo(value); }} /> : null}
           </div>
           {previewComplete ? <PreviewCompletion quote={quote} buyer={buyer} delivery={delivery} campuses={campuses} /> : null}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
-            <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 ? catalog.length === 0 : step === 3 ? !reviewed || previewComplete || !preview : false}>{step === 3 ? "Enviar pedido" : "Continuar"}{step < 3 ? <ArrowRight aria-hidden="true" /> : <Check aria-hidden="true" />}</Button>
+            {step < 3 ? <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 && catalog.length === 0}>Continuar<ArrowRight aria-hidden="true" /></Button> : null}
           </div>
-          {step === 3 && !preview ? <p className="mt-4 text-xs leading-5 text-muted-foreground">El registro de pedidos aún no está habilitado. Conserva esta página para revisar tus datos; todavía no se ha reservado stock.</p> : null}
         </form>
+        <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
         <OrderSummary quote={quote} editable={step === 0} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
+          {step === 3 ? <OrderConsent privacyAccepted={consent.privacyAccepted} treatmentAuthorized={consent.treatmentAuthorized} onConsent={(key, value) => { setConsent((current) => ({ ...current, [key]: value })); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || !preview} preview={preview} /> : null}
+          <AccountBreakdown quote={quote} />
+        </aside>
       </div>
     </div>
   );
