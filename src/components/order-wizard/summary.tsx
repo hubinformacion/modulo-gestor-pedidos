@@ -33,6 +33,7 @@ export function OrderSummary({ quote, onRemove, editable = true }: {
             <h3 className="text-[10px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">Desglose por cuenta</h3>
             {quote.accounts.map((account) => <div key={account.imprint} className="space-y-2">
               <p className="text-xs font-semibold">{imprintNames[account.imprint]}</p>
+              {quote.orderType === "mixto" && account.imprint === "universidad" ? <p className="text-[11px] leading-5 text-muted-foreground">Cuenta principal · incluye el envío{quote.shippingKnown && quote.shippingCost > 0 ? ` de ${formatMoney(quote.shippingCost)}` : " cuando corresponda"}.</p> : null}
               <div className="flex justify-between text-[11px] text-muted-foreground"><span>Publicaciones</span><span className="tabular-nums">{formatMoney(account.subtotal)}</span></div>
               <div className="flex justify-between text-xs font-semibold"><span>Total de la cuenta</span><span className="tabular-nums">{formatMoney(account.total)}</span></div>
             </div>)}

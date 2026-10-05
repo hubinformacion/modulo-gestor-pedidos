@@ -3,7 +3,8 @@ import { BookOpen, Minus, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { formatMoney, toCents } from "@/lib/orders/money";
-import { imprintNames, type CatalogBook, type CartSelection, type CustomerKind, type Imprint } from "@/lib/orders/types";
+import { type CatalogBook, type CartSelection, type CustomerKind, type Imprint } from "@/lib/orders/types";
+import { ImprintBadge } from "./imprint-badge";
 import { cn } from "@/lib/utils";
 
 export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
@@ -14,14 +15,14 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
   const [filter, setFilter] = useState<Imprint | "todos">("todos");
   const term = search.trim().toLocaleLowerCase("es-PE");
   const filtered = catalog.filter((book) => (filter === "todos" || book.publisherImprint === filter) &&
-    `${book.title} ${book.author} ${book.inventoryCode}`.toLocaleLowerCase("es-PE").includes(term));
+    `${book.title} ${book.author}`.toLocaleLowerCase("es-PE").includes(term));
 
   return (
     <div>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-muted-foreground" aria-hidden="true" />
-        <label htmlFor="book-search" className="sr-only">Buscar por título, autor o código</label>
-        <Input id="book-search" type="search" className="h-11 pl-10" placeholder="Buscar título, autor o código" value={search} onChange={(event) => setSearch(event.target.value)} />
+        <label htmlFor="book-search" className="sr-only">Buscar por título o autor</label>
+        <Input id="book-search" type="search" className="h-11 pl-10" placeholder="Buscar título o autor" value={search} onChange={(event) => setSearch(event.target.value)} />
       </div>
       <div className="my-5 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar publicaciones por sello">
         {(["todos", "universidad", "instituto"] as const).map((value) => (
@@ -49,17 +50,17 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
             const community = customerType === "comunidad_continental";
             const price = toCents(community ? book.communityPrice : book.standardPrice);
             return (
-              <li key={book.id} className={cn("grid gap-4 rounded-xl border p-4 transition-colors sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-5", quantity ? "border-primary/45" : "border-border")}>
-                <div className="flex items-start gap-4">
+              <li key={book.id} className={cn("overflow-hidden rounded-xl border transition-colors", quantity ? "border-primary/45" : "border-border")}>
+                <div className="flex items-start gap-4 p-5">
 
                   <div className="min-w-0 flex-1">
-                    <span className={cn("inline-flex rounded-md px-2 py-1 text-[10px] font-medium", book.publisherImprint === "universidad" ? "bg-secondary text-primary" : "bg-muted text-muted-foreground")}>{imprintNames[book.publisherImprint]}</span>
+                    <ImprintBadge imprint={book.publisherImprint} />
                     <h3 className="mt-1.5 text-sm font-semibold leading-6">{book.title}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">{book.inventoryCode} · {book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
                   </div>
                 </div>
-                <div className="flex items-center justify-between gap-4 border-t border-border/70 pt-4 sm:flex-col sm:items-end sm:border-0 sm:pt-0">
+                <div className="flex items-center justify-between gap-4 border-t border-border/70 bg-muted/50 px-5 py-3">
                   <div>
                     <p className="text-base font-semibold tabular-nums">{formatMoney(price)}</p>
                   </div>

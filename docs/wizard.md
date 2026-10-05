@@ -53,3 +53,5 @@ Cambios solicitados implementados; fase 3 pendiente de revisión manual y aproba
 Sin suites de pruebas automatizadas. No integrar fase 3 ni avanzar a fase 4 hasta aprobación explícita.
 
 Ajuste visual: catálogo con filas compactas (precio/cantidad a la derecha en escritorio), sellos en badges sin prefijo, placeholders en campos libres y cursor de acción en controles habilitados. Una sola línea de envío en el resumen; los totales por cuenta conservan su asignación de flete. Confirmación exige dos consentimientos independientes con Zod; enlace de privacidad abre en otra pestaña. Botón «Enviar pedido» mantiene el alcance de vista previa de fase 3. Fase 4 deberá exigir ambos consentimientos también en su Server Action.
+
+Revisión visual posterior: tarjetas sin SKU con franja inferior de precio/cantidad; badge Instituto rojo `#e4000b`, compartido con confirmación. Política en negrita en ambas aceptaciones. Universidad aparece primero y recibe el flete en mixtos; se indica su inclusión en el total de cuenta sin añadir otra fila de envío. Cierre de vista previa con total, correo, entrega y próximos pasos; sin inventar número, enlace ni carga funcional de comprobantes.

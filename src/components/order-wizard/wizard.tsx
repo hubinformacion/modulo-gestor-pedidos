@@ -1,9 +1,10 @@
 "use client";
 
 import { useRef, useState, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, ClipboardCheck } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
+import { PreviewCompletion } from "./preview-completion";
 import { calculateQuote } from "@/lib/orders/pricing";
 import { initialBuyer, initialDelivery, type BuyerDraft, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
 import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema, consentSchema } from "@/lib/orders/validation";
@@ -126,7 +127,7 @@ export function OrderWizard({ catalog, campuses, preview = false }: { catalog: C
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
             {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsent({ privacyAccepted: false, treatmentAuthorized: false }); setPreviewComplete(false); goTo(value); }} privacyAccepted={consent.privacyAccepted} treatmentAuthorized={consent.treatmentAuthorized} onConsent={(key, value) => { setConsent((current) => ({ ...current, [key]: value })); setErrorMessage(""); setPreviewComplete(false); }} /> : null}
           </div>
-          {previewComplete ? <div role="status" className="mt-6 rounded-xl border border-primary/25 bg-secondary/30 p-5"><ClipboardCheck className="mb-3 size-5 text-primary" aria-hidden="true" /><h2 className="text-sm font-semibold">Revisión completada</h2><p className="mt-2 text-sm leading-6 text-muted-foreground">Los datos están listos. Este recorrido es una vista previa: no se ha creado un pedido, reservado stock ni enviado un correo.</p></div> : null}
+          {previewComplete ? <PreviewCompletion quote={quote} buyer={buyer} delivery={delivery} campuses={campuses} /> : null}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
             <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 ? catalog.length === 0 : step === 3 ? !reviewed || previewComplete || !preview : false}>{step === 3 ? "Enviar pedido" : "Continuar"}{step < 3 ? <ArrowRight aria-hidden="true" /> : <Check aria-hidden="true" />}</Button>
