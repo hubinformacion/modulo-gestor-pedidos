@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, UsersRound, Package, ClipboardList } from "lucide-react";
+import { UsersRound, Package, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/admin/pedidos", label: "Pedidos", Icon: ClipboardList },
   { href: "/admin/inventario", label: "Inventario", Icon: Package },
   { href: "/admin/configuracion", label: "Configuración", Icon: UsersRound },
-  { href: "/admin/vista-previa", label: "Vista previa del pedido", Icon: BookOpen },
 ];
 
 export function AdminNav() {

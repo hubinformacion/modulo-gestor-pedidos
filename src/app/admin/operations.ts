@@ -145,7 +145,7 @@ export async function saveBookAction(input: unknown): Promise<ActionResult> {
         await tx.update(books).set(book).where(eq(books.id, id));
       });
     });
-    revalidatePath("/admin/inventario"); revalidatePath("/pedido"); revalidatePath("/admin/vista-previa");
+    revalidatePath("/admin/inventario"); revalidatePath("/pedido");
     return { success: true, message: parsed.data.id ? "Publicación actualizada." : "Publicación creada." };
   } catch (error) { return failure(error); }
 }
@@ -167,7 +167,7 @@ export async function deleteBookAction(input: unknown): Promise<ActionResult> {
         await tx.delete(books).where(eq(books.id, current.id));
       });
     });
-    revalidatePath("/admin/inventario"); revalidatePath("/pedido"); revalidatePath("/admin/vista-previa");
+    revalidatePath("/admin/inventario"); revalidatePath("/pedido");
     return { success: true, message: "Publicación eliminada." };
   } catch (error) { return failure(error); }
 }

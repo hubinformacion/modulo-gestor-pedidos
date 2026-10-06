@@ -57,7 +57,7 @@ export const books = pgTable("books", {
   check("books_nonnegative_stock", sql`${table.stock} >= 0`),
 ]);
 
-// Allocate numbers by locking the year's row inside the order transaction (phase 4).
+// Allocate numbers by locking the year's row inside the order transaction.
 export const orderCounters = pgTable("order_counters", {
   year: integer("year").primaryKey(),
   lastNumber: integer("last_number").default(0).notNull(),

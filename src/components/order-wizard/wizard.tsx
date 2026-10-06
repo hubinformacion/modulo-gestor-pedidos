@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { createOrderAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
-import { PreviewCompletion } from "./preview-completion";
 import { calculateQuote } from "@/lib/orders/pricing";
 import { initialBuyer, initialDelivery, type BuyerDraft, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
 import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema, consentSchema } from "@/lib/orders/validation";
@@ -26,7 +25,7 @@ const steps = [
   { name: "Confirmación", title: "Revisa tu pedido", description: "Comprueba las publicaciones, tus datos y el detalle de pago por cuenta." },
 ] as const;
 
-export function OrderWizard({ catalog, campuses, preview = false, submissionEnabled = false }: { catalog: CatalogBook[]; campuses: Campus[]; preview?: boolean; submissionEnabled?: boolean }) {
+export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { catalog: CatalogBook[]; campuses: Campus[]; submissionEnabled?: boolean }) {
   const [step, setStep] = useState(0);
   const [submitting, startTransition] = useTransition();
   const requestId = useRef<string | null>(null);
@@ -38,16 +37,14 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
   const [errors, setErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
-  const reviewed = consentAccepted;
-  const [previewComplete, setPreviewComplete] = useState(false);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const quote = calculateQuote(catalog, cart, buyer.type, delivery);
 
-  function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); setPreviewComplete(false); }
+  function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); }
 
   function goTo(next: number) {
-    if (next < step) { setConsentAccepted(false); setPreviewComplete(false); }
+    if (next < step) { setConsentAccepted(false); }
     setStep(next); setErrors({}); setErrorMessage("");
     requestAnimationFrame(() => {
       headingRef.current?.focus({ preventScroll: true });
@@ -101,11 +98,6 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
       }
       const accepted = consentSchema.safeParse({ accepted: consentAccepted });
       if (!accepted.success) return showErrors(accepted.error.issues);
-      if (preview) {
-        setPreviewComplete(true);
-        sileo.success({ title: "Revisión completada", description: "Este recorrido no crea un pedido ni realiza un cobro." });
-        return;
-      }
       if (!submissionEnabled || sending.current) return;
       requestId.current ??= crypto.randomUUID();
       sending.current = true;
@@ -123,7 +115,6 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
 
   return (
     <div>
-      {preview ? <p className="mb-6 rounded-lg border border-primary/20 bg-secondary/40 px-4 py-3 text-xs leading-6 text-primary"><strong className="font-semibold">Vista previa interna.</strong> Libros DEMO con precios y stock ficticios. Direcciones de campus proporcionadas por el administrador. No se generan pedidos.</p> : null}
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>
@@ -146,9 +137,8 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
             {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
-            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsentAccepted(false); setPreviewComplete(false); goTo(value); }} /> : null}
+            {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsentAccepted(false); goTo(value); }} /> : null}
           </div>
-          {previewComplete ? <PreviewCompletion quote={quote} buyer={buyer} delivery={delivery} campuses={campuses} /> : null}
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
             {step < 3 ? <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 && catalog.length === 0}>Continuar<ArrowRight aria-hidden="true" /></Button> : null}
@@ -157,7 +147,7 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
         </form>
         <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
         <OrderSummary quote={quote} editable={step === 0 && !submitting} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
-          {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); setPreviewComplete(false); }} disabled={!reviewed || previewComplete || submitting || (!preview && !submissionEnabled)} pending={submitting} preview={preview} enabled={submissionEnabled} /> : null}
+          {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); }} disabled={!consentAccepted || submitting || !submissionEnabled} pending={submitting} enabled={submissionEnabled} /> : null}
           <AccountBreakdown quote={quote} />
         </aside>
       </div>
