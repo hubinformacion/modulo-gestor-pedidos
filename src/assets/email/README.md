@@ -1,5 +1,5 @@
 # Ilustraciones de correo
 
-SVG propios por estado; GIF derivados para clientes de correo. Regenerar con `pnpm email:assets`. Sharp se usa solo al generar assets localmente, no al enviar ni durante build. Versionar SVG y GIF; el tracing incluye GIF. GIF 160 × 96, movimiento sutil y dos repeticiones; primer frame completo. Ninguna imagen contiene datos de pedidos.
+SVG propios estáticos por estado y PNG derivados para clientes de correo. Regenerar con `pnpm email:assets`; Sharp solo se usa localmente al generar, no durante envío/build. Versionar SVG/PNG; tracing incluye PNG. Dimensiones 160 × 96; sin datos personales, animaciones ni GIF.
 
-MIME usa imagen inline por CID único y mantiene texto del estado por accesibilidad/bloqueo de imágenes. SVG es editable, no se incrusta en Gmail. Ver [contrato de comunicación](../../../docs/atencion-y-comunicacion.md) para revisión real.
+MIME usa imagen inline por CID único y mantiene texto del estado accesible si se bloquean imágenes. SVG editable, no se incrusta en Gmail. [Contrato de comunicación](../../../docs/atencion-y-comunicacion.md).

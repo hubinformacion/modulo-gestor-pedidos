@@ -1,8 +1,6 @@
 import "server-only";
-import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
-import { reportServerError } from "@/lib/server-diagnostics";
 import { headers } from "next/headers";
-import { and, asc, count, desc, eq, exists, ilike, isNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { books, orderActivity, orderItems, orders, paymentReceipts } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
@@ -15,7 +13,7 @@ export async function listOrders(filters: z.infer<typeof filterSchema>) {
   return withReadDatabase(async (db) => {
     const term = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
     const condition = and(
-      filters.owner === "mine" ? eq(orders.assignedTo, actor.userId) : filters.owner === "unassigned" ? and(isNull(orders.assignedTo), ne(orders.orderStatus, "ENTREGADO"), ne(orders.orderStatus, "CANCELADO")) : filters.owner === "participated" ? exists(db.select({ id: orderActivity.id }).from(orderActivity).where(and(eq(orderActivity.orderId, orders.id), eq(orderActivity.actorUserId, actor.userId)))) : undefined,
+      filters.owner === "mine" ? eq(orders.assignedTo, actor.userId) : filters.owner === "unassigned" ? and(isNull(orders.assignedTo), ne(orders.orderStatus, "ENTREGADO"), ne(orders.orderStatus, "CANCELADO")) : undefined,
       filters.q ? or(ilike(orders.orderNumber, term), ilike(orders.customerName, term), ilike(orders.customerEmail, term), ilike(orders.assignedName, term)) : undefined,
       filters.status ? eq(orders.orderStatus, filters.status) : undefined,
 
@@ -36,7 +34,6 @@ export async function listOrders(filters: z.infer<typeof filterSchema>) {
 export async function orderDetail(id: string) {
   const requestHeaders = await headers();
   await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-  try { await synchronizeDriveReaders(); } catch (error) { reportServerError("drive.readers.sync", error); }
   return withReadDatabase(async (db) => {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return null;

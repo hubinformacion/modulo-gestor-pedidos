@@ -24,7 +24,7 @@ export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSche
     const [receipt] = await db.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, metadata.uploadId));
     return { order, intent, receipt };
   });
-  if (current.receipt) return current.receipt.id;
+  if (current.receipt) return { id: current.receipt.id, notify: false };
   ensureWritable(current.order, metadata.imprint);
   const driveId = current.intent?.driveFileId ?? await reserveDriveFileId();
   const intent = await withDatabase((db) => db.transaction(async (tx) => {
@@ -50,14 +50,18 @@ async function finalizeReceipt(intent: typeof paymentUploads.$inferSelect, uploa
     const [order] = await tx.select().from(orders).where(eq(orders.id, intent.orderId)).for("update");
     if (!order) throw new OrderInputError("No encontramos el pedido.");
     const [existing] = await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, intent.id));
-    if (existing) return existing.id;
+    if (existing) return { id: existing.id, notify: false };
     ensureWritable(order, intent.publisherImprint);
     const [receipt] = await tx.insert(paymentReceipts).values({ orderId: order.id, uploadId: intent.id, publisherImprint: intent.publisherImprint, ...uploaded, fileName: intent.fileName }).returning({ id: paymentReceipts.id });
     const status = intent.publisherImprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
     await tx.update(orders).set(intent.publisherImprint === "universidad" ? { paymentStatusUniversidad: "EN_REVISION", submittedReceiptUniversidad: receipt.id, rejectionUniversidad: null } : { paymentStatusInstituto: "EN_REVISION", submittedReceiptInstituto: receipt.id, rejectionInstituto: null }).where(eq(orders.id, order.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", detail: `Recibimos un comprobante de ${intent.publisherImprint === "universidad" ? "Universidad" : "Instituto"}. Está en revisión.` });
-    if (status !== "EN_REVISION") await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { orderStatus: "PENDIENTE_PAGO" } });
-    return receipt.id;
+    const universidad = intent.publisherImprint === "universidad" ? "EN_REVISION" : order.paymentStatusUniversidad;
+    const instituto = intent.publisherImprint === "instituto" ? "EN_REVISION" : order.paymentStatusInstituto;
+    const allReceived = [universidad, instituto].every((value) => ["NO_APLICA", "EN_REVISION", "VERIFICADO"].includes(value));
+    const notify = status !== "EN_REVISION" && allReceived;
+    if (notify) await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { orderStatus: "PENDIENTE_PAGO", ...(order.orderType === "mixto" ? { scope: "pedido" } : {}) } });
+    return { id: receipt.id, notify };
   }));
 }
 
@@ -86,5 +90,5 @@ export async function recoverReceiptUpload(uploadId: string) {
   const bytes = Buffer.concat(chunks);
   if (size !== current.intent.size || createHash("sha256").update(bytes).digest("hex") !== current.intent.contentHash) throw new OrderInputError("El archivo guardado no coincide con el intento original.");
   const uploaded = await uploadFileToDrive({ id: current.intent.driveFileId, name: `${current.order.orderNumber}-${current.intent.publisherImprint}-${current.intent.fileName}`, mimeType: current.intent.mimeType, bytes });
-  return finalizeReceipt(current.intent, uploaded);
+  return (await finalizeReceipt(current.intent, uploaded)).id;
 }

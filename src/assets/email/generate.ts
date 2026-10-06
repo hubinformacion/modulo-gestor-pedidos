@@ -18,14 +18,8 @@ const folder = new URL("./", import.meta.url);
 await mkdir(folder, { recursive: true });
 for (const [state, icon] of Object.entries(icons)) {
   const color = state === "rejected" ? "#e4000b" : "#6802c1";
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="96" viewBox="0 0 160 96"><rect width="160" height="96" fill="white"/><ellipse cx="80" cy="49" rx="60" ry="40" fill="#faf6fd"/><g transform="translate(0,0)" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">${icon}<animateTransform attributeName="transform" type="translate" values="0 0;0 -3;0 0" dur="2.4s" repeatCount="2"/></g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="96" viewBox="0 0 160 96"><rect width="160" height="96" fill="white"/><ellipse cx="80" cy="49" rx="60" ry="40" fill="#faf6fd"/><g transform="translate(0,0)" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none">${icon}</g></svg>`;
   await writeFile(new URL(`${state}.svg`, folder), svg);
-  const frames: Buffer[] = [];
-  for (let index = 0; index < 16; index++) {
-    const offset = (-3 * Math.sin(Math.PI * index / 15)).toFixed(2);
-    const frame = svg.replace('transform="translate(0,0)"', `transform="translate(0,${offset})"`);
-    frames.push(await sharp(Buffer.from(frame)).ensureAlpha().raw().toBuffer());
-  }
-  await sharp(Buffer.concat(frames), { raw: { width: 160, height: 96 * frames.length, channels: 4, pageHeight: 96 } }).gif({ loop: 2, delay: 150, colours: 64, dither: 0 }).toFile(new URL(`${state}.gif`, folder).pathname);
+  await sharp(Buffer.from(svg)).png().toFile(new URL(`${state}.png`, folder).pathname);
   console.log(`Ilustración generada: ${state}`);
 }

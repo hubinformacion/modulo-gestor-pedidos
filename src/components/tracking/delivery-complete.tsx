@@ -2,7 +2,7 @@ const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "long", timeZon
 
 export function DeliveryComplete({ deliveredAt }: { deliveredAt?: Date | null }) {
   return <section className="relative overflow-hidden rounded-2xl border border-primary/15 bg-white px-6 pb-9 pt-7 text-center sm:px-10 sm:pb-11">
-    <div className="delivery-art mx-auto w-64 max-w-full" aria-hidden="true">
+    <div className="mx-auto w-64 max-w-full" aria-hidden="true">
       <svg viewBox="0 0 280 210" fill="none" className="block h-auto w-full">
         <ellipse cx="140" cy="109" rx="103" ry="87" fill="#f7f1fc" />
         <ellipse cx="140" cy="183" rx="78" ry="7" fill="#e9dcf5" />

@@ -12,7 +12,7 @@ function stateHeading(label: string, title: string, artCid: string) {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td valign="middle"><p style="margin:0;font-size:10px;font-weight:700;letter-spacing:.7px;color:#6802c1">${escapeHtml(label)}</p><h1 style="margin:12px 0 0;font-size:24px;line-height:1.4">${escapeHtml(title)}</h1></td><td width="108" align="right" valign="middle"><img src="cid:${escapeHtml(artCid)}" width="104" height="62" alt="" style="display:block;border:0;width:104px;height:62px" /></td></tr></table>`;
 }
 function action(link: string, label: string) {
-  return `<table role="presentation" cellspacing="0" cellpadding="0" style="margin:18px 0 24px"><tr><td style="border-radius:7px;background:#6802c1"><a href="${escapeHtml(link)}" style="display:inline-block;padding:14px 20px;color:white;font-size:13px;font-weight:600;text-decoration:none">${escapeHtml(label)}</a></td></tr></table>`;
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:18px 0 24px"><tr><td align="center"><table role="presentation" align="center" cellspacing="0" cellpadding="0"><tr><td style="border-radius:7px;background:#6802c1"><a href="${escapeHtml(link)}" style="display:inline-block;padding:14px 20px;color:white;font-size:13px;font-weight:600;text-decoration:none">${escapeHtml(label)}</a></td></tr></table></td></tr></table>`;
 }
 export function renderOrderEmail(tracking: EmailOrder, { intro, link, artCid }: { intro: string; link: string; artCid: string }) {
   const { order } = tracking;

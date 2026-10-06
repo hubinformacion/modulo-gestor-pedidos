@@ -24,7 +24,7 @@ export const emptyBook: BookForm = { inventoryCode: "", title: "", author: "", p
 export const filterSchema = z.object({
   q: z.string().trim().max(120).catch(""),
   status: z.enum(["", "PENDIENTE_PAGO", "EN_PREPARACION", "DESPACHADO", "ENTREGADO", "CANCELADO"]).catch(""),
-  owner: z.enum(["all", "mine", "unassigned", "participated"]).catch("all"),
+  owner: z.enum(["all", "mine", "unassigned"]).catch("all"),
   page: z.coerce.number().int().min(1).max(100000).catch(1),
 });
 

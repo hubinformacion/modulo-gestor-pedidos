@@ -6,7 +6,7 @@ Fase 5 aprobada e integrada localmente en main; ampliaciones vigentes en la rama
 
 Inter, blanco, acento `#6802C1`, Instituto `#e4000b`, sin logos ni landing. Navegación a Pedidos, Inventario, Configuración y Vista previa. Configuración organizada en pestañas Base UI: correos autorizados, campus/bibliotecas, cuentas bancarias e integraciones. Navegación por teclado y paneles conservados al cambiar pestaña, sin perder formularios abiertos; los permisos se mantienen. Datos operativos desde BD; no inventar catálogo ni pedidos para rellenar estados vacíos. Componentes servidor para lecturas, cliente solo para filtros locales y formularios interactivos. Skeleton administrativo existente y toasts Sileo; mensajes de error visibles junto al formulario.
 
-`/admin/pedidos`: bandejas Todos/Por asignar/Mis pedidos/He participado, búsqueda por número/comprador/correo/gestor, filtro por estado y veinte pedidos por página. Tabla con gestor, modalidad y estado general; los pagos por sello se consultan en el detalle. Orden por creación/ID y filtros en URL.
+`/admin/pedidos`: bandejas Todos/Por asignar/Mis pedidos, búsqueda por número/comprador/correo/gestor, filtro por estado y veinte pedidos por página. Tabla con gestor, modalidad y estado general; los pagos por sello se consultan en el detalle. Orden por creación/ID y filtros en URL.
 
 `/admin/pedidos/[id]`: ítems/precios snapshot, comprador/facturación, entrega/persona alternativa, importes por sello y todos los comprobantes ordenados del más reciente al anterior. Enlaces directos a Drive en otra pestaña, con lectores de la carpeta sincronizados según authorized_emails. No se usa un visor local. Acceso al tracking del comprador, que es privado mediante token. No mostrar tokens en tabla ni usarlos en logs.
 

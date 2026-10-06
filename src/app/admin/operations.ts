@@ -48,12 +48,13 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
         const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
         await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(data.imprint === "universidad" ? { rejectionUniversidad: data.decision === "RECHAZADO" ? data.reason : null } : { rejectionInstituto: data.decision === "RECHAZADO" ? data.reason : null }) }).where(eq(orders.id, order.id));
-        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO" } }).returning({ id: orderNotifications.id });
+        const notify = data.decision === "RECHAZADO" || complete;
+        if (notify) await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(complete && order.orderType === "mixto" ? { scope: "pedido" } : {}) } });
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", detail: data.decision === "VERIFICADO" ? `Pago de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} verificado.${complete ? " Iniciamos la preparación." : ""}` : `Comprobante de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} rechazado: ${data.reason}` });
-        return { token: order.trackingToken, notificationId: notification.id };
+        return { token: order.trackingToken, notify };
       });
     });
-    after(async () => { try { await deliverOrderEmail(outcome.token); } catch { /* Preserve the event for retry. */ } });
+    if (outcome.notify) after(async () => { try { await deliverOrderEmail(outcome.token); } catch { /* Preserve the event for retry. */ } });
     revalidatePath("/admin/pedidos", "layout");
     revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true, message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };

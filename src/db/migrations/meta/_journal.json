@@ -71,6 +71,13 @@
       "when": 1791294516857,
       "tag": "0009_omit_assignment_emails",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791298621135,
+      "tag": "0010_group_mixed_payment_notices",
+      "breakpoints": true
     }
   ]
 }
