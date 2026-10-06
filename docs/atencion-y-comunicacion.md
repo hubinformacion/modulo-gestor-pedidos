@@ -1,6 +1,6 @@
 # Atención de pedidos y comunicación
 
-Contrato vigente que sustituye la confirmación manual de comprobantes y la atención sin responsable. Implementado dentro de `feat/06-iframe-wp-polish`, pendiente de revisión y aprobación de esa rama.
+Contrato vigente que sustituye la confirmación manual de comprobantes y la atención sin responsable. Implementado en fase 6, validado por el usuario e integrado en `main`. Publicación/revisión operativa Vercel/WordPress pendientes, a cargo del usuario.
 
 ## Usuarios y responsabilidad
 

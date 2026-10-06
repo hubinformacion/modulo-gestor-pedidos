@@ -1,53 +1,27 @@
-# Fases y estado del trabajo
+# Fases y estado del proyecto
 
-## Estado vigente
+El usuario validó los cambios y autorizó la integración. El código de las seis fases está integrado en `main` y publicado en [GitHub](https://github.com/hubinformacion/modulo-gestor-pedidos). Las ramas de fases ya integradas se eliminan; el historial se conserva.
 
-Fases 1–5 aprobadas e integradas localmente en `main`. Rama vigente: `feat/06-iframe-wp-polish`. Configuración en `/admin`, pedidos en `/admin/pedidos`, inventario en `/admin/inventario`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Google/PDF/Vercel reales siguen pendientes de revisión operativa.
+| Fase | Entrega | Estado del código |
+| --- | --- | --- |
+| 1 | Google OAuth, acceso por BD y configuración | Aprobado e integrado |
+| 2 | Esquema de negocio y seed | Aprobado e integrado |
+| 3 | Wizard público, campus, ubigeo y consentimiento | Aprobado e integrado |
+| 4 | Pedido/stock/numeración transaccionales, Drive/Gmail y seguimiento | Aprobado e integrado |
+| 5 | Gestores, pagos, despacho, inventario y configuración | Aprobado e integrado |
+| 6 | Iframe/CSP, Vercel, pulido de atención y comunicaciones | Aprobado e integrado; cierre operativo pendiente |
 
-## Regla de entrega
+## Pendiente de publicación
 
-Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fase, describir lo implementado y los pasos de revisión manual, detenerse y esperar aprobación explícita antes de integrar o seguir.
+El usuario publicará primero en Vercel y WordPress y después proporcionará las URLs. No se ha verificado ni realizado un despliegue Vercel desde este workspace. La configuración local sigue apuntando a localhost y no tiene proyecto Vercel vinculado.
 
-## Completadas
+1. Importar `main` en Vercel y configurar las variables de `.env.example` con los dominios reales y credenciales privadas.
+2. Registrar callback Google, configurar `WORDPRESS_ORIGINS` y activar el cron con `CRON_SECRET`. Ejecutar migraciones explícitamente en la BD destino si es diferente; la BD local ya tiene hasta 0011.
+3. Generar el bloque WordPress para la URL real `/pedido` e incrustarlo. Revisar altura, móvil/escritorio, mapas y cabeceras.
+4. Revisar en el despliegue real acceso, carga de comprobantes/evidencia y correos con PDF/hilo. No afirmar validación Vercel por un build local.
 
-- **1. Auth y Google:** pnpm/Next/UI, Neon/Drizzle, tablas better-auth generadas, autorizados, seed, Google OAuth y protección de páginas/acciones. Solo el maestro gestiona correos; la revocación elimina sesiones atómicamente. Aprobada por el usuario; sin pruebas automatizadas.
+Guía: [iframe-wordpress.md](iframe-wordpress.md). Contrato funcional: [atencion-y-comunicacion.md](atencion-y-comunicacion.md). Consumo: [consumo-neon.md](consumo-neon.md).
 
-- **2. Esquema y seed:** diez tablas, importes exactos/restricciones, migración en Neon y cuatro DEMO inactivos. Lint y tipos correctos. Aprobada e integrada; catálogo oficial pendiente. [Contrato de esquema](esquema.md).
+## Reglas que permanecen
 
-- **3. Wizard:** aprobada por el usuario. Cuatro pasos, catálogo compacto, precios dinámicos, ubigeo, campus administrables, persona alternativa, resumen en tarjetas y consentimiento único. Migración de campus aplicada; lint/tipos/build correctos. Contrato de interfaz en [wizard.md](wizard.md).
-
-- **4. Pedidos, pagos y Google:** aprobada para integrar y continuar por el usuario. Creación transaccional, contador anual, snapshots, tracking, cargas recuperables y outbox. Migraciones 0003–0005 aplicadas; cuatro cuentas sembradas. Lint/tipos/build correctos. Integrada localmente; configuración y revisión real Google/PDF/Vercel pendientes según [pedidos-pagos.md](pedidos-pagos.md).
-
-- **5. Administración y avisos:** aprobada para integrar y continuar. Pedidos/filtros, pagos por sello, despacho/entrega, inventario inline y configuración por pestañas. Comprobantes por sello y avisos registrados; el flujo vigente de fase 6 elimina confirmación y añade gestor/historial/cabeceras reales. Migración 0006 aplicada en Neon; lint/tipos/build correctos. Integrada localmente. Contrato: [admin-dashboard.md](admin-dashboard.md).
-
-## Fase vigente
-
-## 6. feat/06-iframe-wp-polish
-
-**Estado:** código implementado; lint/tipos/build correctos y cabeceras/bloque/simulador verificados por HTTP local. Pendiente de revisión visual/final y aprobación para integrar. Dominios/proyecto Vercel/página WordPress definitivos pendientes; no considerar el despliegue realizado.
-
-**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migraciones 0007–0011 aplicadas; seguimiento sin identidad del gestor, sin correo de asignación, cierre SVG estático y carga sin preview que desaparece al finalizar; comprobantes privados con enlace directo Drive y lectores sincronizados, correos automáticos sin gestión manual; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
-
-**Entrega:** CSP frame-ancestors sin X-Frame-Options contradictorio, dominios configurables, altura postMessage segura, login externo para iframe, bloque/simulador WordPress bajo src, .env.example completo y configuración Vercel con pnpm.
-
-**Revisión manual:** [iframe-wordpress.md](iframe-wordpress.md), incluyendo móvil/escritorio, altura y mensajes, cabeceras, login y adjunto PDF en Vercel.
-
-**Pendientes externos:** cuenta/proyecto/dominio Vercel, orígenes/página WordPress; revisión de correo/Drive/PDF desde el despliegue real.
-
-## Cambios de criterio que deben persistir
-
-- Solo el maestro gestiona autorizados; reemplaza la regla original de gestión por cualquier autorizado.
-- Sin infraestructura ni ejecución de pruebas automatizadas salvo nueva solicitud explícita.
-- Código/utilidades/migraciones bajo `src`; configuración de herramientas en raíz solo cuando la convención lo necesita.
-- Sin landing, contenido promocional, logos ni referencias corporativas en la interfaz.
-- Inter por defecto, tema claro, blanco y `#6802C1`.
-
-Ajuste vigente fase 6: card de pagos conservada al entregar, wizard administrativo compacto con notas privadas y correos con PNG estáticos derivados de SVG propios y avisos mixtos agrupados. Revisión manual en atencion-y-comunicacion.md, sin integrar la rama hasta aprobación.
-
-Conteo de cierre: cinco fases completadas e integradas localmente; queda una (fase 6) para revisión/aprobación y despliegue Vercel/WordPress con dominios reales y comprobación de PDF/Drive/Gmail en producción. Avisos mixtos agrupados, gráficos estáticos, card de pagos uniforme y refresco sin polling implementados. Consumo en [consumo-neon.md](consumo-neon.md).
-
-Último ajuste fase 6: ubicación interna editable de bibliotecas con snapshot/enlace Maps, filtro de bandeja desplegable y evidencia fotográfica opcional al cerrar recojo, privada para gestores. Migración 0011 aplicada; pendiente de revisión manual junto al despliegue final.
-
-Ajuste vigente: FilePond para evidencia de recojo, Distribución como término visible, plazos courier, historiales con scroll y corrección de renovación/error temporal de sesión. Cola de sello único diagnosticada; pruebas 8-2026 descartadas a petición del usuario, sin envío. Flujo operativo automático sin aprobaciones por mensaje. Fase 6 sigue pendiente de revisión e integración.
-
-Foto de recojo ahora automática al seleccionar, independiente de la confirmación; evidencia persiste antes del cierre. Botones de correo sin número de pedido y texto de carga reducido. Sin migración adicional; fase 6 en revisión.
+Solo pnpm, sin suites automatizadas salvo solicitud expresa. Inter, tema claro, fondo blanco y `#6802C1`. Código/migraciones/utilidades bajo `src`, sin landing/logos/CLAUDE.md. Nunca hacer commits directos en `main`: cambios posteriores en rama de trabajo, con revisión antes de integrar. No subir secretos ni inventar catálogo, dominios, campus o coordenadas.

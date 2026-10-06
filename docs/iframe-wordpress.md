@@ -1,6 +1,6 @@
 # Embebido, WordPress y Vercel — fase 6
 
-Fases 1–5 aprobadas e integradas localmente. Rama `feat/06-iframe-wp-polish`. Código implementado; pendiente de aprobación y configuración/revisión en el dominio real. No publicar ni afirmar que el adjunto funciona en Vercel sin revisar ese despliegue.
+Código de las seis fases validado e integrado en `main`, publicado en GitHub. Ramas de fase eliminadas tras integración. El usuario publicará en Vercel/WordPress y después aportará las URLs; configuración y revisión en el dominio real pendientes. No afirmar que el adjunto funciona en Vercel sin revisar ese despliegue.
 
 ## Contrato de embebido
 
@@ -65,7 +65,7 @@ Remoto Git actual: `hubinformacion/modulo-gestor-pedidos`. No hay proyecto Verce
 1. Importar el repositorio en Vercel, framework Next.js, raíz del proyecto y Node compatible con engines (>=22). `vercel.json` fuerza instalación `pnpm install --frozen-lockfile` y build `pnpm build`.
 2. Configurar `ENABLE_EXPERIMENTAL_COREPACK=1` en el panel antes del primer despliegue: usa el pnpm exacto de packageManager. Variables completas en `.env.example`, incluido CRON_SECRET privado de al menos 32 caracteres para la recuperación automática de avisos (cron diario a las 12:00 UTC); no subir `.env.local`. Configurar Production y Preview por separado, con ramas Neon/credenciales de revisión cuando corresponda.
 3. Usar el dominio HTTPS estable para APP_URL y BETTER_AUTH_URL. Registrar en Google el callback exacto `<BETTER_AUTH_URL>/api/auth/callback/google`. Conservar login identity scopes y refresh token propietario separado para Drive/Gmail.
-4. Configurar WORDPRESS_ORIGINS con los dominios reales. Revisar cuentas/campus/catálogo desde `/admin` y los tres PDF correctos. Migraciones y seed se ejecutan explícitamente contra la BD destino, fuera del build. La migración 0006 ya aplicada al Neon local no implica que esté aplicada en otra rama.
+4. Configurar WORDPRESS_ORIGINS con los dominios reales. Revisar cuentas/campus/catálogo desde `/admin` y los tres PDF correctos. Migraciones y seed se ejecutan explícitamente contra la BD destino, fuera del build. Migraciones hasta 0011 aplicadas al Neon local; eso no implica que estén aplicadas en otra rama.
 5. Desplegar tras configurar. Nunca trasladar tokens de bypass de Vercel al bloque de WordPress. El dominio de compra debe ser accesible sin la protección de plataforma destinada a previews; auth de `/admin` permanece en la app.
 6. Abrir el dominio desplegado directamente y desde WordPress. Recorrer pedido/seguimiento, validar acceso administrativo fuera del iframe y revisar cabeceras. Ejemplo de comprobación de cabeceras: `curl -I https://DOMINIO_DEL_SISTEMA/pedido`.
 7. Crear un pedido de revisión en ese despliegue y comprobar el correo con su PDF, descarga de guía, archivo/permiso en Drive, confirmación de comprobantes y avisos en el mismo hilo. La presencia de PDF en el tracing local no verifica el adjunto real en Vercel.
