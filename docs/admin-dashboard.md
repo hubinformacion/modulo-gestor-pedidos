@@ -33,3 +33,5 @@ Lint, tipos y build de producción correctos en la entrega inicial; incluye las 
 ## Revisión vigente
 
 Usar los pasos de [atencion-y-comunicacion.md](atencion-y-comunicacion.md). Configuración de Drive/Gmail/PDF en [pedidos-pagos.md](pedidos-pagos.md); interfaz de compra DEMO sigue sin crear pedidos. Autoasignación y transiciones se validan con sesiones reales autorizadas, sin datos ficticios ni suites automatizadas.
+
+Historial de atención en el sidebar derecho, bajo comprador/publicaciones; conserva identidad del actor para auditoría interna. La identidad del gestor no aparece en seguimiento/correos del comprador y tomar un pedido no genera aviso por email.

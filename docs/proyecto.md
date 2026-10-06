@@ -23,7 +23,7 @@ Usar exclusivamente pnpm, con `pnpm-lock.yaml`. Nunca npm, yarn o bun.
 | Estados de carga | `boneyard-js` (el paquete no es `boneyard`) |
 | Notificaciones | `sileo` |
 | Google Drive / Gmail | `googleapis`, `google-auth-library` |
-| Comprobantes | `filepond`, `react-filepond`, plugins de validación de tipo/tamaño y preview |
+| Comprobantes | `filepond`, `react-filepond`, plugins de validación de tipo/tamaño; sin preview |
 | Identificadores | `nanoid` para tracking, mínimo 24 caracteres |
 | Validación | `zod`, en cliente y en cada Server Action |
 
@@ -75,7 +75,7 @@ La confirmación debe usar la plantilla y guía PDF del tipo de pedido: solo Uni
 ## Comprobantes y aprobación de pago
 
 - Una zona FilePond por sello aplicable admite varios archivos; mixto muestra dos. El sello es fijo por zona, sin desplegable. Adjuntar sube automáticamente a Drive; guardar pasa directamente ese pago a EN_REVISION y envía aviso en el hilo del pedido, sin confirmación adicional.
-- Validar tipo/tamaño en cliente y servidor; preview mediante los plugins correspondientes.
+- Validar tipo/tamaño en cliente y servidor; sin vista previa. Ocultar la carga al terminar el lote, conservar el acuse y habilitarla nuevamente solo si se rechaza el comprobante.
 - Guardar comprobantes en Google Drive y sus identificadores/links en `payment_receipts`.
 - Aprobar de forma independiente `payment_status_universidad` y `payment_status_instituto`.
 - El sello que no aplica se crea con `NO_APLICA`.

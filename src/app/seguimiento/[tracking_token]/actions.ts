@@ -3,7 +3,6 @@
 import { reportServerError } from "@/lib/server-diagnostics";
 import { after } from "next/server";
 import { z } from "zod";
-import { revalidatePath } from "next/cache";
 import { deliverOrderEmail } from "@/lib/orders/email";
 import { OrderInputError } from "@/lib/orders/submission";
 import { receiptFileSchema, receiptMetadataSchema } from "@/lib/payments/validation";
@@ -19,8 +18,9 @@ export async function uploadReceiptAction(input: unknown): Promise<{ success: tr
   try {
     const receiptId = await uploadReceipt(metadata.data, file.data);
     after(async () => { try { await deliverOrderEmail(metadata.data.token); } catch (error) { reportServerError("receipt.mail.pending", error); } });
-    revalidatePath("/admin/pedidos", "layout");
-    revalidatePath(`/seguimiento/${metadata.data.token}`);
+    // The client refreshes after its entire FilePond batch succeeds. Revalidating
+    // here can unmount the uploader after the first file and lose queued files.
+    // Both order screens read dynamically; admin polling sees committed receipts.
     return { success: true, receiptId };
   } catch (error) {
     if (!(error instanceof OrderInputError)) reportServerError("receipt.upload.failed", error);

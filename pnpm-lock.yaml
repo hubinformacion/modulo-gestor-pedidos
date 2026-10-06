@@ -41,9 +41,6 @@ importers:
       filepond-plugin-file-validate-type:
         specifier: ^1.2.9
         version: 1.2.9(filepond@4.32.12)
-      filepond-plugin-image-preview:
-        specifier: ^4.6.12
-        version: 4.6.12(filepond@4.32.12)
       google-auth-library:
         specifier: ^11.1.0
         version: 11.1.0
@@ -2559,11 +2556,6 @@ packages:
     resolution: {integrity: sha512-Tzv07aNdZvjUXDRA3XL16QMEvh6llDrXlcZ6W0eTHQ+taHaVg/JKJTFs/AViO+6ZcpPCcQStbhYEL2HoS+vldw==}
     peerDependencies:
       filepond: '>=1.x <5.x'
-
-  filepond-plugin-image-preview@4.6.12:
-    resolution: {integrity: sha512-Y8ETX5QVV0mbPB0586UH8AUmG9tZg8PuN5bdEAIlZVJFTct5ebViJ7+Am94/VhTPjLqZjBf1zmDq5JU6XRsZKw==}
-    peerDependencies:
-      filepond: '>=4.x <5.x'
 
   filepond@4.32.12:
     resolution: {integrity: sha512-wro0/deLwua9CkL7HJygOlDaPo1c7Ov8kfzbZjH7m4hdi56gdHGDeRWnYa+qXnRm3Lty69gUGVFb3JZy/9vT8g==}
@@ -6440,10 +6432,6 @@ snapshots:
       filepond: 4.32.12
 
   filepond-plugin-file-validate-type@1.2.9(filepond@4.32.12):
-    dependencies:
-      filepond: 4.32.12
-
-  filepond-plugin-image-preview@4.6.12(filepond@4.32.12):
     dependencies:
       filepond: 4.32.12
 

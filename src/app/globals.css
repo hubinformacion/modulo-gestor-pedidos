@@ -63,3 +63,12 @@
 
 /* Receipt details are retained for staff; the purchaser sees only progress and acknowledgement. */
 .receipt-pond .filepond--file-info { display: none; }
+
+@keyframes delivery-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+.delivery-art { animation: delivery-float 4s ease-in-out 3; }
+@media (prefers-reduced-motion: reduce) {
+  .delivery-art { animation: none; }
+}

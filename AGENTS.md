@@ -45,7 +45,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Mixto: dos depósitos; flete solo en Universidad si delivery. Recojo S/0, Lima/Callao S/15, provincia S/25 con departamento/ciudad. Recojo muestra biblioteca del campus.
 - Comunidad: sede y correo `@continental.edu.pe`, precio comunidad; público: precio estándar. Recalcular en comprador y creación server-side; nunca confiar en precios del cliente.
 - Pagos por sello independientes; sello no aplicable empieza en `NO_APLICA`. `EN_PREPARACION` solo con todos los pagos requeridos verificados. Rechazo/re-subida conserva el otro sello.
-- Una zona FilePond por sello aplicable (dos en mixtos), carga automática sin selector; validación tipo/tamaño y preview. Cargar pasa directamente ese pago a EN_REVISION y avisa por correo, sin confirmar.
+- Una zona FilePond por sello aplicable (dos en mixtos), carga automática sin selector; validación tipo/tamaño, sin vista previa. Cargar pasa directamente ese pago a EN_REVISION y avisa por correo, sin confirmar.
 - Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
 - Comprobantes privados, enlaces directos Drive solo en administración. Sin visor/proxy local. Sincronizar lectores nominados de la carpeta con authorized_emails, registrar ACL en drive_reader_grants y retirar permisos gestionados al revocar. No mostrar archivos/nombres al comprador tras la carga. No imprimir objetos de error Google/Drizzle ni credenciales/payload en logs.
@@ -94,4 +94,8 @@ Ver [docs/atencion-y-comunicacion.md](docs/atencion-y-comunicacion.md): sustituy
 - Lecturas de pantalla paralelas por Neon HTTP (`withReadDatabase`); Pool para auth/tx. Nunca reintentar callbacks de mutación. No propagar ErrorEvent ni error de driver con SQL/params como causa hacia RSC; normalizar y registrar solo códigos seguros.
 
 - Sin cards de avisos/comunicación ni reintento manual. Cambios de estado/verificación disparan correos automáticamente; cron diario Vercel como recuperación de pendientes, con CRON_SECRET obligatorio. No ejecutar el worker de envíos contra pedidos operativos para validar sin autorización de envío.
-- Email inicial compacto: sello/importes aplicables y guía PDF; sin repetir compra/dirección/cuentas. Actualizaciones con CTA específico al inicio, enlace distinto por evento y asunto/referencias estables para threading. Gmail controla el colapso de contenido: no prometer eliminarlo completamente.
+- Email inicial compacto: sello/importes aplicables y guía PDF; sin repetir compra/dirección/cuentas. Botón del correo inicial después de los importes; actualizaciones con CTA específico al inicio, enlace distinto por evento y asunto/referencias estables para threading. Gmail controla el colapso de contenido: no prometer eliminarlo completamente.
+
+- Seguimiento sin identidad del gestor ni eventos de asignación/liberación; mantener identidad/auditoría en administración. No emitir correo ASIGNADO. Migración 0009 retira únicamente avisos de asignación no enviados.
+- FilePond sin preview ni plugin de preview, ocultar carga al terminar el lote completo; EN_REVISION muestra solo acuse, reaparece si RECHAZADO. No desmontar otras cargas en mixtos; conservar seleccionados/errores. Refrescar desde cliente tras completar, sin revalidatePath en la acción de subida.
+- Entregado: cierre visual con SVG propio, CSS de movimiento limitado y prefers-reduced-motion. Datos de envío/recojo en una sola card. Historial en sidebar derecho tanto en seguimiento como en administración.

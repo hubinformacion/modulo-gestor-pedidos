@@ -56,7 +56,7 @@ async function finalizeReceipt(intent: typeof paymentUploads.$inferSelect, uploa
     const status = intent.publisherImprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
     await tx.update(orders).set(intent.publisherImprint === "universidad" ? { paymentStatusUniversidad: "EN_REVISION", submittedReceiptUniversidad: receipt.id, rejectionUniversidad: null } : { paymentStatusInstituto: "EN_REVISION", submittedReceiptInstituto: receipt.id, rejectionInstituto: null }).where(eq(orders.id, order.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", detail: `Recibimos un comprobante de ${intent.publisherImprint === "universidad" ? "Universidad" : "Instituto"}. Está en revisión.` });
-    if (status !== "EN_REVISION") await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { handlerName: order.assignedName ?? "", orderStatus: "PENDIENTE_PAGO" } });
+    if (status !== "EN_REVISION") await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { orderStatus: "PENDIENTE_PAGO" } });
     return receipt.id;
   }));
 }

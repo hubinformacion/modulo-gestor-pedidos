@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "@fontsource-variable/inter";
 import "sileo/styles.css";
 import "filepond/dist/filepond.min.css";
-import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.min.css";
 import "./globals.css";
 import { IframeHeightBridge } from "@/components/iframe/height-bridge";
 import { getWordPressOrigins } from "@/lib/iframe/config";

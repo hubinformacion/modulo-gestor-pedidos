@@ -131,7 +131,7 @@ export async function sendOrderConfirmationEmail(tracking: Tracking) {
     .map((imprint) => `${imprintNames[imprint]}: ${formatMoney(toCents(imprint === "universidad" ? tracking.order.totalUniversidad : tracking.order.totalInstituto))}`)
     .join("\n");
   return sendMime({ tracking, html: renderOrderEmail(tracking, { intro, link }),
-    text: `Pedido ${tracking.order.orderNumber}\nSeguimiento y pago: ${link}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Guía de pago adjunta en PDF.`,
+    text: `Pedido ${tracking.order.orderNumber}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Seguimiento y pago: ${link}\nGuía de pago adjunta en PDF.`,
     attachment: await readOrderPaymentGuide(tracking.order),
   });
 }
@@ -141,10 +141,9 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "";
   const payload = notification.payload;
   const notices: Record<string, { title: string; body: string }> = {
-    COMPROBANTE_RECIBIDO: { title: `Comprobante recibido · ${imprint}`, body: `${tracking.handlerName ? `${tracking.handlerName} evaluará tu comprobante.` : "Un gestor evaluará tu comprobante."} Ya está adjunto a tu pedido; te avisaremos al terminar la revisión.` },
+    COMPROBANTE_RECIBIDO: { title: `Comprobante recibido · ${imprint}`, body: "Tu comprobante ya está adjunto al pedido. Te avisaremos al terminar la revisión." },
     PAGO_VERIFICADO: { title: `Pago verificado · ${imprint}`, body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Ya estamos preparando tus publicaciones." : "Este pago está verificado. Continuaremos con la preparación cuando se verifique el otro sello." },
     PAGO_RECHAZADO: { title: `Necesitamos otro comprobante · ${imprint}`, body: payload.reason || "Revisa el comprobante y adjunta uno nuevo desde tu seguimiento." },
-    ASIGNADO: { title: "Tu pedido ya tiene un gestor", body: `${payload.handlerName || "Un gestor"} está a cargo de atender tu pedido. Puedes consultar cada avance desde tu seguimiento.` },
     DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? `Puedes recoger tus publicaciones en ${payload.address || tracking.order.deliveryAddress}.` : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""}` },
     ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
   };

@@ -65,7 +65,7 @@ export async function deliverOrderEmail(token: string): Promise<boolean> {
     }
     if (!await synchronizeOrderThread(token)) return sentAny;
     for (let index = 0; index < 3 && Date.now() - started < 60_000; index++) {
-      const [event] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.status, "ENVIADO"))).orderBy(asc(orderNotifications.createdAt), asc(orderNotifications.id)).limit(1));
+      const [event] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.eventType, "ASIGNADO"), ne(orderNotifications.status, "ENVIADO"))).orderBy(asc(orderNotifications.createdAt), asc(orderNotifications.id)).limit(1));
       if (!event) break;
       if (event.attempts >= 5 || (event.lastAttemptAt && Date.now() - event.lastAttemptAt.getTime() < (event.status === "ENVIANDO" ? 180_000 : 60_000))) break;
       const current = await getTrackedOrder(token);

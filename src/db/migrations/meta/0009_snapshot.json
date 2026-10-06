@@ -1,0 +1,2405 @@
+{
+  "id": "7a47c6fd-7996-4e7d-a16d-5fa9307868b3",
+  "prevId": "b1095dfc-64ec-4985-9f05-3cfc735524ec",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.authorized_emails": {
+      "name": "authorized_emails",
+      "schema": "",
+      "columns": {
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "added_by": {
+          "name": "added_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "authorized_emails_normalized": {
+          "name": "authorized_emails_normalized",
+          "value": "\"authorized_emails\".\"email\" = lower(btrim(\"authorized_emails\".\"email\"))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.bank_accounts": {
+      "name": "bank_accounts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "bank": {
+          "name": "bank",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "holder": {
+          "name": "holder",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PEN'"
+        },
+        "account": {
+          "name": "account",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cci": {
+          "name": "cci",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "book_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'INACTIVO'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "bank_accounts_unique": {
+          "name": "bank_accounts_unique",
+          "columns": [
+            {
+              "expression": "publisher_imprint",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "lower(btrim(\"bank\"))",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "regexp_replace(\"account\", '[ -]', '', 'g')",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "bank_accounts_currency": {
+          "name": "bank_accounts_currency",
+          "value": "\"bank_accounts\".\"currency\" = 'PEN'"
+        },
+        "bank_accounts_active_fields": {
+          "name": "bank_accounts_active_fields",
+          "value": "\"bank_accounts\".\"status\" <> 'ACTIVO' OR (btrim(\"bank_accounts\".\"bank\") <> '' AND btrim(\"bank_accounts\".\"holder\") <> '' AND \"bank_accounts\".\"account\" ~ '^[0-9 -]{5,40}$' AND \"bank_accounts\".\"cci\" ~ '^[0-9]{20}$')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.books": {
+      "name": "books",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "inventory_code": {
+          "name": "inventory_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "author": {
+          "name": "author",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "standard_price": {
+          "name": "standard_price",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "community_price": {
+          "name": "community_price",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stock": {
+          "name": "stock",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "book_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVO'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "books_status_imprint_idx": {
+          "name": "books_status_imprint_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "publisher_imprint",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "books_inventory_code_unique": {
+          "name": "books_inventory_code_unique",
+          "columns": [
+            "inventory_code"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "books_nonempty_fields": {
+          "name": "books_nonempty_fields",
+          "value": "btrim(\"books\".\"inventory_code\") <> '' AND btrim(\"books\".\"title\") <> '' AND btrim(\"books\".\"author\") <> ''"
+        },
+        "books_nonnegative_prices": {
+          "name": "books_nonnegative_prices",
+          "value": "\"books\".\"standard_price\" >= 0 AND \"books\".\"community_price\" >= 0"
+        },
+        "books_nonnegative_stock": {
+          "name": "books_nonnegative_stock",
+          "value": "\"books\".\"stock\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.campuses": {
+      "name": "campuses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()::text"
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "library_address": {
+          "name": "library_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "latitude": {
+          "name": "latitude",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "longitude": {
+          "name": "longitude",
+          "type": "numeric(10, 7)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "google_maps_embed_url": {
+          "name": "google_maps_embed_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "book_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'ACTIVO'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "campuses_name_unique": {
+          "name": "campuses_name_unique",
+          "columns": [
+            {
+              "expression": "lower(btrim(\"name\"))",
+              "isExpression": true,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "campuses_nonempty_fields": {
+          "name": "campuses_nonempty_fields",
+          "value": "btrim(\"campuses\".\"name\") <> '' AND btrim(\"campuses\".\"library_address\") <> ''"
+        },
+        "campuses_valid_coordinates": {
+          "name": "campuses_valid_coordinates",
+          "value": "(\"campuses\".\"latitude\" IS NULL AND \"campuses\".\"longitude\" IS NULL) OR (\"campuses\".\"latitude\" IS NOT NULL AND \"campuses\".\"longitude\" IS NOT NULL AND \"campuses\".\"latitude\" BETWEEN -90 AND 90 AND \"campuses\".\"longitude\" BETWEEN -180 AND 180)"
+        },
+        "campuses_valid_map_url": {
+          "name": "campuses_valid_map_url",
+          "value": "\"campuses\".\"google_maps_embed_url\" IS NULL OR \"campuses\".\"google_maps_embed_url\" ~ '^https://(www[.]google[.]com|maps[.]google[.]com)/maps/embed([?]|/)'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.drive_reader_grants": {
+      "name": "drive_reader_grants",
+      "schema": "",
+      "columns": {
+        "folder_id": {
+          "name": "folder_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "permission_id": {
+          "name": "permission_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "drive_reader_grants_permission_unique": {
+          "name": "drive_reader_grants_permission_unique",
+          "columns": [
+            {
+              "expression": "folder_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "permission_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "drive_reader_grants_folder_id_email_pk": {
+          "name": "drive_reader_grants_folder_id_email_pk",
+          "columns": [
+            "folder_id",
+            "email"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.order_activity": {
+      "name": "order_activity",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_user_id": {
+          "name": "actor_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "actor_name": {
+          "name": "actor_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "detail": {
+          "name": "detail",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "order_activity_order_idx": {
+          "name": "order_activity_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "order_activity_actor_idx": {
+          "name": "order_activity_actor_idx",
+          "columns": [
+            {
+              "expression": "actor_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "order_activity_order_id_orders_id_fk": {
+          "name": "order_activity_order_id_orders_id_fk",
+          "tableFrom": "order_activity",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "order_activity_actor_user_id_user_id_fk": {
+          "name": "order_activity_actor_user_id_user_id_fk",
+          "tableFrom": "order_activity",
+          "columnsFrom": [
+            "actor_user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "set null"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.order_counters": {
+      "name": "order_counters",
+      "schema": "",
+      "columns": {
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "last_number": {
+          "name": "last_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "order_counters_valid_year": {
+          "name": "order_counters_valid_year",
+          "value": "\"order_counters\".\"year\" BETWEEN 2000 AND 9999"
+        },
+        "order_counters_nonnegative_number": {
+          "name": "order_counters_nonnegative_number",
+          "value": "\"order_counters\".\"last_number\" >= 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.order_emails": {
+      "name": "order_emails",
+      "schema": "",
+      "columns": {
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_attempt_at": {
+          "name": "last_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gmail_message_id": {
+          "name": "gmail_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gmail_thread_id": {
+          "name": "gmail_thread_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rfc_message_id": {
+          "name": "rfc_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subject_header": {
+          "name": "subject_header",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "headers_verified": {
+          "name": "headers_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "thread_issue": {
+          "name": "thread_issue",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_rfc_message_id": {
+          "name": "last_rfc_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rfc_references": {
+          "name": "rfc_references",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "lease_id": {
+          "name": "lease_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "lease_until": {
+          "name": "lease_until",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sent_at": {
+          "name": "sent_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "order_emails_order_id_orders_id_fk": {
+          "name": "order_emails_order_id_orders_id_fk",
+          "tableFrom": "order_emails",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "order_emails_valid_status": {
+          "name": "order_emails_valid_status",
+          "value": "\"order_emails\".\"status\" IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.order_items": {
+      "name": "order_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "book_id": {
+          "name": "book_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "book_title": {
+          "name": "book_title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "unit_price": {
+          "name": "unit_price",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "quantity": {
+          "name": "quantity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subtotal": {
+          "name": "subtotal",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "order_items_order_id_idx": {
+          "name": "order_items_order_id_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "order_items_book_id_idx": {
+          "name": "order_items_book_id_idx",
+          "columns": [
+            {
+              "expression": "book_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "order_items_order_id_orders_id_fk": {
+          "name": "order_items_order_id_orders_id_fk",
+          "tableFrom": "order_items",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "order_items_book_id_books_id_fk": {
+          "name": "order_items_book_id_books_id_fk",
+          "tableFrom": "order_items",
+          "columnsFrom": [
+            "book_id"
+          ],
+          "tableTo": "books",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "order_items_positive_quantity": {
+          "name": "order_items_positive_quantity",
+          "value": "\"order_items\".\"quantity\" > 0"
+        },
+        "order_items_price_consistent": {
+          "name": "order_items_price_consistent",
+          "value": "\"order_items\".\"unit_price\" >= 0 AND \"order_items\".\"subtotal\" = \"order_items\".\"unit_price\" * \"order_items\".\"quantity\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.order_notifications": {
+      "name": "order_notifications",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_type": {
+          "name": "event_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "receipt_id": {
+          "name": "receipt_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE'"
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "last_attempt_at": {
+          "name": "last_attempt_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "gmail_message_id": {
+          "name": "gmail_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rfc_message_id": {
+          "name": "rfc_message_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "order_notifications_order_idx": {
+          "name": "order_notifications_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "order_notifications_retry_idx": {
+          "name": "order_notifications_retry_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "last_attempt_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "order_notifications_order_id_orders_id_fk": {
+          "name": "order_notifications_order_id_orders_id_fk",
+          "tableFrom": "order_notifications",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "order_notifications_receipt_id_payment_receipts_id_fk": {
+          "name": "order_notifications_receipt_id_payment_receipts_id_fk",
+          "tableFrom": "order_notifications",
+          "columnsFrom": [
+            "receipt_id"
+          ],
+          "tableTo": "payment_receipts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "order_notifications_valid_event": {
+          "name": "order_notifications_valid_event",
+          "value": "\"order_notifications\".\"event_type\" IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO')"
+        },
+        "order_notifications_valid_status": {
+          "name": "order_notifications_valid_status",
+          "value": "\"order_notifications\".\"status\" IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')"
+        },
+        "order_notifications_event_fields": {
+          "name": "order_notifications_event_fields",
+          "value": "(\"order_notifications\".\"event_type\" = 'COMPROBANTE_RECIBIDO' AND \"order_notifications\".\"publisher_imprint\" IS NOT NULL AND \"order_notifications\".\"receipt_id\" IS NOT NULL) OR (\"order_notifications\".\"event_type\" IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND \"order_notifications\".\"publisher_imprint\" IS NOT NULL) OR \"order_notifications\".\"event_type\" IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.orders": {
+      "name": "orders",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_number": {
+          "name": "order_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "draft_hash": {
+          "name": "draft_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consent_accepted_at": {
+          "name": "consent_accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "consent_version": {
+          "name": "consent_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_accounts": {
+          "name": "payment_accounts",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payment_guide_hash": {
+          "name": "payment_guide_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "tracking_token": {
+          "name": "tracking_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_type": {
+          "name": "order_type",
+          "type": "order_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_type": {
+          "name": "customer_type",
+          "type": "customer_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_campus": {
+          "name": "customer_campus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_name": {
+          "name": "customer_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_email": {
+          "name": "customer_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_phone": {
+          "name": "customer_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_document": {
+          "name": "customer_document",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_type": {
+          "name": "delivery_type",
+          "type": "delivery_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_campus": {
+          "name": "delivery_campus",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_zone": {
+          "name": "delivery_zone",
+          "type": "delivery_zone",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_department": {
+          "name": "delivery_department",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_city": {
+          "name": "delivery_city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_province": {
+          "name": "delivery_province",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_district": {
+          "name": "delivery_district",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_ubigeo": {
+          "name": "delivery_ubigeo",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_address": {
+          "name": "delivery_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_reference": {
+          "name": "delivery_reference",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_recipient": {
+          "name": "delivery_recipient",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "delivery_recipient_type": {
+          "name": "delivery_recipient_type",
+          "type": "recipient_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'comprador'"
+        },
+        "delivery_recipient_document": {
+          "name": "delivery_recipient_document",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivery_recipient_phone": {
+          "name": "delivery_recipient_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "subtotal_universidad": {
+          "name": "subtotal_universidad",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "subtotal_instituto": {
+          "name": "subtotal_instituto",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shipping_cost": {
+          "name": "shipping_cost",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shipping_universidad": {
+          "name": "shipping_universidad",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "shipping_instituto": {
+          "name": "shipping_instituto",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_universidad": {
+          "name": "total_universidad",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total_instituto": {
+          "name": "total_instituto",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "total": {
+          "name": "total",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "billing_ruc": {
+          "name": "billing_ruc",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "billing_business_name": {
+          "name": "billing_business_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "order_status": {
+          "name": "order_status",
+          "type": "order_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDIENTE_PAGO'"
+        },
+        "payment_status_universidad": {
+          "name": "payment_status_universidad",
+          "type": "payment_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payment_status_instituto": {
+          "name": "payment_status_instituto",
+          "type": "payment_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "submitted_receipt_universidad": {
+          "name": "submitted_receipt_universidad",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_receipt_instituto": {
+          "name": "submitted_receipt_instituto",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_to": {
+          "name": "assigned_to",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_name": {
+          "name": "assigned_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assigned_at": {
+          "name": "assigned_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejection_universidad": {
+          "name": "rejection_universidad",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejection_instituto": {
+          "name": "rejection_instituto",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "courier": {
+          "name": "courier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shipping_tracking_code": {
+          "name": "shipping_tracking_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shipping_tracking_url": {
+          "name": "shipping_tracking_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "dispatched_at": {
+          "name": "dispatched_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "delivered_at": {
+          "name": "delivered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "orders_assigned_status_idx": {
+          "name": "orders_assigned_status_idx",
+          "columns": [
+            {
+              "expression": "assigned_to",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "orders_created_at_idx": {
+          "name": "orders_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "orders_status_created_at_idx": {
+          "name": "orders_status_created_at_idx",
+          "columns": [
+            {
+              "expression": "order_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "orders_payment_status_idx": {
+          "name": "orders_payment_status_idx",
+          "columns": [
+            {
+              "expression": "payment_status_universidad",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "payment_status_instituto",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "orders_customer_campus_idx": {
+          "name": "orders_customer_campus_idx",
+          "columns": [
+            {
+              "expression": "customer_campus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        },
+        "orders_delivery_campus_idx": {
+          "name": "orders_delivery_campus_idx",
+          "columns": [
+            {
+              "expression": "delivery_campus",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "orders_payment_guide_hash_payment_guides_hash_fk": {
+          "name": "orders_payment_guide_hash_payment_guides_hash_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "payment_guide_hash"
+          ],
+          "tableTo": "payment_guides",
+          "columnsTo": [
+            "hash"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "orders_customer_campus_campuses_id_fk": {
+          "name": "orders_customer_campus_campuses_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "customer_campus"
+          ],
+          "tableTo": "campuses",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "orders_delivery_campus_campuses_id_fk": {
+          "name": "orders_delivery_campus_campuses_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "delivery_campus"
+          ],
+          "tableTo": "campuses",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "orders_submitted_receipt_universidad_payment_receipts_id_fk": {
+          "name": "orders_submitted_receipt_universidad_payment_receipts_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "submitted_receipt_universidad"
+          ],
+          "tableTo": "payment_receipts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "orders_submitted_receipt_instituto_payment_receipts_id_fk": {
+          "name": "orders_submitted_receipt_instituto_payment_receipts_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "submitted_receipt_instituto"
+          ],
+          "tableTo": "payment_receipts",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "orders_assigned_to_user_id_fk": {
+          "name": "orders_assigned_to_user_id_fk",
+          "tableFrom": "orders",
+          "columnsFrom": [
+            "assigned_to"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "orders_order_number_unique": {
+          "name": "orders_order_number_unique",
+          "columns": [
+            "order_number"
+          ],
+          "nullsNotDistinct": false
+        },
+        "orders_request_id_unique": {
+          "name": "orders_request_id_unique",
+          "columns": [
+            "request_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "orders_tracking_token_unique": {
+          "name": "orders_tracking_token_unique",
+          "columns": [
+            "tracking_token"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "orders_other_recipient_fields": {
+          "name": "orders_other_recipient_fields",
+          "value": "\"orders\".\"delivery_recipient_type\" <> 'otra_persona' OR (coalesce(\"orders\".\"delivery_recipient_document\", '') ~ '^[0-9]{8}$' AND coalesce(\"orders\".\"delivery_recipient_phone\", '') ~ '^[+]?[0-9 ()-]{7,24}$')"
+        },
+        "orders_ubigeo_zone": {
+          "name": "orders_ubigeo_zone",
+          "value": "\"orders\".\"delivery_ubigeo\" IS NULL OR (\"orders\".\"delivery_type\" = 'delivery' AND \"orders\".\"delivery_ubigeo\" ~ '^[0-9]{6}$' AND ((\"orders\".\"delivery_zone\" = 'lima_callao' AND left(\"orders\".\"delivery_ubigeo\", 4) IN ('1501', '0701')) OR (\"orders\".\"delivery_zone\" = 'provincia' AND left(\"orders\".\"delivery_ubigeo\", 4) NOT IN ('1501', '0701'))))"
+        },
+        "orders_number_format": {
+          "name": "orders_number_format",
+          "value": "\"orders\".\"order_number\" ~ '^[1-9][0-9]*-[0-9]{4}$'"
+        },
+        "orders_tracking_token_format": {
+          "name": "orders_tracking_token_format",
+          "value": "\"orders\".\"tracking_token\" ~ '^[A-Za-z0-9_-]{24,}$'"
+        },
+        "orders_customer_fields": {
+          "name": "orders_customer_fields",
+          "value": "btrim(\"orders\".\"customer_name\") <> '' AND btrim(\"orders\".\"customer_phone\") <> '' AND btrim(\"orders\".\"customer_document\") <> '' AND \"orders\".\"customer_email\" = lower(btrim(\"orders\".\"customer_email\")) AND \"orders\".\"customer_email\" ~ '^[^[:space:]@]+@[^[:space:]@]+[.][^[:space:]@]+$'"
+        },
+        "orders_community_requirements": {
+          "name": "orders_community_requirements",
+          "value": "\"orders\".\"customer_type\" <> 'comunidad_continental' OR (coalesce(btrim(\"orders\".\"customer_campus\"), '') <> '' AND \"orders\".\"customer_email\" ~ '^[^[:space:]@]+@continental[.]edu[.]pe$')"
+        },
+        "orders_delivery_fields": {
+          "name": "orders_delivery_fields",
+          "value": "btrim(\"orders\".\"delivery_address\") <> '' AND btrim(\"orders\".\"delivery_recipient\") <> '' AND (\n    (\"orders\".\"delivery_type\" = 'recojo_campus' AND coalesce(btrim(\"orders\".\"delivery_campus\"), '') <> '' AND \"orders\".\"delivery_zone\" IS NULL AND \"orders\".\"shipping_cost\" = 0)\n    OR (\"orders\".\"delivery_type\" = 'delivery' AND \"orders\".\"delivery_campus\" IS NULL AND \"orders\".\"delivery_zone\" IS NOT NULL AND (\n      (\"orders\".\"delivery_zone\" = 'lima_callao' AND \"orders\".\"shipping_cost\" = 15)\n      OR (\"orders\".\"delivery_zone\" = 'provincia' AND \"orders\".\"shipping_cost\" = 25 AND coalesce(btrim(\"orders\".\"delivery_department\"), '') <> '' AND coalesce(btrim(\"orders\".\"delivery_city\"), '') <> '')\n    ))\n  )"
+        },
+        "orders_nonnegative_amounts": {
+          "name": "orders_nonnegative_amounts",
+          "value": "\"orders\".\"subtotal_universidad\" >= 0 AND \"orders\".\"subtotal_instituto\" >= 0 AND \"orders\".\"shipping_cost\" >= 0 AND \"orders\".\"shipping_universidad\" >= 0 AND \"orders\".\"shipping_instituto\" >= 0 AND \"orders\".\"total_universidad\" >= 0 AND \"orders\".\"total_instituto\" >= 0 AND \"orders\".\"total\" >= 0"
+        },
+        "orders_totals_consistent": {
+          "name": "orders_totals_consistent",
+          "value": "\"orders\".\"shipping_cost\" = \"orders\".\"shipping_universidad\" + \"orders\".\"shipping_instituto\" AND \"orders\".\"total_universidad\" = \"orders\".\"subtotal_universidad\" + \"orders\".\"shipping_universidad\" AND \"orders\".\"total_instituto\" = \"orders\".\"subtotal_instituto\" + \"orders\".\"shipping_instituto\" AND \"orders\".\"total\" = \"orders\".\"total_universidad\" + \"orders\".\"total_instituto\""
+        },
+        "orders_imprint_amounts": {
+          "name": "orders_imprint_amounts",
+          "value": "(\n    (\"orders\".\"order_type\" = 'solo_universidad' AND \"orders\".\"subtotal_instituto\" = 0 AND \"orders\".\"shipping_instituto\" = 0)\n    OR (\"orders\".\"order_type\" = 'solo_instituto' AND \"orders\".\"subtotal_universidad\" = 0 AND \"orders\".\"shipping_universidad\" = 0)\n    OR (\"orders\".\"order_type\" = 'mixto' AND \"orders\".\"shipping_instituto\" = 0)\n  )"
+        },
+        "orders_payment_applicability": {
+          "name": "orders_payment_applicability",
+          "value": "(\n    (\"orders\".\"order_type\" = 'solo_universidad' AND \"orders\".\"payment_status_universidad\" <> 'NO_APLICA' AND \"orders\".\"payment_status_instituto\" = 'NO_APLICA')\n    OR (\"orders\".\"order_type\" = 'solo_instituto' AND \"orders\".\"payment_status_universidad\" = 'NO_APLICA' AND \"orders\".\"payment_status_instituto\" <> 'NO_APLICA')\n    OR (\"orders\".\"order_type\" = 'mixto' AND \"orders\".\"payment_status_universidad\" <> 'NO_APLICA' AND \"orders\".\"payment_status_instituto\" <> 'NO_APLICA')\n  )"
+        },
+        "orders_verified_before_preparation": {
+          "name": "orders_verified_before_preparation",
+          "value": "\"orders\".\"order_status\" NOT IN ('EN_PREPARACION', 'DESPACHADO', 'ENTREGADO') OR (\n    (\"orders\".\"order_type\" = 'solo_universidad' AND \"orders\".\"payment_status_universidad\" = 'VERIFICADO')\n    OR (\"orders\".\"order_type\" = 'solo_instituto' AND \"orders\".\"payment_status_instituto\" = 'VERIFICADO')\n    OR (\"orders\".\"order_type\" = 'mixto' AND \"orders\".\"payment_status_universidad\" = 'VERIFICADO' AND \"orders\".\"payment_status_instituto\" = 'VERIFICADO')\n  )"
+        },
+        "orders_billing_pair": {
+          "name": "orders_billing_pair",
+          "value": "(\"orders\".\"billing_ruc\" IS NULL AND \"orders\".\"billing_business_name\" IS NULL) OR (\"orders\".\"billing_ruc\" IS NOT NULL AND \"orders\".\"billing_business_name\" IS NOT NULL AND \"orders\".\"billing_ruc\" ~ '^[0-9]{11}$' AND btrim(\"orders\".\"billing_business_name\") <> '')"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payment_guides": {
+      "name": "payment_guides",
+      "schema": "",
+      "columns": {
+        "hash": {
+          "name": "hash",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "content_base64": {
+          "name": "content_base64",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.payment_receipts": {
+      "name": "payment_receipts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "upload_id": {
+          "name": "upload_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "drive_file_id": {
+          "name": "drive_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "drive_view_url": {
+          "name": "drive_view_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "uploaded_at": {
+          "name": "uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payment_receipts_order_imprint_idx": {
+          "name": "payment_receipts_order_imprint_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "publisher_imprint",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "payment_receipts_order_id_orders_id_fk": {
+          "name": "payment_receipts_order_id_orders_id_fk",
+          "tableFrom": "payment_receipts",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        },
+        "payment_receipts_upload_id_payment_uploads_id_fk": {
+          "name": "payment_receipts_upload_id_payment_uploads_id_fk",
+          "tableFrom": "payment_receipts",
+          "columnsFrom": [
+            "upload_id"
+          ],
+          "tableTo": "payment_uploads",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "payment_receipts_upload_id_unique": {
+          "name": "payment_receipts_upload_id_unique",
+          "columns": [
+            "upload_id"
+          ],
+          "nullsNotDistinct": false
+        },
+        "payment_receipts_drive_file_id_unique": {
+          "name": "payment_receipts_drive_file_id_unique",
+          "columns": [
+            "drive_file_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "payment_receipts_nonempty_fields": {
+          "name": "payment_receipts_nonempty_fields",
+          "value": "btrim(\"payment_receipts\".\"drive_file_id\") <> '' AND btrim(\"payment_receipts\".\"file_name\") <> ''"
+        },
+        "payment_receipts_https_url": {
+          "name": "payment_receipts_https_url",
+          "value": "\"payment_receipts\".\"drive_view_url\" ~ '^https://'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.payment_uploads": {
+      "name": "payment_uploads",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "order_id": {
+          "name": "order_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "publisher_imprint": {
+          "name": "publisher_imprint",
+          "type": "publisher_imprint",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "content_hash": {
+          "name": "content_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "drive_file_id": {
+          "name": "drive_file_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "file_name": {
+          "name": "file_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mime_type": {
+          "name": "mime_type",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "size": {
+          "name": "size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payment_uploads_order_idx": {
+          "name": "payment_uploads_order_idx",
+          "columns": [
+            {
+              "expression": "order_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "payment_uploads_order_id_orders_id_fk": {
+          "name": "payment_uploads_order_id_orders_id_fk",
+          "tableFrom": "payment_uploads",
+          "columnsFrom": [
+            "order_id"
+          ],
+          "tableTo": "orders",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "restrict"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "payment_uploads_drive_file_id_unique": {
+          "name": "payment_uploads_drive_file_id_unique",
+          "columns": [
+            "drive_file_id"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.account": {
+      "name": "account",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "account_id": {
+          "name": "account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_id": {
+          "name": "provider_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "id_token": {
+          "name": "id_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token_expires_at": {
+          "name": "access_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token_expires_at": {
+          "name": "refresh_token_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password": {
+          "name": "password",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "account_userId_idx": {
+          "name": "account_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "account_user_id_user_id_fk": {
+          "name": "account_user_id_user_id_fk",
+          "tableFrom": "account",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session": {
+      "name": "session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "session_userId_idx": {
+          "name": "session_userId_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {
+        "session_user_id_user_id_fk": {
+          "name": "session_user_id_user_id_fk",
+          "tableFrom": "session",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "tableTo": "user",
+          "columnsTo": [
+            "id"
+          ],
+          "onUpdate": "no action",
+          "onDelete": "cascade"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "session_token_unique": {
+          "name": "session_token_unique",
+          "columns": [
+            "token"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user": {
+      "name": "user",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email_verified": {
+          "name": "email_verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "image": {
+          "name": "image",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_email_unique": {
+          "name": "user_email_unique",
+          "columns": [
+            "email"
+          ],
+          "nullsNotDistinct": false
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.verification": {
+      "name": "verification",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "identifier": {
+          "name": "identifier",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "value": {
+          "name": "value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "verification_identifier_idx": {
+          "name": "verification_identifier_idx",
+          "columns": [
+            {
+              "expression": "identifier",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "with": {},
+          "method": "btree",
+          "concurrently": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.book_status": {
+      "name": "book_status",
+      "schema": "public",
+      "values": [
+        "ACTIVO",
+        "INACTIVO"
+      ]
+    },
+    "public.customer_type": {
+      "name": "customer_type",
+      "schema": "public",
+      "values": [
+        "comunidad_continental",
+        "publico_general"
+      ]
+    },
+    "public.delivery_type": {
+      "name": "delivery_type",
+      "schema": "public",
+      "values": [
+        "recojo_campus",
+        "delivery"
+      ]
+    },
+    "public.delivery_zone": {
+      "name": "delivery_zone",
+      "schema": "public",
+      "values": [
+        "lima_callao",
+        "provincia"
+      ]
+    },
+    "public.order_status": {
+      "name": "order_status",
+      "schema": "public",
+      "values": [
+        "PENDIENTE_PAGO",
+        "EN_PREPARACION",
+        "DESPACHADO",
+        "ENTREGADO",
+        "CANCELADO"
+      ]
+    },
+    "public.order_type": {
+      "name": "order_type",
+      "schema": "public",
+      "values": [
+        "solo_universidad",
+        "solo_instituto",
+        "mixto"
+      ]
+    },
+    "public.payment_status": {
+      "name": "payment_status",
+      "schema": "public",
+      "values": [
+        "NO_APLICA",
+        "PENDIENTE",
+        "EN_REVISION",
+        "VERIFICADO",
+        "RECHAZADO"
+      ]
+    },
+    "public.publisher_imprint": {
+      "name": "publisher_imprint",
+      "schema": "public",
+      "values": [
+        "universidad",
+        "instituto"
+      ]
+    },
+    "public.recipient_type": {
+      "name": "recipient_type",
+      "schema": "public",
+      "values": [
+        "comprador",
+        "otra_persona"
+      ]
+    }
+  },
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

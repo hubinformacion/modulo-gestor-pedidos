@@ -22,9 +22,9 @@ Rechazar exige un motivo de 5–500 caracteres, visible en seguimiento y correo.
 
 ## Experiencia del comprador
 
-Seguimiento con progreso Pedido → Pago → Preparación → Envío/Recojo → Entrega, responsable, mensaje de qué ocurre/qué hacer, comprobantes por sello, envío y cronología. Courier/guía/enlace y fechas se muestran cuando estén registrados. Enviado/listo/entregado tienen textos distintos para domicilio y biblioteca.
+Seguimiento con progreso Pedido → Pago → Preparación → Envío/Recojo → Entrega, mensaje de qué ocurre/qué hacer, comprobantes por sello, envío y cronología. Courier/guía/enlace y fechas se muestran cuando estén registrados. Enviado/listo/entregado tienen textos distintos para domicilio y biblioteca.
 
-Una zona FilePond por sello aplicable. Adjuntar guarda en Drive, registra el recibo y pasa ese pago a EN_REVISION en una transacción. No hay botón de confirmar ni paso adicional del comprador. Confirmación visual: comprobante adjunto, gestor que lo evaluará (o un gestor si no está asignado), y aviso por correo al concluir la revisión. Se admiten varios archivos durante revisión; se actualiza el último recibo y la versión del pedido para impedir decisiones desde un archivo/vista anteriores. No se duplica el correo de recepción por cada archivo adicional del mismo ciclo de revisión.
+Una zona FilePond por sello aplicable. Adjuntar guarda en Drive, registra el recibo y pasa ese pago a EN_REVISION en una transacción. No hay botón de confirmar ni paso adicional del comprador. Confirmación visual: comprobante adjunto, estado de revisión y aviso por correo al concluirla, sin identidad del gestor. Se admiten varios archivos en el lote seleccionado antes de completar la carga; al finalizar se oculta FilePond, y se actualiza el último recibo y la versión del pedido para impedir decisiones desde un archivo/vista anteriores. No se duplica el correo de recepción por cada archivo adicional del mismo ciclo de revisión.
 
 Refresco cada 35 segundos y al volver a la pestaña, solo mientras sea visible y sin formularios/cargas en edición. Pausa durante carga/revisión/despacho para no borrar borradores. Termina al cerrar el pedido. Sin botones de copiar enlace, actualizar estado o confirmar archivos.
 
@@ -38,7 +38,7 @@ Scopes propietarios: drive, gmail.send y gmail.metadata. Este último permite co
 - Tras aceptación de Gmail, guardar primero el API id/status ENVIADO. Consultar metadata después; un fallo de metadata no vuelve a enviar el correo ya aceptado.
 - Respuestas: threadId explícito, Subject idéntico al inicial, In-Reply-To al último Message-ID real y References con referencias reales y plegado RFC. Si no se pueden verificar cabeceras, las actualizaciones quedan pendientes.
 - Un lease por pedido serializa correo inicial y avisos. Evita emisiones simultáneas con referencias inconsistentes. Google no bloquea transacciones de pedidos/stock.
-- Avisos compactos para asignación, recepción de comprobante, verificación/rechazo, envío/listo para recojo y entrega. Confirmación inicial incluye guía PDF; no repetir el PDF ni toda la compra en cada actualización.
+- Avisos compactos para recepción de comprobante, verificación/rechazo, envío/listo para recojo y entrega. Asignación/liberación solo se audita en administración, sin aviso al comprador. Confirmación inicial incluye guía PDF y botón tras los importes; no repetir el PDF ni toda la compra en cada actualización.
 - Comprador como destinatario, maestro en copia estable; gestor vigente y autorizado en Bcc cuando sea distinto. Cuerpos con datos escapados y motivo/transportista/guía de la transición, no un estado posterior que haya cambiado mientras el correo esperaba.
 - Envío inmediato mediante after tras cada transición. Sin controles/card de comunicación ni avisos en seguimiento. Reintento automático de pendientes mediante /api/internal/jobs, protegido por CRON_SECRET (mínimo 32 caracteres). Cron diario en vercel.json a las 12:00 UTC, como recuperación; no sustituye el envío inmediato. Espera de un minuto entre fallos; lease de cinco minutos, hasta tres avisos por pasada. El worker reactiva registros ERROR con cinco fallos tras una hora; nunca reactiva ENVIADO. Selecciona hasta veinte pedidos por ejecución, con presupuesto temporal. Replicar CRON_SECRET privado de .env.local en Vercel Production; cron funciona solo tras despliegue.
 - Gmail puede duplicar un correo si lo aceptó y la respuesta/registro se perdió; los IDs/eventos estables y el lease reducen ese riesgo, pero send no garantiza idempotencia. Emails ya enviados a hilos separados no se mueven ni reenvían: los siguientes se vinculan a la conversación inicial verificada.
@@ -50,10 +50,10 @@ Scopes propietarios: drive, gmail.send y gmail.metadata. Este último permite co
 Pasos manuales:
 
 1. Dos autorizados abren un pedido sin asignar; tomar en ambos: solo uno consigue la atención. El otro consulta, sin controles de decisión. Liberar y tomar con otro; ver historial y ambas bandejas de participación. Revocar un gestor de revisión y verificar liberación de sus pedidos abiertos.
-2. Adjuntar PDF/JPG/PNG en seguimiento; queda en revisión sin confirmar. Adjuntar otro del mismo sello: archivo registrado, una sola recepción por ciclo. Mixto conserva el otro pago. Ver acuse y nombre del gestor.
+2. Adjuntar PDF/JPG/PNG en seguimiento; queda en revisión sin confirmar. Seleccionar varios archivos del mismo sello antes de terminar: todos registrados, una sola recepción por ciclo. Mixto conserva el otro pago. Ver únicamente acuse de revisión, sin nombre del gestor.
 3. Gestor verifica un sello y rechaza el otro con motivo. El comprador ve el motivo, sube el nuevo y entra a revisión directamente. Verificar ambos permite preparación.
 4. Registrar salida con courier/guía/enlace; comprador ve por dónde va y recibe correo. Recojo avisa disponible en biblioteca. Registrar entrega y revisar nombre/fecha/historial.
-5. En Gmail, comprobar un thread por pedido: inicial, asignación, pagos, envío y entrega. Revisar el hilo en comprador, maestro y gestor; comparar threadId/referencias reales si hubiera un problema. En Gmail la vista de conversación del usuario debe estar activada para visualizar agrupación.
+5. En Gmail, comprobar un thread por pedido: inicial, recepción de comprobantes, pagos, envío y entrega. Sin correo de asignación. Revisar el hilo en comprador, maestro y gestor; comparar threadId/referencias reales si hubiera un problema. En Gmail la vista de conversación del usuario debe estar activada para visualizar agrupación.
 6. Interrumpir Google en un entorno de revisión: los estados/archivos permanecen guardados; avisos pendientes. Restaurar y comprobar la recuperación automática en el cron configurado; no reenviar los ya enviados. Revisar móvil, tabs con teclado y preservación de formularios al refresco.
 
 Sin suites automatizadas ni pedidos/usuarios ficticios. La revisión visual de las nuevas pantallas y el envío de transiciones reales se completa con sesiones/datos de revisión autorizados.
@@ -62,7 +62,7 @@ Comprobaciones realizadas: migración 0007 aplicada en Neon; lectura de cabecera
 
 ## Comprobantes y correo simplificado
 
-FilePond sin créditos, sin nombre de archivo visible; al completarse retira solo el elemento visual, sin borrar Drive ni el registro. La confirmación y estado EN_REVISION permanecen; no mostrar un archivo descargable al comprador. El gestor conserva nombre/fecha y enlace directo drive_view_url.
+FilePond sin créditos, preview ni nombre de archivo visible; al completarse todo el lote oculta la zona de carga, sin borrar Drive ni el registro. EN_REVISION conserva solo el acuse; RECHAZADO habilita nuevamente la carga de ese sello. La confirmación y estado EN_REVISION permanecen; no mostrar un archivo descargable al comprador. El gestor conserva nombre/fecha y enlace directo drive_view_url.
 
 Carpeta Drive dedicada a comprobantes: lectores nominados según authorized_emails, sin permisos públicos ni invitaciones por email. Sincronización al cambiar autorizados, consultar detalle administrativo y en cron. Revocación de sesión inmediata; retirada de permiso Drive gestionado automática, eventualmente recuperada por cron si falla Google. drive_reader_grants registra únicamente permisos de lectores gestionados. Propietarios/editores preexistentes y permisos por grupos/dominio se administran en Google; no se retiran automáticamente. Revisar que la carpeta no tenga acceso organizacional externo a este mecanismo. Restricciones Workspace de compartir siguen aplicándose.
 
@@ -73,3 +73,15 @@ Correo inicial: recepción, botón de seguimiento/pago, sello(s) e importe(s), a
 Revisión adicional: cargar un archivo y verificar confirmación sin nombre ni marca FilePond; abrirlo como gestor en Drive con la cuenta autorizada. Comprobar ausencia de cards/controles de avisos en ambas pantallas. En un pedido nuevo, revisar sello/importes y PDF del correo inicial; cambiar un estado y comprobar el botón al inicio y mismo hilo. Para fallos, usar entorno de revisión y recuperación cron sin operar pedidos reales únicamente para comprobar implementación.
 
 Comprobaciones del ajuste: lint, tipos y build de producción correctos; migración 0008 aplicada y lectores Drive sincronizados con la cuenta propietaria; ruta cron sin credenciales devuelve 401. No se ejecutó el worker de envíos contra pedidos operativos ni se enviaron mensajes de prueba.
+
+## Cierre y privacidad del seguimiento
+
+Sin nombre/identidad del gestor en el seguimiento, acuses ni cuerpos de correo; eventos de asignación/liberación se filtran en la consulta pública, manteniendo el historial administrativo. El gestor autorizado continúa recibiendo Bcc operativo, sin aparecer en el contenido para el comprador. Migración 0009 elimina exclusivamente ASIGNADO no ENVIADO; los avisos ya aceptados por Gmail no se alteran.
+
+Entrega completada presenta ilustración SVG propia de libros, mensaje de cierre y fecha registrada. Movimiento CSS suave durante doce segundos, desactivado con prefers-reduced-motion. Card de entrega unifica dirección, destinatario, courier/guía/enlace y fechas; recojo conserva instrucciones de documento hasta la entrega. Historial en sidebar derecho del seguimiento y administración; móvil mantiene el flujo de columna. Al entregar se oculta el panel de depósitos, conservando detalle/importes/historial.
+
+No revalidar pantallas desde cada archivo de una Server Action: puede desmontar la carga al actualizar EN_REVISION tras el primer archivo. Refresco cliente al terminar el lote y solo si no hay cargas/selecciones de otro sello; archivos fallidos permanecen seleccionados, sin refresco automático que los borre. El servidor conserva validación tipo/tamaño, idempotencia y posibilidad de finalizar el lote en revisión.
+
+Revisión manual del ajuste: seleccionar varias imágenes/PDF, comprobar ausencia de preview y que todos terminan antes de desaparecer la carga. Mixto: cargar en ambos sellos simultáneamente; ningún refresco interrumpe el otro. Fallo parcial: reintentar el archivo retenido. Recargar EN_REVISION: solo acuse; rechazar un sello: vuelve solo esa carga. Tomar atención: sin correo de asignación, identidad únicamente en admin. Pedido ENTREGADO: cierre SVG y datos de entrega, sin depósitos; revisar móvil y movimiento reducido. Correo inicial nuevo: importes antes del botón.
+
+Comprobaciones de este ajuste: migración 0009 aplicada, plugin de preview retirado mediante pnpm, lint/tipos/build correctos. No se cambiaron estados de pedidos operativos ni se enviaron correos de prueba; revisión visual y carga múltiple quedan en los pasos manuales descritos.

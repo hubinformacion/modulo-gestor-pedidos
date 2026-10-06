@@ -26,7 +26,7 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 **Estado:** código implementado; lint/tipos/build correctos y cabeceras/bloque/simulador verificados por HTTP local. Pendiente de revisión visual/final y aprobación para integrar. Dominios/proyecto Vercel/página WordPress definitivos pendientes; no considerar el despliegue realizado.
 
-**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migraciones 0007 y 0008 aplicadas; comprobantes privados con enlace directo Drive y lectores sincronizados, correos automáticos sin gestión manual; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
+**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migraciones 0007–0009 aplicadas; seguimiento sin identidad del gestor, sin correo de asignación, cierre SVG y carga sin preview que desaparece al finalizar; comprobantes privados con enlace directo Drive y lectores sincronizados, correos automáticos sin gestión manual; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
 
 **Entrega:** CSP frame-ancestors sin X-Frame-Options contradictorio, dominios configurables, altura postMessage segura, login externo para iframe, bloque/simulador WordPress bajo src, .env.example completo y configuración Vercel con pnpm.
 

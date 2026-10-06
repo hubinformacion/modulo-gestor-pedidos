@@ -19,7 +19,7 @@ export async function processBackgroundJobs() {
   });
   const pending = await withReadDatabase((db) => db.select({ token: orders.trackingToken }).from(orders).innerJoin(orderEmails, eq(orderEmails.orderId, orders.id)).where(and(
     or(isNull(orderEmails.leaseUntil), lt(orderEmails.leaseUntil, new Date())),
-    or(ne(orderEmails.status, "ENVIADO"), exists(db.select({ id: orderNotifications.id }).from(orderNotifications).where(and(eq(orderNotifications.orderId, orders.id), ne(orderNotifications.status, "ENVIADO"))))),
+    or(ne(orderEmails.status, "ENVIADO"), exists(db.select({ id: orderNotifications.id }).from(orderNotifications).where(and(eq(orderNotifications.orderId, orders.id), ne(orderNotifications.eventType, "ASIGNADO"), ne(orderNotifications.status, "ENVIADO"))))),
   )).orderBy(asc(orderEmails.lastAttemptAt), asc(orders.createdAt)).limit(20));
   let processed = 0;
   for (const row of pending) {
