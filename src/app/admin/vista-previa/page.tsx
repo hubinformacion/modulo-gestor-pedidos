@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { asc, eq, inArray } from "drizzle-orm";
-import { withDatabase } from "@/db";
+import { withDatabase, withReadDatabase } from "@/db";
 import { books, campuses as campusTable } from "@/db/schema";
 import { demoBooks } from "@/db/seeds/demo-books";
 import { OrderWizard } from "@/components/order-wizard/wizard";
@@ -13,8 +13,8 @@ export const metadata: Metadata = { title: "Vista previa del pedido" };
 export default async function PreviewPage() {
   await requirePageAccess();
   const requestHeaders = await headers();
-  const [catalog, campusRows] = await withDatabase(async (db) => {
-    await getAuthorizedSession(db, requestHeaders);
+  await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  const [catalog, campusRows] = await withReadDatabase(async (db) => {
     return Promise.all([db.select({
       id: books.id, inventoryCode: books.inventoryCode, title: books.title, author: books.author,
       publisherImprint: books.publisherImprint, standardPrice: books.standardPrice,

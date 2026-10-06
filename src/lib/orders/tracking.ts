@@ -1,13 +1,13 @@
 import "server-only";
 import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
-import { withDatabase } from "@/db";
+import { withReadDatabase } from "@/db";
 import { authorizedEmails, books, orderActivity, orderEmails, orderItems, orderNotifications, orders, paymentReceipts, user } from "@/db/schema";
 import { trackingTokenSchema } from "./submission";
 
 export async function getTrackedOrder(token: unknown) {
   const valid = trackingTokenSchema.safeParse(token);
   if (!valid.success) return null;
-  return withDatabase(async (db) => {
+  return withReadDatabase(async (db) => {
     const [order] = await db.select().from(orders).where(eq(orders.trackingToken, valid.data));
     if (!order) return null;
     const [items, receipts, mail, pendingNotifications, handler, activity] = await Promise.all([

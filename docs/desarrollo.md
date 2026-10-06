@@ -110,3 +110,5 @@ Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/opera
 Fase 6: configuración/protocolo en `src/lib/iframe`, puente en `src/components/iframe`, bloque y simulador en `src/iframe`; `vercel.json` en raíz por convención del proveedor. Variables completas en `.env.example`, incluidas WORDPRESS_ORIGINS y Corepack para Vercel. Revisión y despliegue: [iframe-wordpress.md](iframe-wordpress.md).
 
 Migración 0007: atención asignada/historial, entrega y metadata/lease de Gmail. Contrato: [atencion-y-comunicacion.md](atencion-y-comunicacion.md). .env.example incluye gmail.metadata propietario; reponer ese refresh token también en Vercel.
+
+Lecturas paralelas de páginas (detalle/lista/inventario/configuración/seguimiento) usan `withReadDatabase`: Drizzle Neon HTTP, SELECT solo en su tipo, timeout y un reintento únicamente de fallos transitorios de lectura. Autorización y transacciones mantienen Pool por petición, sin reejecutar mutaciones. Errores del driver se normalizan a Error sin causa cruda: React no puede serializar ErrorEvent, y los logs excluyen SQL/params/credenciales.

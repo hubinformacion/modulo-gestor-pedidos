@@ -20,7 +20,7 @@ export function safeErrorDetails(error: unknown) {
     if (Array.isArray(apiError?.errors)) {
       for (const item of apiError.errors) details.reason ??= machineCode(record(item)?.reason);
     }
-    current = record(current.cause);
+    current = record(current.cause ?? current.sourceError);
   }
   return details;
 }

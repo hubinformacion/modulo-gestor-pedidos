@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { asc } from "drizzle-orm";
-import { withDatabase } from "@/db";
+import { withDatabase, withReadDatabase } from "@/db";
 import { authorizedEmails, bankAccounts, campuses } from "@/db/schema";
 import { requirePageAccess, getAuthorizedSession } from "@/lib/access";
 import { isMasterEmail } from "@/lib/access-policy";
@@ -20,9 +20,9 @@ const dateFormat = new Intl.DateTimeFormat("es-PE", {
 export default async function AuthorizedEmailsPage() {
   const actor = await requirePageAccess();
   const requestHeaders = await headers();
-  const [rows, campusRows, bankRows] = await withDatabase(async (db) => {
-    // Recheck at the data source, including when a layout is reused by Next.js.
-    await getAuthorizedSession(db, requestHeaders);
+  // Recheck at the data source, including when a layout is reused by Next.js.
+  await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  const [rows, campusRows, bankRows] = await withReadDatabase(async (db) => {
     return Promise.all([
       db.select().from(authorizedEmails).orderBy(asc(authorizedEmails.createdAt), asc(authorizedEmails.email)),
       db.select().from(campuses).orderBy(asc(campuses.name)),

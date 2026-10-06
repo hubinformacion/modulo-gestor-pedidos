@@ -90,3 +90,5 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 ## Flujo vigente de atención y comunicación
 
 Ver [docs/atencion-y-comunicacion.md](docs/atencion-y-comunicacion.md): sustituye confirmación manual y atención sin responsable. Migración 0007 aplicada en Neon. Cada estado/gestor queda auditado; correo serializado por pedido con cabeceras reales verificadas (gmail.metadata), sin reenviar correos aceptados por fallos de metadata. Dos conversaciones existentes reparadas sin envío.
+
+- Lecturas de pantalla paralelas por Neon HTTP (`withReadDatabase`); Pool para auth/tx. Nunca reintentar callbacks de mutación. No propagar ErrorEvent ni error de driver con SQL/params como causa hacia RSC; normalizar y registrar solo códigos seguros.

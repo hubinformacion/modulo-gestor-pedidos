@@ -1,7 +1,7 @@
 import "server-only";
 import { headers } from "next/headers";
 import { and, asc, count, desc, eq, exists, ilike, isNull, ne, or, sql } from "drizzle-orm";
-import { withDatabase } from "@/db";
+import { withDatabase, withReadDatabase } from "@/db";
 import { books, orderActivity, orderEmails, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
 import type { z } from "zod";
@@ -9,8 +9,8 @@ import { filterSchema } from "./validation";
 
 export async function listOrders(filters: z.infer<typeof filterSchema>) {
   const requestHeaders = await headers();
-  return withDatabase(async (db) => {
-    const actor = await getAuthorizedSession(db, requestHeaders);
+  const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  return withReadDatabase(async (db) => {
     const term = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
     const condition = and(
       filters.owner === "mine" ? eq(orders.assignedTo, actor.userId) : filters.owner === "unassigned" ? and(isNull(orders.assignedTo), ne(orders.orderStatus, "ENTREGADO"), ne(orders.orderStatus, "CANCELADO")) : filters.owner === "participated" ? exists(db.select({ id: orderActivity.id }).from(orderActivity).where(and(eq(orderActivity.orderId, orders.id), eq(orderActivity.actorUserId, actor.userId)))) : undefined,
@@ -33,8 +33,8 @@ export async function listOrders(filters: z.infer<typeof filterSchema>) {
 
 export async function orderDetail(id: string) {
   const requestHeaders = await headers();
-  return withDatabase(async (db) => {
-    await getAuthorizedSession(db, requestHeaders);
+  await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  return withReadDatabase(async (db) => {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return null;
     const [items, receipts, activity, mail, notifications] = await Promise.all([
@@ -50,8 +50,8 @@ export async function orderDetail(id: string) {
 
 export async function inventoryRows() {
   const requestHeaders = await headers();
-  return withDatabase(async (db) => {
-    await getAuthorizedSession(db, requestHeaders);
+  await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  return withReadDatabase(async (db) => {
     const rows = await db.select().from(books).orderBy(asc(books.title), asc(books.id));
     return rows.map((row) => ({ id: row.id, inventoryCode: row.inventoryCode, title: row.title, author: row.author, publisherImprint: row.publisherImprint, standardPrice: row.standardPrice, communityPrice: row.communityPrice, stock: row.stock, status: row.status, version: row.updatedAt.toISOString() }));
   });
