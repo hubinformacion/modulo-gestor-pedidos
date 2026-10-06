@@ -12,7 +12,7 @@ Inter, blanco, acento `#6802C1`, Instituto `#e4000b`, sin logos ni landing. Nave
 
 ## Atención, pagos, entrega y correos
 
-Contrato vigente en [atencion-y-comunicacion.md](atencion-y-comunicacion.md). Tabla sin columnas de sello; bandejas por gestor y detalle guiado Atención/Pagos/Preparación/Entrega. Cualquier autorizado puede tomar disponibles; solo el asignado cambia pagos/estado. Historial por actor y liberación automática al revocar el acceso. Comprobantes directamente en revisión sin confirmar; rechazo con motivo y correo. Courier/guía/URL/fechas al despachar; aviso de envío/listo y entrega. Thread de Gmail con cabeceras reales y envío serializado; metadata propietario requerida.
+Contrato vigente en [atencion-y-comunicacion.md](atencion-y-comunicacion.md). Tabla sin columnas de sello; bandejas por gestor y detalle guiado Atención/Pagos/Distribución/Entrega. Cualquier autorizado puede tomar disponibles; solo el asignado cambia pagos/estado. Historial por actor y liberación automática al revocar el acceso. Comprobantes directamente en revisión sin confirmar; rechazo con motivo y correo. Courier/guía/URL/fechas al despachar; aviso de envío/listo y entrega. Thread de Gmail con cabeceras reales y envío serializado; metadata propietario requerida.
 
 ## Inventario
 

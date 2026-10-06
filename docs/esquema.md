@@ -29,7 +29,7 @@ La BD exige stock/precios no negativos, cantidades positivas y `subtotal = unit_
 
 El flete se guarda como total y por cuenta (`shipping_cost`, `shipping_universidad`, `shipping_instituto`): recojo 0, Lima/Callao 15, provincia 25. En mixtos se asigna exclusivamente a Universidad; en pedidos de un sello se asigna a su cuenta. La dirección de entrega conserva también la dirección de biblioteca al recoger. La revisión de fase 3 añade campus dinámicos y FKs restrictivas, provincia/distrito/ubigeo y tipo/documento/teléfono de quien recibe. La migración inicial de campus incorpora los ocho proporcionados por el usuario una sola vez; `db:seed` no restaura campus eliminados.
 
-Los estados de pago se proporcionan explícitamente al crear: el sello que no corresponde exige `NO_APLICA`. La BD impide preparación, despacho o entrega sin verificación de todos los pagos aplicables. La creación y las cargas de fase 4 aplican el recálculo/derivación desde fuentes del servidor. Las transiciones administrativas pertenecen a fase 5. La consistencia entre filas (totales vs. ítems, sello del libro/comprobante vs. pedido) corresponde a esas transacciones, además de Zod en cada acción.
+Los estados de pago se proporcionan explícitamente al crear: el sello que no corresponde exige `NO_APLICA`. La BD impide distribución, despacho o entrega sin verificación de todos los pagos aplicables. La creación y las cargas de fase 4 aplican el recálculo/derivación desde fuentes del servidor. Las transiciones administrativas pertenecen a fase 5. La consistencia entre filas (totales vs. ítems, sello del libro/comprobante vs. pedido) corresponde a esas transacciones, además de Zod en cada acción.
 
 ## Seed
 

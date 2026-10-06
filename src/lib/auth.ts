@@ -69,6 +69,7 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
     account: { accountLinking: { enabled: false } },
     session: {
       expiresIn: 60 * 60 * 24 * 7,
+      updateAge: 60 * 60 * 24,
       cookieCache: { enabled: false },
     },
     advanced: { cookiePrefix: "fec" },

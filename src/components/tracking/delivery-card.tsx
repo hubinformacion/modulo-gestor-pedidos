@@ -1,14 +1,15 @@
 import { ArrowUpRight, MapPin, PackageCheck, Truck } from "lucide-react";
+import { courierEstimate } from "@/lib/orders/courier";
 import type { orders } from "@/db/schema";
 
-type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
+type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 
 export function DeliveryCard({ order }: { order: DeliveryOrder }) {
   const pickup = order.deliveryType === "recojo_campus";
   const sent = ["DESPACHADO", "ENTREGADO"].includes(order.orderStatus);
   const delivered = order.orderStatus === "ENTREGADO";
-  const status = delivered ? "Entregado" : order.orderStatus === "CANCELADO" ? "Cancelado" : sent ? pickup ? "Disponible para recojo" : "En camino" : "Pendiente de preparación";
+  const status = delivered ? "Entregado" : order.orderStatus === "CANCELADO" ? "Cancelado" : sent ? pickup ? "Disponible para recojo" : "En camino" : "Pendiente de distribución";
   const Icon = delivered ? PackageCheck : pickup ? MapPin : Truck;
   return <section className="overflow-hidden rounded-2xl border border-border bg-white">
     <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4 sm:px-6">
@@ -26,6 +27,7 @@ export function DeliveryCard({ order }: { order: DeliveryOrder }) {
         {pickup && sent && !delivered ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Lleva tu documento de identidad para recoger las publicaciones.</p> : null}
       </div>
     </div>
+    {!pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="border-t border-border bg-secondary/20 px-5 py-3 text-xs leading-6 text-muted-foreground sm:px-6">{courierEstimate(order.deliveryZone)}</p> : null}
     {!pickup && sent ? <div className="flex flex-wrap items-center gap-x-8 gap-y-4 border-t border-border bg-muted/20 p-5 sm:px-6">
       <div><p className="text-[10px] text-muted-foreground">Courier</p><p className="mt-1 text-sm font-semibold">{order.courier || "No registrado"}</p></div>
       <div><p className="text-[10px] text-muted-foreground">Número de guía</p><p className="mt-1 text-sm font-semibold tabular-nums">{order.shippingTrackingCode || "No registrado"}</p></div>

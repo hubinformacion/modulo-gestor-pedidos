@@ -23,7 +23,7 @@ export function PreviewCompletion({ quote, buyer, delivery, campuses }: {
       <ol className="mt-3 list-decimal space-y-2 pl-5 text-xs leading-6 text-muted-foreground">
         <li>Recibirás el número de pedido, su enlace de seguimiento y la guía de pago en tu correo.</li>
         <li>{quote.orderType === "mixto" ? "Realizarás dos depósitos independientes. El envío se abonará a la cuenta de Universidad Continental." : "Realizarás el depósito según la cuenta indicada en la guía de pago."}</li>
-        <li>Adjuntarás tus comprobantes en el seguimiento. La preparación comenzará cuando se verifiquen los pagos requeridos.</li>
+        <li>Adjuntarás tus comprobantes en el seguimiento. La distribución comenzará cuando se verifiquen los pagos requeridos.</li>
       </ol>
     </div>
   </section>;

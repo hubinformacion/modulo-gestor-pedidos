@@ -91,7 +91,7 @@ El Pool de Neon es propio de cada petición y se cierra al terminar. Los hooks a
 - Si hace falta una comprobación técnica puntual, usar `pnpm lint`, `pnpm typecheck` o `pnpm build`; no repetir comprobaciones sin motivo ni imponer una batería automática.
 - Al entregar, describir cambios, comprobaciones realmente realizadas y pendientes; proporcionar pasos de revisión manual concretos.
 - Google/Neon reales requieren sus credenciales; no afirmar que funcionan en producción sin revisarlos.
-- No enviar correos reales, publicar ni alterar servicios externos fuera del alcance autorizado.
+- Los avisos operativos y reintentos se envían automáticamente por las acciones/cola, sin aprobación por mensaje; no reenviar pruebas descartadas. No publicar ni alterar otros servicios externos fuera del alcance autorizado.
 
 ## Criterio visual
 
@@ -113,6 +113,6 @@ Migración 0007: atención asignada/historial, entrega y metadata/lease de Gmail
 
 Lecturas paralelas de páginas (detalle/lista/inventario/configuración/seguimiento) usan `withReadDatabase`: Drizzle Neon HTTP, SELECT solo en su tipo, timeout y un reintento únicamente de fallos transitorios de lectura. Autorización y transacciones mantienen Pool por petición, sin reejecutar mutaciones. Errores del driver se normalizan a Error sin causa cruda: React no puede serializar ErrorEvent, y los logs excluyen SQL/params/credenciales.
 
-Migración 0008: permisos lectores Drive gestionados en drive_reader_grants. Enlaces directos para gestores; comprador solo ve confirmación. Reconciliación ACL y recuperación automática de correos en /api/internal/jobs; CRON_SECRET en .env.example, cron diario en vercel.json. No ejecutar el worker contra pedidos operativos como comprobación técnica: puede enviar avisos pendientes.
+Migración 0008: permisos lectores Drive gestionados en drive_reader_grants. Enlaces directos para gestores; comprador solo ve confirmación. Reconciliación ACL y recuperación automática de correos en /api/internal/jobs; CRON_SECRET en .env.example, cron diario en vercel.json. Avisos operativos y reintentos automáticos; no hay aprobación humana por correo. No reenviar pruebas descartadas por el usuario.
 
 Consumo y refresco actual: sin polling cada 35 segundos, actualizaciones tras acciones y retorno a pestaña/ventana. HTTP en lecturas, Pool WebSocket transitorio en auth/tx. [Consumo Neon](consumo-neon.md) recoge límites actuales y seguimiento de uso. Ilustraciones estáticas en SVG/PNG, regenerar con pnpm email:assets; PNG incluidos en tracing.

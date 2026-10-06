@@ -4,7 +4,7 @@ import { Tabs } from "@base-ui/react/tabs";
 import { Check, ChevronLeft, ChevronRight } from "lucide-react";
 const stages = [
   { title: "Atención", hint: "Responsable y revisión" }, { title: "Pagos", hint: "Comprobantes por sello" },
-  { title: "Preparación", hint: "Publicaciones y salida" }, { title: "Entrega", hint: "Seguimiento y cierre" },
+  { title: "Distribución", hint: "Publicaciones y salida" }, { title: "Entrega", hint: "Seguimiento y cierre" },
 ];
 export function AttentionWizard({ current, completed, panels }: { current: number; completed: boolean; panels: ReactNode[] }) {
   const [selected, setSelected] = useState(current);

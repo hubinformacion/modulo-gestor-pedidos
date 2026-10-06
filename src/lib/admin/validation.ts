@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const orderLabels = { PENDIENTE_PAGO: "Pendiente de pago", EN_PREPARACION: "En preparación", DESPACHADO: "Despachado", ENTREGADO: "Entregado", CANCELADO: "Cancelado" } as const;
+export const orderLabels = { PENDIENTE_PAGO: "Pendiente de pago", EN_PREPARACION: "En distribución", DESPACHADO: "Despachado", ENTREGADO: "Entregado", CANCELADO: "Cancelado" } as const;
 export const paymentLabels = { NO_APLICA: "No aplica", PENDIENTE: "Sin comprobante", EN_REVISION: "En revisión", VERIFICADO: "Verificado", RECHAZADO: "Rechazado" } as const;
 export const assignmentSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), operation: z.enum(["claim", "release"]) });
 export type ActionResult = { success: boolean; message: string };

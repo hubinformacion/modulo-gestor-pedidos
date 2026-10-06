@@ -13,3 +13,5 @@ Con unos cien pedidos/mes y sesiones cortas, se espera que Free sea suficiente, 
 Revisar el panel Usage del proyecto: CU-hours, almacenamiento y transferencia del período. No se ha accedido a métricas reales ni se ha alterado el compute del proyecto. Comprobantes se guardan en Drive, no como archivos binarios en Neon; guías PDF snapshot pequeñas en BD sí ocupan almacenamiento. Revisar consumo tras la primera semana operativa antes de decidir si necesita un plan de pago.
 
 Botón de icono para actualización manual sin recargar documento en seguimiento, bandeja y detalle. Consulta solo al pulsar (o retornar a pestaña bajo las reglas anteriores), sin intervalo periódico. Deshabilitado en carga/edición y durante el refresh para evitar consultas simultáneas y pérdida de borradores.
+
+Sesión renovada a través de proxy solo cuando cumple updateAge de un día, sin intervalo de navegador ni cachear autorización. Cola drena avisos concurrentes dentro del presupuesto de respuesta; recuperación de reinicios mediante cron, sin consultas periódicas del seguimiento.

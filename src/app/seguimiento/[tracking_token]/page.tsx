@@ -1,3 +1,7 @@
+import { after } from "next/server";
+import { needsOrderMailRecovery } from "@/lib/orders/mail-recovery";
+import { deliverOrderEmail } from "@/lib/orders/email";
+import { reportServerError } from "@/lib/server-diagnostics";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,6 +27,10 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
   const tracking = await getTrackedOrder(tracking_token);
   if (!tracking) notFound();
   const { order, items, activity } = tracking;
+  after(async () => {
+    try { if (await needsOrderMailRecovery(order.id)) await deliverOrderEmail(order.trackingToken); }
+    catch (error) { reportServerError("order.mail.recovery", error); }
+  });
   const banks = await getOrderBankAccounts(order.paymentAccounts);
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");
@@ -48,7 +56,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
     </div><aside className="space-y-5"><section className="rounded-xl border border-border p-5"><h2 className="text-sm font-semibold">Detalle de tu compra</h2><ul className="mt-4 space-y-3">{items.map((item, index) => <li key={index} className="flex justify-between gap-3 text-xs"><div><p className="font-medium leading-5">{item.quantity} × {item.title}</p><p className="mt-1 text-[10px] text-muted-foreground">{formatMoney(toCents(item.unitPrice))} c/u</p></div><span className="shrink-0 tabular-nums">{formatMoney(toCents(item.subtotal))}</span></li>)}</ul><div className="mt-5 space-y-3 border-t border-border pt-4 text-xs"><div className="flex justify-between"><span>Publicaciones</span><span>{formatMoney(toCents(order.subtotalUniversidad) + toCents(order.subtotalInstituto))}</span></div><div className="flex justify-between"><span>Costo por envío</span><span>{formatMoney(toCents(order.shippingCost))}</span></div><div className="flex justify-between text-base font-semibold"><span>Total</span><span>{formatMoney(toCents(order.total))}</span></div></div></section>
 
       {order.orderType === "mixto" ? <section className="rounded-xl border border-border p-5"><h2 className="text-sm font-semibold">Desglose por cuenta</h2>{applicable.map((imprint) => <div key={imprint} className="mt-4 space-y-2"><ImprintBadge imprint={imprint} /><div className="flex justify-between text-xs text-muted-foreground"><span>Publicaciones</span><span>{formatMoney(toCents(imprint === "universidad" ? order.subtotalUniversidad : order.subtotalInstituto))}</span></div>{imprint === "universidad" ? <div className="flex justify-between text-xs text-muted-foreground"><span>Costo por envío</span><span>{formatMoney(toCents(order.shippingUniversidad))}</span></div> : null}<div className="flex justify-between text-xs font-semibold"><span>Total de la cuenta</span><span>{formatMoney(toCents(imprint === "universidad" ? order.totalUniversidad : order.totalInstituto))}</span></div></div>)}</section> : null}
-      <section className="rounded-xl border border-border p-5"><h2 className="text-sm font-semibold">Avances de tu pedido</h2><ol className="mt-4 space-y-4">{events.slice(0, 12).map((event, index) => <li key={index} className="border-l-2 border-primary/20 pl-4"><p className="text-xs leading-6">{event.detail}</p><p className="mt-1 text-[10px] text-muted-foreground">{dateFormat.format(event.createdAt)}</p></li>)}</ol>{!events.length ? <p className="mt-3 text-xs text-muted-foreground">Tu pedido está registrado. Mostraremos aquí sus avances.</p> : null}</section>
+      <section className="rounded-xl border border-border p-5"><h2 className="text-sm font-semibold">Avances de tu pedido</h2><ol tabIndex={0} aria-label="Avances de tu pedido" className="mt-4 max-h-80 space-y-4 overflow-y-auto overscroll-contain pr-2 outline-none focus-visible:ring-2 focus-visible:ring-primary">{events.slice(0, 12).map((event, index) => <li key={index} className="border-l-2 border-primary/20 pl-4"><p className="text-xs leading-6">{event.detail}</p><p className="mt-1 text-[10px] text-muted-foreground">{dateFormat.format(event.createdAt)}</p></li>)}</ol>{!events.length ? <p className="mt-3 text-xs text-muted-foreground">Tu pedido está registrado. Mostraremos aquí sus avances.</p> : null}</section>
     </aside></div>
   </main>;
 }

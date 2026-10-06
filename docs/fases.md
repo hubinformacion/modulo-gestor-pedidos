@@ -47,3 +47,5 @@ Ajuste vigente fase 6: card de pagos conservada al entregar, wizard administrati
 Conteo de cierre: cinco fases completadas e integradas localmente; queda una (fase 6) para revisión/aprobación y despliegue Vercel/WordPress con dominios reales y comprobación de PDF/Drive/Gmail en producción. Avisos mixtos agrupados, gráficos estáticos, card de pagos uniforme y refresco sin polling implementados. Consumo en [consumo-neon.md](consumo-neon.md).
 
 Último ajuste fase 6: ubicación interna editable de bibliotecas con snapshot/enlace Maps, filtro de bandeja desplegable y evidencia fotográfica opcional al cerrar recojo, privada para gestores. Migración 0011 aplicada; pendiente de revisión manual junto al despliegue final.
+
+Ajuste vigente: FilePond para evidencia de recojo, Distribución como término visible, plazos courier, historiales con scroll y corrección de renovación/error temporal de sesión. Cola de sello único diagnosticada; pruebas 8-2026 descartadas a petición del usuario, sin envío. Flujo operativo automático sin aprobaciones por mensaje. Fase 6 sigue pendiente de revisión e integración.

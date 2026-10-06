@@ -9,6 +9,7 @@ import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
+import { courierEstimate } from "@/lib/orders/courier";
 import { readMailArt, type MailArt } from "@/lib/orders/mail-art";
 import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
 import { imprintNames } from "@/lib/orders/types";
@@ -149,9 +150,9 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const grouped = payload.scope === "pedido";
   const notices: Record<string, { title: string; body: string }> = {
     COMPROBANTE_RECIBIDO: { title: grouped ? "Comprobantes recibidos" : `Comprobante recibido · ${imprint}`, body: grouped ? "Ya recibimos los comprobantes de ambos sellos. Te avisaremos cuando termine la revisión de los pagos." : "Tu comprobante ya está adjunto al pedido. Te avisaremos al terminar la revisión." },
-    PAGO_VERIFICADO: { title: grouped ? "Pagos confirmados" : `Pago verificado · ${imprint}`, body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Ya estamos preparando tus publicaciones." : "Este pago está verificado. Continuaremos con la preparación cuando se verifique el otro sello." },
+    PAGO_VERIFICADO: { title: grouped ? "Pagos confirmados" : `Pago verificado · ${imprint}`, body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Tus publicaciones pasan a distribución." : "Este pago está verificado. Continuaremos con la distribución cuando se verifique el otro sello." },
     PAGO_RECHAZADO: { title: `Necesitamos otro comprobante · ${imprint}`, body: payload.reason || "Revisa el comprobante y adjunta uno nuevo desde tu seguimiento." },
-    DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""}` },
+    DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""} ${courierEstimate(payload.deliveryZone || tracking.order.deliveryZone)}` },
     ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
   };
   const notice = notices[notification.eventType];

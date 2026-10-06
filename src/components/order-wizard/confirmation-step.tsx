@@ -1,3 +1,4 @@
+import { courierEstimate } from "@/lib/orders/courier";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatMoney } from "@/lib/orders/money";
@@ -46,6 +47,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
             {delivery.reference ? <div className="sm:col-span-2"><Detail label="Referencia" value={delivery.reference} /></div> : null}
           </> : null}
         </dl>
+        {delivery.type === "delivery" ? <p className="mt-4 text-xs leading-6 text-muted-foreground">{courierEstimate(location?.zone)}</p> : null}
         {delivery.type === "recojo_campus" && campus ? <div className="mt-5"><CampusLocation campus={campus} /></div> : null}
       </section>
 

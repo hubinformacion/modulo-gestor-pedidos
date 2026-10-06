@@ -1,6 +1,7 @@
 import { CampusLocation } from "./campus-location";
 import { Field, RadioCard, SelectField, type FieldErrors } from "./fields";
 import { departments, districtsFor, provincesFor } from "@/lib/orders/geography";
+import { courierEstimate } from "@/lib/orders/courier";
 import { resolveRecipient } from "@/lib/orders/recipient";
 import type { BuyerDraft, Campus, DeliveryDraft } from "@/lib/orders/types";
 
@@ -53,6 +54,7 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
           <Field id="delivery-reference" placeholder="Ej. Frente al parque, puerta azul" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
         </>
       )}
+      {delivery.type === "delivery" ? <p className="rounded-lg bg-secondary/30 p-4 text-xs leading-6 text-muted-foreground">{courierEstimate(null)}</p> : null}
       <fieldset className="border-t border-border pt-6">
         <legend className="sr-only">Persona que {delivery.type === "recojo_campus" ? "recoge" : "recibe"}</legend>
         <p className="mb-3 text-xs font-medium">¿Quién {delivery.type === "recojo_campus" ? "recoge" : "recibe"} el pedido?</p>
