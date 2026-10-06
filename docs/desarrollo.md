@@ -23,6 +23,7 @@ src/
     orders/               Catálogo servidor, validaciones, geografía y cálculo
     campuses/             Lectura/CRUD seguro y validación de campus
     admin/                Lecturas autorizadas y validaciones administrativas
+  iframe/                 Bloque WordPress, receptor y simulador local
   proxy.ts                Middleware/proxy de rutas administrativas
 docs/                     Contexto, requisitos, fases y decisiones
 ```
@@ -105,3 +106,5 @@ En Vercel: pnpm, Node compatible, variables de entorno y callback HTTPS del domi
 Fase 4: configuración de banco/propietario y revisión en [pedidos-pagos.md](pedidos-pagos.md). FilePond acepta 3 MiB por archivo; Server Actions 4 MiB. PDFs incluidos por tracing; verificar en Vercel.
 
 Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/operations.ts`, lectura/validaciones en `src/lib/admin`, componentes en `src/components/admin`. Migración 0006 agrega control del último comprobante confirmado y outbox de avisos en hilo; ejecutar `pnpm db:migrate`. Revisión: [admin-dashboard.md](admin-dashboard.md).
+
+Fase 6: configuración/protocolo en `src/lib/iframe`, puente en `src/components/iframe`, bloque y simulador en `src/iframe`; `vercel.json` en raíz por convención del proveedor. Variables completas en `.env.example`, incluidas WORDPRESS_ORIGINS y Corepack para Vercel. Revisión y despliegue: [iframe-wordpress.md](iframe-wordpress.md).

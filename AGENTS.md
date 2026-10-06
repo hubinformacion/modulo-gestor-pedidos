@@ -16,7 +16,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 - Exclusivamente pnpm; conservar su lockfile. TS estricto, Next App Router y Server Actions.
 - Nunca hacer commits en `main`. Una rama por fase. Al cerrar, entregar pasos de revisión manual y detenerse hasta aprobación explícita antes de integrar o seguir.
-- Fases 1–4 aprobadas e integradas localmente en `main`. Fase vigente: `feat/05-admin-dashboard`, pendiente de revisión. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 5 ni comenzar fase 6 sin aprobación al cierre. Revisiones reales Google/PDF/Vercel de fase 4 siguen pendientes de configuración.
+- Fases 1–5 aprobadas e integradas localmente en `main`. Fase vigente: `feat/06-iframe-wp-polish`, implementada, pendiente de revisión/producción. Wizard en `/pedido`; DEMO protegido en `/admin/vista-previa`. No integrar fase 6 sin aprobación al cierre. Revisiones reales Google/PDF/Vercel de fase 4 siguen pendientes de configuración.
 - Catálogo oficial pendiente. Seed DEMO opcional (`pnpm db:seed:demo`), inactivo e idempotente; no sustituir datos operativos ni inventar catálogo de producción. Importes BD `numeric(12,2)` como strings; cálculo posterior en céntimos.
 - No crear ni ejecutar suites de pruebas automatizadas, ni instalar frameworks de testing, salvo nueva petición explícita. El usuario pidió eliminarlas: no restaurar requisitos anteriores de tests.
 - Completar los cambios solicitados antes de validar. Comprobaciones de lint, tipos o build solo puntuales cuando hagan falta, sin repetirlas innecesariamente.
@@ -76,3 +76,11 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 - Despacho desde preparación, courier obligatorio para delivery; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
 - Stock absoluto editable con lock y versión; una compra concurrente obliga a recargar. Precios/títulos de pedidos conservan snapshots. No eliminar publicaciones con pedidos ni cambiarles sello; permitir desactivar. DEMO sigue fuera de compra real.
 - Migración 0006 de fase 5: recibo sometido por sello, threadId/Message-ID del correo y outbox de avisos. Contrato y revisión manual en [docs/admin-dashboard.md](docs/admin-dashboard.md).
+
+## Contrato de fase 6
+
+- WORDPRESS_ORIGINS: orígenes exactos validados con Zod, HTTPS salvo loopback local, sin comodines/rutas. CSP frame-ancestors y postMessage usan la misma lista; vacío solo mismo origen. No emitir X-Frame-Options.
+- Puente de altura mide #app-content con ResizeObserver/rAF y protocolo versionado. Comprueba origen/source en ambos extremos; targetOrigin exacto. No comunicar datos personales, URLs ni tokens al padre.
+- Bloque/simulador en src/iframe; pnpm iframe:preview y pnpm iframe:snippet. Utilidades de revisión, no suites automatizadas ni rutas bypass.
+- Incrustar /pedido. Google OAuth administrativo en pestaña independiente; conservar cookies/permisos. Vercel con pnpm/Corepack, variables de .env.example, PDFs tracing y migraciones fuera del build.
+- Dominios/proyecto Vercel/WordPress definitivos pendientes de aportar. No inferirlos ni publicar con datos de ejemplo. Contrato/entrega: [docs/iframe-wordpress.md](docs/iframe-wordpress.md).

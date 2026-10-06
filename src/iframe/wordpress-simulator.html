@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Vista previa del embebido en WordPress</title>
+  <style>
+    :root{color-scheme:light;font-family:Inter,system-ui,sans-serif;color:#191922;background:#f7f7f9}*{box-sizing:border-box}body{margin:0}main{max-width:1200px;margin:auto;padding:32px 20px}h1{font-size:24px;letter-spacing:-.6px;margin:0}p{font-size:13px;line-height:1.8;color:#666674}.toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:24px 0 12px}button,a{cursor:pointer}button{border:1px solid #e7e7ed;border-radius:7px;background:white;padding:10px 14px;font:inherit;font-size:12px}button[aria-pressed=true]{color:#6802c1;border-color:#6802c1;background:#f5effc}button:focus-visible,a:focus-visible{outline:2px solid #6802c1;outline-offset:3px}.host{padding:24px 0;border-block:1px solid #e7e7ed}.preview{width:100%;max-width:100%;margin:auto;background:white;border:1px solid #e7e7ed;border-radius:12px;overflow:hidden}.status{font-size:12px;margin-left:auto}.meta{font-size:11px;overflow-wrap:anywhere}.fallback{margin:16px 0 0;text-align:center}.fallback a{color:#6802c1}
+  </style>
+</head>
+<body><main>
+  <h1>Embebido en WordPress</h1><p>Esta página simula el bloque de WordPress desde un origen distinto. Recorre el formulario y comprueba que el iframe crece y se reduce con su contenido.</p>
+  <div class="toolbar" role="group" aria-label="Ancho de vista previa"><button type="button" data-width="100%" aria-pressed="true">Escritorio</button><button type="button" data-width="768px" aria-pressed="false">Tableta</button><button type="button" data-width="360px" aria-pressed="false">Móvil</button><span class="status" id="height-status" role="status">Esperando comunicación de altura…</span></div>
+  <div class="host"><div class="preview" id="preview">__EMBED_BLOCK__</div></div>
+  <p class="meta" id="origins"></p><p class="fallback"><a id="direct-link" target="_blank" rel="noopener noreferrer">Abrir la aplicación en otra pestaña</a></p>
+</main><script>
+(function(){
+  var frame=document.querySelector('[data-fec-iframe]');
+  document.getElementById('direct-link').href=frame.src;
+  document.getElementById('origins').textContent='Origen padre: '+location.origin+' · Origen del sistema: '+new URL(frame.src).origin+' · El iframe no envía referrer.';
+  frame.addEventListener('fec:iframe:resized',function(event){document.getElementById('height-status').textContent='Altura recibida: '+event.detail.height+' px';});
+  document.querySelectorAll('[data-width]').forEach(function(button){button.addEventListener('click',function(){document.getElementById('preview').style.width=button.dataset.width;document.querySelectorAll('[data-width]').forEach(function(item){item.setAttribute('aria-pressed',String(item===button));});});});
+})();
+</script></body></html>

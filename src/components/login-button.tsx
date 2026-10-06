@@ -9,9 +9,15 @@ import { authClient } from "@/lib/auth-client";
 export function LoginButton({ configured }: { configured: boolean }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openExternally, setOpenExternally] = useState(false);
 
   async function signIn() {
     if (pending) return;
+    if (window.parent !== window) {
+      window.open(new URL("/login", window.location.origin), "_blank", "noopener,noreferrer");
+      setOpenExternally(true);
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -35,6 +41,7 @@ export function LoginButton({ configured }: { configured: boolean }) {
         </span>
         {pending ? <LoaderCircle className="size-4 animate-spin" aria-hidden="true" /> : <ArrowRight className="size-4" aria-hidden="true" />}
       </Button>
+      {openExternally ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Continúa el ingreso en la nueva pestaña. Si no se abrió, <a href="/login" target="_blank" rel="noopener noreferrer" className="font-medium text-primary underline underline-offset-4">abre el acceso aquí</a>.</p> : null}
       {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
     </div>
   );

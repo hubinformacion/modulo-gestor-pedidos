@@ -12,7 +12,9 @@
     "db:generate": "drizzle-kit generate --config src/db/drizzle.config.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "db:seed:demo": "tsx src/db/seed.ts --demo"
+    "db:seed:demo": "tsx src/db/seed.ts --demo",
+    "iframe:preview": "tsx src/iframe/serve-simulator.ts",
+    "iframe:snippet": "tsx src/iframe/generate-snippet.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

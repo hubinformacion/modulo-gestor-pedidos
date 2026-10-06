@@ -2,7 +2,7 @@
 
 ## Estado vigente
 
-Fases 1–4 aprobadas e integradas localmente en `main`. Rama vigente: `feat/05-admin-dashboard`, implementada y pendiente de revisión. Configuración en `/admin`, pedidos en `/admin/pedidos`, inventario en `/admin/inventario`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Las revisiones reales de Drive/Gmail/PDF/Vercel de fase 4 siguen pendientes de configuración.
+Fases 1–5 aprobadas e integradas localmente en `main`. Rama vigente: `feat/06-iframe-wp-polish`. Configuración en `/admin`, pedidos en `/admin/pedidos`, inventario en `/admin/inventario`, compra pública en `/pedido` y DEMO protegido en `/admin/vista-previa`. Google/PDF/Vercel reales siguen pendientes de revisión operativa.
 
 ## Regla de entrega
 
@@ -18,25 +18,19 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **4. Pedidos, pagos y Google:** aprobada para integrar y continuar por el usuario. Creación transaccional, contador anual, snapshots, tracking, cargas recuperables y outbox. Migraciones 0003–0005 aplicadas; cuatro cuentas sembradas. Lint/tipos/build correctos. Integrada localmente; configuración y revisión real Google/PDF/Vercel pendientes según [pedidos-pagos.md](pedidos-pagos.md).
 
+- **5. Administración y avisos:** aprobada para integrar y continuar. Pedidos/filtros, pagos por sello, despacho/entrega, inventario inline y configuración por pestañas. Comprobantes automáticos por sello, confirmación separada y avisos en hilo. Migración 0006 aplicada en Neon; lint/tipos/build correctos. Integrada localmente. Contrato: [admin-dashboard.md](admin-dashboard.md).
+
 ## Fase vigente
-
-## 5. feat/05-admin-dashboard
-
-**Estado:** implementada en su rama; pendiente de revisión manual y aprobación antes de integrar. Migración 0006 aplicada en Neon para confirmación por sello y avisos en el hilo de Gmail; sin nuevas dependencias. Lint, tipos y build de producción correctos.
-
-**Entrega:** pedidos con búsqueda, filtros, paginación y detalle; comprobantes Drive, aprobación/rechazo independiente por sello; preparación condicionada, despacho con courier y entrega. Inventario en tabla con edición y alta inline, confirmación breve de borrado, precios/stock/estado, protección del historial y control de concurrencia. Configuración en `/admin` separada en pestañas de correos, campus, cuentas e integraciones.
-
-**Revisión manual:** [admin-dashboard.md](admin-dashboard.md) contiene los pasos concretos, restricciones y requisitos de configuración. No se crearon pedidos ficticios ni se enviaron correos para esta entrega.
-
-## Fases pendientes
 
 ## 6. feat/06-iframe-wp-polish
 
-**Entrega:** CSP frame-ancestors sin cabeceras contradictorias, comunicación de altura, `.env.example` completo, despliegue y ajustes finales del embebido.
+**Estado:** código implementado; lint/tipos/build correctos y cabeceras/bloque/simulador verificados por HTTP local. Pendiente de revisión visual/final y aprobación para integrar. Dominios/proyecto Vercel/página WordPress definitivos pendientes; no considerar el despliegue realizado.
 
-**Revisión manual:** incrustar simulando WordPress en móvil/escritorio, comprobar altura/comunicación y acceso, revisar cabeceras y confirmar el adjunto PDF en Vercel.
+**Entrega:** CSP frame-ancestors sin X-Frame-Options contradictorio, dominios configurables, altura postMessage segura, login externo para iframe, bloque/simulador WordPress bajo src, .env.example completo y configuración Vercel con pnpm.
 
-**Datos necesarios:** dominios definitivos, proyecto Vercel y página WordPress de destino.
+**Revisión manual:** [iframe-wordpress.md](iframe-wordpress.md), incluyendo móvil/escritorio, altura y mensajes, cabeceras, login y adjunto PDF en Vercel.
+
+**Pendientes externos:** cuenta/proyecto/dominio Vercel, orígenes/página WordPress; revisión de correo/Drive/PDF desde el despliegue real.
 
 ## Cambios de criterio que deben persistir
 

@@ -1,6 +1,6 @@
 # Administración de pedidos e inventario — fase 5
 
-Rama `feat/05-admin-dashboard`. Fases 1–4 aprobadas e integradas localmente. Código de fase 5 implementado, pendiente de revisión manual y aprobación para integrar. No avanzar a fase 6 antes de aprobar.
+Rama `feat/05-admin-dashboard`. Fases 1–4 aprobadas e integradas localmente. Fase 5 aprobada e integrada localmente en main. Contrato operativo vigente; la revisión real Google/PDF continúa en la fase 6.
 
 ## Interfaz y datos
 
@@ -39,7 +39,7 @@ No borrar publicaciones con ítems de pedidos ni cambiar su sello; sí desactiva
 
 ## Comprobaciones realizadas
 
-Lint, tipos y build de producción correctos en la entrega inicial; incluye las tres rutas administrativas nuevas. Ajustes de tabla, altas inline, borrado y pestañas: comprobación puntual de lint y tipos. Ajuste de seguimiento/correos: migración 0006 aplicada en Neon y build correcto; revisión real de correo/Drive pendiente. No se ejecutaron suites automatizadas, ni se alteró stock operativo, ni se crearon pedidos o enviaron correos para validar la fase. La revisión funcional requiere sesión Google y datos de revisión configurados. No hay remoto Git/proyecto Vercel configurado en la entrega anterior; merges locales solamente.
+Lint, tipos y build de producción correctos en la entrega inicial; incluye las tres rutas administrativas nuevas. Ajustes de tabla, altas inline, borrado y pestañas: comprobación puntual de lint y tipos. Ajuste de seguimiento/correos: migración 0006 aplicada en Neon y build correcto; revisión real de correo/Drive pendiente. No se ejecutaron suites automatizadas, ni se alteró stock operativo, ni se crearon pedidos o enviaron correos para validar la fase. La revisión funcional requiere sesión Google y datos de revisión configurados. Remoto Git conectado; proyecto Vercel no vinculado en el entorno. Merges locales solamente.
 
 ## Cómo validar Drive y Gmail
 
