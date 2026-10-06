@@ -9,7 +9,7 @@ import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getOrderBankAccounts, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
-import { emailSubject, renderOrderEmail } from "@/lib/orders/email-template";
+import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
 import { imprintNames } from "@/lib/orders/types";
 import type { getTrackedOrder } from "@/lib/orders/tracking";
 
@@ -91,6 +91,23 @@ const emailTemplates = {
 } as const;
 
 function originalMessageId(tracking: Tracking) { return tracking.emailRfcMessageId ?? `<pedido-${tracking.order.id}@${new URL(getPublicOrigin()).hostname}>`; }
+function formatSubject(subject: string) {
+  const clean = subject.replace(/\r?\n[ \t]+/g, " ");
+  if (/[\r\n\0]/.test(clean)) throw new Error("INVALID_SUBJECT_HEADER");
+  return clean.startsWith("=?") ? clean : `=?UTF-8?B?${Buffer.from(clean).toString("base64")}?=`;
+}
+
+export async function readSentMailHeaders(messageId: string) {
+  return retryOnce(async () => {
+    const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.get({ userId: "me", id: messageId, format: "metadata", metadataHeaders: ["Message-ID", "Subject"], fields: "threadId,payload(headers)" }, { timeout: 15_000, retry: false });
+    const headers = response.data.payload?.headers ?? [];
+    const rfc = headers.find((item) => item.name?.toLowerCase() === "message-id")?.value?.trim();
+    const subject = headers.find((item) => item.name?.toLowerCase() === "subject")?.value;
+    if (!rfc || !/^<[^<>\s]+@[^<>\s]+>$/.test(rfc) || !subject || !response.data.threadId) throw new Error("INVALID_GMAIL_HEADERS");
+    return { rfcMessageId: rfc, subjectHeader: subject, threadId: response.data.threadId };
+  }, "gmail.metadata");
+}
+
 async function sendMime({ tracking, html, text, attachment, notificationId }: { tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const to = z.email().parse(tracking.order.customerEmail);
@@ -100,9 +117,11 @@ async function sendMime({ tracking, html, text, attachment, notificationId }: { 
   const headers = [
     `From: Fondo Editorial <${from}>`, `To: ${to}`,
     ...(to.toLowerCase() === MASTER_EMAIL ? [] : [`Cc: ${MASTER_EMAIL}`]),
-    `Subject: =?UTF-8?B?${Buffer.from(emailSubject(tracking.order.orderNumber)).toString("base64")}?=`,
+    `Subject: ${notificationId && tracking.emailSubjectHeader ? formatSubject(tracking.emailSubjectHeader) : formatSubject(emailSubject(tracking.order.orderNumber))}`,
+    `Date: ${new Date().toUTCString()}`,
+    ...(tracking.handlerEmail && ![to.toLowerCase(), MASTER_EMAIL, from.toLowerCase()].includes(tracking.handlerEmail.toLowerCase()) ? [`Bcc: ${z.email().parse(tracking.handlerEmail)}`] : []),
     `Message-ID: ${messageId}`, "MIME-Version: 1.0",
-    ...(notificationId ? [`In-Reply-To: ${originalMessageId(tracking)}`, `References: ${originalMessageId(tracking)}`] : []),
+    ...(notificationId ? [`In-Reply-To: ${tracking.emailLastRfcMessageId ?? originalMessageId(tracking)}`, `References: ${[...new Set([originalMessageId(tracking), ...tracking.emailReferences.slice(-8), tracking.emailLastRfcMessageId ?? originalMessageId(tracking)])].join("\r\n ")}`] : []),
   ];
   const body = [`--${alternative}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(text)),
     `--${alternative}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(html)), `--${alternative}--`];
@@ -127,10 +146,20 @@ export async function sendOrderConfirmationEmail(tracking: Tracking) {
   });
 }
 
-export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null }) {
-  const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "el pedido";
-  const title = notification.eventType === "COMPROBANTE_RECIBIDO" ? `Comprobantes enviados para revisión · ${imprint}` : notification.eventType === "PAGO_VERIFICADO" ? `Pago verificado · ${imprint}` : `Comprobante rechazado · ${imprint}`;
-  const body = notification.eventType === "COMPROBANTE_RECIBIDO" ? "Tus archivos se guardaron y el equipo ya puede revisar este pago. La preparación comienza cuando todos los pagos requeridos estén verificados." : notification.eventType === "PAGO_VERIFICADO" ? "El equipo verificó el pago de este sello. Consulta el seguimiento para conocer el estado del pedido." : "Adjunta un nuevo comprobante de este sello y confirma su envío. El estado del otro sello se conserva.";
+export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string> }) {
+  if (!tracking.emailHeadersVerified || !tracking.emailThreadId || !tracking.emailRfcMessageId || !tracking.emailSubjectHeader) throw new Error("GMAIL_THREAD_NOT_VERIFIED");
+  const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "";
+  const payload = notification.payload;
+  const notices: Record<string, { title: string; body: string }> = {
+    COMPROBANTE_RECIBIDO: { title: `Comprobante recibido · ${imprint}`, body: `${tracking.handlerName ? `${tracking.handlerName} evaluará tu comprobante.` : "Un gestor evaluará tu comprobante."} Ya está adjunto a tu pedido; te avisaremos al terminar la revisión.` },
+    PAGO_VERIFICADO: { title: `Pago verificado · ${imprint}`, body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Ya estamos preparando tus publicaciones." : "Este pago está verificado. Continuaremos con la preparación cuando se verifique el otro sello." },
+    PAGO_RECHAZADO: { title: `Necesitamos otro comprobante · ${imprint}`, body: payload.reason || "Revisa el comprobante y adjunta uno nuevo desde tu seguimiento." },
+    ASIGNADO: { title: "Tu pedido ya tiene un gestor", body: `${payload.handlerName || "Un gestor"} está a cargo de atender tu pedido. Puedes consultar cada avance desde tu seguimiento.` },
+    DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? `Puedes recoger tus publicaciones en ${payload.address || tracking.order.deliveryAddress}.` : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""}` },
+    ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
+  };
+  const notice = notices[notification.eventType];
+  if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
   const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}`;
-  return sendMime({ tracking, notificationId: notification.id, html: renderOrderEmail(tracking, { intro: "Hay una actualización sobre tu pedido.", link, notice: { title, body } }), text: `Pedido ${tracking.order.orderNumber}\n${title}\n${body}\nSeguimiento: ${link}` });
+  return sendMime({ tracking, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\nSeguimiento: ${link}` });
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { count, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { orders, paymentReceipts, paymentUploads } from "@/db/schema";
+import { orderActivity, orderNotifications, orders, paymentReceipts, paymentUploads } from "@/db/schema";
 import { readFileFromDrive, reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
 import { OrderInputError } from "@/lib/orders/submission";
 import type { z } from "zod";
@@ -11,7 +11,7 @@ import { validateReceipt } from "./inspect";
 
 function ensureWritable(order: typeof orders.$inferSelect, imprint: "universidad" | "instituto") {
   const status = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
-  if (order.orderStatus !== "PENDIENTE_PAGO" || (status !== "PENDIENTE" && status !== "RECHAZADO")) throw new OrderInputError("Este sello no admite nuevos comprobantes.");
+  if (order.orderStatus !== "PENDIENTE_PAGO" || (status !== "PENDIENTE" && status !== "RECHAZADO" && status !== "EN_REVISION")) throw new OrderInputError("Este sello no admite nuevos comprobantes.");
 }
 
 export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSchema>, file: File) {
@@ -53,6 +53,10 @@ async function finalizeReceipt(intent: typeof paymentUploads.$inferSelect, uploa
     if (existing) return existing.id;
     ensureWritable(order, intent.publisherImprint);
     const [receipt] = await tx.insert(paymentReceipts).values({ orderId: order.id, uploadId: intent.id, publisherImprint: intent.publisherImprint, ...uploaded, fileName: intent.fileName }).returning({ id: paymentReceipts.id });
+    const status = intent.publisherImprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
+    await tx.update(orders).set(intent.publisherImprint === "universidad" ? { paymentStatusUniversidad: "EN_REVISION", submittedReceiptUniversidad: receipt.id, rejectionUniversidad: null } : { paymentStatusInstituto: "EN_REVISION", submittedReceiptInstituto: receipt.id, rejectionInstituto: null }).where(eq(orders.id, order.id));
+    await tx.insert(orderActivity).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", detail: `Recibimos un comprobante de ${intent.publisherImprint === "universidad" ? "Universidad" : "Instituto"}. Está en revisión.` });
+    if (status !== "EN_REVISION") await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { handlerName: order.assignedName ?? "", orderStatus: "PENDIENTE_PAGO" } });
     return receipt.id;
   }));
 }

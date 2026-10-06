@@ -1,0 +1,9 @@
+"use client";
+import { useState, type ReactNode } from "react";
+import { Tabs } from "@base-ui/react/tabs";
+import { Check, ChevronRight } from "lucide-react";
+export function AttentionWizard({ current, completed, panels }: { current: number; completed: boolean; panels: ReactNode[] }) {
+  const [selected, setSelected] = useState(current);
+  const titles = ["Atención", "Pagos", "Preparación", "Entrega"];
+  return <Tabs.Root value={selected} onValueChange={(value) => { if (typeof value === "number") setSelected(value); }} className="overflow-hidden rounded-2xl border border-border bg-white"><div className="border-b border-border bg-muted/20 p-4 sm:p-5"><p className="mb-4 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ruta de atención</p><Tabs.List aria-label="Etapas de atención" className="grid grid-cols-4 gap-2">{titles.map((title, index) => <Tabs.Tab key={title} value={index} className={`flex flex-col items-center gap-2 rounded-lg px-1 py-3 text-[10px] transition-colors sm:flex-row sm:justify-center sm:text-xs ${selected === index ? "bg-secondary font-semibold text-primary" : "text-muted-foreground hover:bg-muted"}`}><span className={`flex size-6 items-center justify-center rounded-full border text-[10px] ${index < current || completed ? "border-primary bg-primary text-white" : selected === index ? "border-primary" : "border-border"}`}>{index < current || completed ? <Check className="size-3" /> : index + 1}</span>{title}</Tabs.Tab>)}</Tabs.List></div>{panels.map((panel, index) => <Tabs.Panel key={index} value={index} className="p-5 sm:p-6">{panel}{index !== current ? <button type="button" className="mt-6 inline-flex items-center gap-1 text-xs font-semibold text-primary" onClick={() => setSelected(current)}>Ir a la etapa actual<ChevronRight className="size-3" /></button> : null}</Tabs.Panel>)}</Tabs.Root>;
+}

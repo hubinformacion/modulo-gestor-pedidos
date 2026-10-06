@@ -74,7 +74,7 @@ La confirmación debe usar la plantilla y guía PDF del tipo de pedido: solo Uni
 
 ## Comprobantes y aprobación de pago
 
-- Una zona FilePond por sello aplicable admite varios archivos; mixto muestra dos. El sello es fijo por zona, sin desplegable. Adjuntar sube automáticamente a Drive; confirmar después cambia solo ese pago a EN_REVISION y envía aviso en el hilo del pedido.
+- Una zona FilePond por sello aplicable admite varios archivos; mixto muestra dos. El sello es fijo por zona, sin desplegable. Adjuntar sube automáticamente a Drive; guardar pasa directamente ese pago a EN_REVISION y envía aviso en el hilo del pedido, sin confirmación adicional.
 - Validar tipo/tamaño en cliente y servidor; preview mediante los plugins correspondientes.
 - Guardar comprobantes en Google Drive y sus identificadores/links en `payment_receipts`.
 - Aprobar de forma independiente `payment_status_universidad` y `payment_status_instituto`.
@@ -131,3 +131,5 @@ La autorización Google del administrador usa únicamente identidad; no sustituy
 ## Información externa aún necesaria
 
 Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas, editables en `/admin`, si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario se migran a la tabla `campuses`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.
+
+Flujo actualizado: autoasignación, operación por gestor responsable, historial, envío/guía/entrega, comprobantes automáticos y Gmail threads reales en [atencion-y-comunicacion.md](atencion-y-comunicacion.md).

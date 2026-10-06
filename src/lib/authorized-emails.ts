@@ -1,7 +1,7 @@
 import "server-only";
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, notInArray } from "drizzle-orm";
 import type { Database } from "@/db";
-import { authorizedEmails, session, user } from "@/db/schema";
+import { authorizedEmails, orderActivity, orders, session, user } from "@/db/schema";
 import {
   AccessError, authorizedEmailSchema, isMasterEmail, MASTER_EMAIL,
   type AuthorizedActor, type AccessActionResult,
@@ -54,6 +54,8 @@ export async function removeAuthorizedEmail(db: Database, actor: AuthorizedActor
     if (!deleted.length) return { success: false, message: "El correo ya no está autorizado." };
     const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, email.data));
     if (owners.length) {
+      const released = await tx.update(orders).set({ assignedTo: null, assignedName: null, assignedAt: null }).where(and(inArray(orders.assignedTo, owners.map((owner) => owner.id)), notInArray(orders.orderStatus, ["ENTREGADO", "CANCELADO"]))).returning({ id: orders.id });
+      if (released.length) await tx.insert(orderActivity).values(released.map((order) => ({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "LIBERADO", detail: "El pedido está disponible para un gestor del equipo." })));
       await tx.delete(session).where(inArray(session.userId, owners.map((owner) => owner.id)));
     }
     return { success: true, message: "Acceso revocado y sesiones cerradas." };

@@ -18,13 +18,15 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 - **4. Pedidos, pagos y Google:** aprobada para integrar y continuar por el usuario. Creación transaccional, contador anual, snapshots, tracking, cargas recuperables y outbox. Migraciones 0003–0005 aplicadas; cuatro cuentas sembradas. Lint/tipos/build correctos. Integrada localmente; configuración y revisión real Google/PDF/Vercel pendientes según [pedidos-pagos.md](pedidos-pagos.md).
 
-- **5. Administración y avisos:** aprobada para integrar y continuar. Pedidos/filtros, pagos por sello, despacho/entrega, inventario inline y configuración por pestañas. Comprobantes automáticos por sello, confirmación separada y avisos en hilo. Migración 0006 aplicada en Neon; lint/tipos/build correctos. Integrada localmente. Contrato: [admin-dashboard.md](admin-dashboard.md).
+- **5. Administración y avisos:** aprobada para integrar y continuar. Pedidos/filtros, pagos por sello, despacho/entrega, inventario inline y configuración por pestañas. Comprobantes por sello y avisos registrados; el flujo vigente de fase 6 elimina confirmación y añade gestor/historial/cabeceras reales. Migración 0006 aplicada en Neon; lint/tipos/build correctos. Integrada localmente. Contrato: [admin-dashboard.md](admin-dashboard.md).
 
 ## Fase vigente
 
 ## 6. feat/06-iframe-wp-polish
 
 **Estado:** código implementado; lint/tipos/build correctos y cabeceras/bloque/simulador verificados por HTTP local. Pendiente de revisión visual/final y aprobación para integrar. Dominios/proyecto Vercel/página WordPress definitivos pendientes; no considerar el despliegue realizado.
+
+**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migración 0007 aplicada; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
 
 **Entrega:** CSP frame-ancestors sin X-Frame-Options contradictorio, dominios configurables, altura postMessage segura, login externo para iframe, bloque/simulador WordPress bajo src, .env.example completo y configuración Vercel con pnpm.
 

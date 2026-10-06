@@ -1,25 +1,7 @@
 "use client";
-
 import dynamic from "next/dynamic";
-import { useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { sileo } from "sileo";
-import { Button } from "@/components/ui/button";
 import type { Imprint } from "@/lib/orders/types";
-import { retryConfirmationEmailAction } from "@/app/seguimiento/[tracking_token]/actions";
-
-export const ReceiptUploader = dynamic(() => import("./receipt-uploader"), { ssr: false, loading: () => <p className="text-xs text-muted-foreground">Cargando área de comprobantes…</p> });
-export function TrackingControls({ token, retryEmail }: { token: string; retryEmail: boolean }) {
-  const [pending, startTransition] = useTransition();
-  const router = useRouter();
-  return <div className="flex flex-wrap gap-2">
-
-    {retryEmail ? <Button variant="ghost" disabled={pending} onClick={() => startTransition(async () => {
-      try { const result = await retryConfirmationEmailAction(token); (result.success ? sileo.success : sileo.error)({ title: result.message }); router.refresh(); }
-      catch { sileo.error({ title: "No pudimos enviar el correo. Reintenta más tarde." }); }
-    })}>{pending ? "Enviando…" : "Reintentar correo"}</Button> : null}
-  </div>;
-}
-export function ReceiptArea({ token, imprint, enabled, hasUnconfirmedReceipt }: { token: string; imprint: Imprint; enabled: boolean; hasUnconfirmedReceipt: boolean }) {
-  return enabled ? <ReceiptUploader token={token} imprint={imprint} hasUnconfirmedReceipt={hasUnconfirmedReceipt} /> : <p className="text-sm text-muted-foreground">La carga está temporalmente no disponible. Conserva tus comprobantes para enviarlos más tarde.</p>;
+const ReceiptUploader = dynamic(() => import("./receipt-uploader"), { ssr: false, loading: () => <p className="text-xs text-muted-foreground">Cargando área de comprobantes…</p> });
+export function ReceiptArea({ token, imprint, enabled, handlerName }: { token: string; imprint: Imprint; enabled: boolean; handlerName: string | null }) {
+  return enabled ? <ReceiptUploader token={token} imprint={imprint} handlerName={handlerName} /> : <p className="text-xs leading-6 text-muted-foreground">La carga está temporalmente no disponible. Conserva tus comprobantes para adjuntarlos más tarde.</p>;
 }

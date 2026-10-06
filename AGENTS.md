@@ -45,7 +45,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Mixto: dos depósitos; flete solo en Universidad si delivery. Recojo S/0, Lima/Callao S/15, provincia S/25 con departamento/ciudad. Recojo muestra biblioteca del campus.
 - Comunidad: sede y correo `@continental.edu.pe`, precio comunidad; público: precio estándar. Recalcular en comprador y creación server-side; nunca confiar en precios del cliente.
 - Pagos por sello independientes; sello no aplicable empieza en `NO_APLICA`. `EN_PREPARACION` solo con todos los pagos requeridos verificados. Rechazo/re-subida conserva el otro sello.
-- Una zona FilePond por sello aplicable (dos en mixtos), carga automática sin selector; validación tipo/tamaño y preview. Confirmar después de cargar cambia solo ese pago a EN_REVISION y avisa por correo.
+- Una zona FilePond por sello aplicable (dos en mixtos), carga automática sin selector; validación tipo/tamaño y preview. Cargar pasa directamente ese pago a EN_REVISION y avisa por correo, sin confirmar.
 - Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
 - Comprobantes: si Google prohíbe compartir públicamente, conservar privados y registrar; lectura desde /admin/comprobantes/[id] con sesión+correo en BD. No imprimir objetos de error Google/Drizzle ni credenciales/payload en logs.
@@ -65,16 +65,17 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 
 ## Contrato de fase 4
 
-- Creación real solo con cuentas activas de ambos sellos en BD, Google propietario, APP_URL y tres PDF. `/admin` gestiona cuentas; BCP Universidad CCI/titular pendientes, no inventar. PDF se selecciona por nombre/tipo; usuario acepta temporalmente Universidad/Mixto idénticos y los reemplazará.
+- Creación real solo con cuentas activas de ambos sellos en BD, Google propietario, APP_URL y tres PDF. `/admin` gestiona cuentas; las cuentas operativas se completan/activan desde BD por interfaz, sin inventar datos. PDF se selecciona por nombre/tipo; usuario acepta temporalmente Universidad/Mixto idénticos y los reemplazará.
 - UUID de intento único, hash y locks: reintento no duplica pedido/stock. Snapshot de título/cuentas/consentimiento. Numeración por año de Lima desde BD.
-- Tracking nanoid 32, privado por token; no referrer/no-store. FilePond 3 MiB por archivo, zona por sello aplicable y asociación fija, carga automática a Drive y confirmación separada para revisión. Intentos persistidos con ID Drive reservado; no quitar archivo si hay error.
-- Correo en outbox persistente con after/reintento desde seguimiento; fallo no borra pedido. Avisos de comprobantes y decisión de pago en el mismo hilo, comprador y copia al maestro. Sin pruebas automatizadas. Validación real Google/PDF en Vercel pendiente de configuración. [Detalle vigente](docs/pedidos-pagos.md).
+- Tracking nanoid 32, privado por token; no referrer/no-store. FilePond 3 MiB por archivo, zona por sello aplicable y asociación fija, carga automática a Drive y revisión inmediata, sin confirmación del comprador. Intentos persistidos con ID Drive reservado; no quitar archivo si hay error.
+- Correo en outbox persistente con after/reintento desde seguimiento; fallo no borra pedido. Avisos de comprobantes, asignación, pagos, envío y entrega en el mismo hilo; comprador, copia al maestro y Bcc al gestor vigente autorizado. Gmail metadata propietario obligatorio para obtener Message-ID/Subject/threadId reales. Sin pruebas automatizadas. Validación real Google/PDF en Vercel pendiente de configuración. [Detalle vigente](docs/pedidos-pagos.md).
 
 ## Contrato de fase 5
 
-- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario` como tabla con edición y alta inline; borrado con diálogo breve de confirmación; configuración en `/admin` con pestañas de correos, campus, cuentas e integraciones. Cualquier autorizado opera pedidos/inventario.
+- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario` como tabla con edición y alta inline; borrado con diálogo breve de confirmación; configuración en `/admin` con pestañas de correos, campus, cuentas e integraciones. Cualquier autorizado consulta/toma pedidos disponibles; solo el asignado registra pagos/estados. Todos operan inventario.
 - Aprobar/rechazar solo pagos `EN_REVISION` de pedidos `PENDIENTE_PAGO`, con comprobante más reciente del sello. Lock del pedido y control de versión evitan revisión obsoleta; conservar el otro sello. Preparación solo con todos los requeridos verificados.
-- Despacho desde preparación, courier obligatorio para delivery; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
+- Autoasignación con lock e historial por actor; revocación libera pedidos abiertos. Bandejas Mis pedidos/Por asignar/He participado.
+- Despacho desde preparación, courier obligatorio para delivery; guía/URL HTTPS opcionales, fecha y aviso al comprador; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
 - Stock absoluto editable con lock y versión; una compra concurrente obliga a recargar. Precios/títulos de pedidos conservan snapshots. No eliminar publicaciones con pedidos ni cambiarles sello; permitir desactivar. DEMO sigue fuera de compra real.
 - Migración 0006 de fase 5: recibo sometido por sello, threadId/Message-ID del correo y outbox de avisos. Contrato y revisión manual en [docs/admin-dashboard.md](docs/admin-dashboard.md).
 
@@ -85,3 +86,7 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 - Bloque/simulador en src/iframe; pnpm iframe:preview y pnpm iframe:snippet. Utilidades de revisión, no suites automatizadas ni rutas bypass.
 - Incrustar /pedido. Google OAuth administrativo en pestaña independiente; conservar cookies/permisos. Vercel con pnpm/Corepack, variables de .env.example, PDFs tracing y migraciones fuera del build.
 - Dominios/proyecto Vercel/WordPress definitivos pendientes de aportar. No inferirlos ni publicar con datos de ejemplo. Contrato/entrega: [docs/iframe-wordpress.md](docs/iframe-wordpress.md).
+
+## Flujo vigente de atención y comunicación
+
+Ver [docs/atencion-y-comunicacion.md](docs/atencion-y-comunicacion.md): sustituye confirmación manual y atención sin responsable. Migración 0007 aplicada en Neon. Cada estado/gestor queda auditado; correo serializado por pedido con cabeceras reales verificadas (gmail.metadata), sin reenviar correos aceptados por fallos de metadata. Dos conversaciones existentes reparadas sin envío.

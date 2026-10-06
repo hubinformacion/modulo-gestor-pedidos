@@ -108,3 +108,5 @@ Fase 4: configuración de banco/propietario y revisión en [pedidos-pagos.md](pe
 Fase 5: `/admin/pedidos` y `/admin/inventario`; acciones en `src/app/admin/operations.ts`, lectura/validaciones en `src/lib/admin`, componentes en `src/components/admin`. Migración 0006 agrega control del último comprobante confirmado y outbox de avisos en hilo; ejecutar `pnpm db:migrate`. Revisión: [admin-dashboard.md](admin-dashboard.md).
 
 Fase 6: configuración/protocolo en `src/lib/iframe`, puente en `src/components/iframe`, bloque y simulador en `src/iframe`; `vercel.json` en raíz por convención del proveedor. Variables completas en `.env.example`, incluidas WORDPRESS_ORIGINS y Corepack para Vercel. Revisión y despliegue: [iframe-wordpress.md](iframe-wordpress.md).
+
+Migración 0007: atención asignada/historial, entrega y metadata/lease de Gmail. Contrato: [atencion-y-comunicacion.md](atencion-y-comunicacion.md). .env.example incluye gmail.metadata propietario; reponer ese refresh token también en Vercel.

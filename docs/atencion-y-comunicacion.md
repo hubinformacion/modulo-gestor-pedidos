@@ -1,0 +1,61 @@
+# Atención de pedidos y comunicación
+
+Contrato vigente que sustituye la confirmación manual de comprobantes y la atención sin responsable. Implementado dentro de `feat/06-iframe-wp-polish`, pendiente de revisión y aprobación de esa rama.
+
+## Usuarios y responsabilidad
+
+Se mantienen Google OAuth y authorized_emails; no registro libre ni roles nuevos. Todos los autorizados consultan pedidos, toman pedidos disponibles y trabajan los que tienen asignados. Solo el maestro administra la lista de correos.
+
+- Atender: autoasignación atómica con lock del pedido y comprobación vigente de sesión/correo. Dos gestores no pueden tomar simultáneamente el mismo pedido.
+- Registrar pagos/despacho/entrega: requiere ser el gestor asignado, comprobar versión y estado. Tomar la atención primero. Ningún actor/id de gestor enviado desde cliente es confiable; la identidad procede de la sesión.
+- Liberar: solo el gestor actual libera un pedido abierto. Otro autorizado podrá tomarlo después. Pedidos cerrados conservan su responsable e historial.
+- Revocar un correo: revoca sesiones y libera sus pedidos abiertos en la misma transacción. Conserva responsable de pedidos cerrados y nombres de los actores del historial; no deja pedidos abiertos bloqueados por un gestor sin acceso.
+- orders guarda gestor/nombre/fecha; order_activity registra toma, liberación, comprobantes, revisiones y entregas con actor y detalle. «Mis pedidos» incluye los propios y cerrados; «He participado» consulta el historial aunque hayan cambiado de gestor.
+
+## Interfaz administrativa
+
+Bandejas Todos / Por asignar / Mis pedidos / He participado. Búsqueda por número/comprador/correo y filtro por estado; paginación de veinte. Tabla: pedido, comprador, gestor, modalidad, estado, importe, acción. Los pagos Universidad/Instituto están únicamente en el detalle.
+
+Atención guiada en cuatro etapas navegables: Atención → Pagos → Preparación → Entrega. La etapa actual se selecciona desde BD; verificar todos los pagos lleva a preparación, despachar a entrega. Se puede consultar cualquier etapa sin saltarse reglas de estado. Contexto lateral del comprador/publicaciones/importe y estado de correos; historial de quién hizo cada operación.
+
+Rechazar exige un motivo de 5–500 caracteres, visible en seguimiento y correo. Rechazo/re-subida conserva el otro sello. Despachar delivery requiere courier; guía/enlace HTTPS opcionales. Recojo marca listo en biblioteca sin courier. Entrega solo tras despacho. Cada transición crea evento de correo e historial junto con el estado, antes de llamar a Google. No se añade cancelación/reposición de stock sin política definida.
+
+## Experiencia del comprador
+
+Seguimiento con progreso Pedido → Pago → Preparación → Envío/Recojo → Entrega, responsable, mensaje de qué ocurre/qué hacer, comprobantes por sello, envío y cronología. Courier/guía/enlace y fechas se muestran cuando estén registrados. Enviado/listo/entregado tienen textos distintos para domicilio y biblioteca.
+
+Una zona FilePond por sello aplicable. Adjuntar guarda en Drive, registra el recibo y pasa ese pago a EN_REVISION en una transacción. No hay botón de confirmar ni paso adicional del comprador. Confirmación visual: comprobante adjunto, gestor que lo evaluará (o un gestor si no está asignado), y aviso por correo al concluir la revisión. Se admiten varios archivos durante revisión; se actualiza el último recibo y la versión del pedido para impedir decisiones desde un archivo/vista anteriores. No se duplica el correo de recepción por cada archivo adicional del mismo ciclo de revisión.
+
+Refresco cada 35 segundos y al volver a la pestaña, solo mientras sea visible y sin formularios/cargas en edición. Pausa durante carga/revisión/despacho para no borrar borradores. Termina al cerrar y terminar los avisos pendientes. Sin botones de copiar enlace, actualizar estado o confirmar archivos.
+
+## Correos y threads
+
+Diagnóstico real: los Message-ID calculados no coincidían con las cabeceras que Gmail almacenó; uno de los threadId guardados también difería. El token anterior no podía leer metadata. El propietario autorizó gmail.metadata y actualizó .env.local; se verificaron/repararon dos conversaciones existentes mediante lectura de cabeceras, sin reenviar mails.
+
+Scopes propietarios: drive, gmail.send y gmail.metadata. Este último permite consultar cabeceras, sin leer el cuerpo de otros mensajes. No añadirlo a los scopes de login de gestores. Replicar el refresh token nuevo en Vercel al desplegar.
+
+- Una fila order_emails por pedido: API id del correo inicial, threadId real, Message-ID RFC real, asunto real, última referencia/cadena y estado de verificación. Nunca construir respuestas a partir de un identificador supuesto.
+- Tras aceptación de Gmail, guardar primero el API id/status ENVIADO. Consultar metadata después; un fallo de metadata no vuelve a enviar el correo ya aceptado.
+- Respuestas: threadId explícito, Subject idéntico al inicial, In-Reply-To al último Message-ID real y References con referencias reales y plegado RFC. Si no se pueden verificar cabeceras, las actualizaciones quedan pendientes.
+- Un lease por pedido serializa correo inicial y avisos. Evita emisiones simultáneas con referencias inconsistentes. Google no bloquea transacciones de pedidos/stock.
+- Avisos compactos para asignación, recepción de comprobante, verificación/rechazo, envío/listo para recojo y entrega. Confirmación inicial incluye guía PDF; no repetir el PDF ni toda la compra en cada actualización.
+- Comprador como destinatario, maestro en copia estable; gestor vigente y autorizado en Bcc cuando sea distinto. Cuerpos con datos escapados y motivo/transportista/guía de la transición, no un estado posterior que haya cambiado mientras el correo esperaba.
+- Pendientes/fallos visibles en dashboard; reintento explícito por autorizados, sin recrear estados ni reenviar eventos ya ENVIADO. Espera de un minuto entre fallos; lease de cinco minutos, hasta tres avisos por pasada con presupuesto temporal. Sin worker/cron nuevo. Después de cinco fallos, el reintento administrativo habilita otra ronda solo para registros ERROR, nunca ENVIADO.
+- Gmail puede duplicar un correo si lo aceptó y la respuesta/registro se perdió; los IDs/eventos estables y el lease reducen ese riesgo, pero send no garantiza idempotencia. Emails ya enviados a hilos separados no se mueven ni reenvían: los siguientes se vinculan a la conversación inicial verificada.
+
+## Migración y revisión
+
+0007_vengeful_silk_fever aplicada en Neon: asignación, motivos de rechazo, guía/enlace/fechas, historial, metadata canónica/lease y payload de avisos. Pedidos previos reciben su evento de creación. Comprobantes ya cargados pendientes del viejo botón pasan a revisión con aviso pendiente; los rechazados no se reenvían si no hay un recibo nuevo. Sin envío de correo durante la migración o la reparación de cabeceras.
+
+Pasos manuales:
+
+1. Dos autorizados abren un pedido sin asignar; tomar en ambos: solo uno consigue la atención. El otro consulta, sin controles de decisión. Liberar y tomar con otro; ver historial y ambas bandejas de participación. Revocar un gestor de revisión y verificar liberación de sus pedidos abiertos.
+2. Adjuntar PDF/JPG/PNG en seguimiento; queda en revisión sin confirmar. Adjuntar otro del mismo sello: archivo registrado, una sola recepción por ciclo. Mixto conserva el otro pago. Ver acuse y nombre del gestor.
+3. Gestor verifica un sello y rechaza el otro con motivo. El comprador ve el motivo, sube el nuevo y entra a revisión directamente. Verificar ambos permite preparación.
+4. Registrar salida con courier/guía/enlace; comprador ve por dónde va y recibe correo. Recojo avisa disponible en biblioteca. Registrar entrega y revisar nombre/fecha/historial.
+5. En Gmail, comprobar un thread por pedido: inicial, asignación, pagos, envío y entrega. Revisar el hilo en comprador, maestro y gestor; comparar threadId/referencias reales si hubiera un problema. En Gmail la vista de conversación del usuario debe estar activada para visualizar agrupación.
+6. Interrumpir Google en un entorno de revisión: los estados/archivos permanecen guardados; avisos pendientes. Restaurar y reintentar desde dashboard; no reenviar los ya enviados. Revisar móvil, tabs con teclado y preservación de formularios al refresco.
+
+Sin suites automatizadas ni pedidos/usuarios ficticios. La revisión visual de las nuevas pantallas y el envío de transiciones reales se completa con sesiones/datos de revisión autorizados.
+
+Comprobaciones realizadas: migración 0007 aplicada en Neon; lectura de cabeceras reales y reparación de dos conversaciones sin enviar mensajes; lint, tipos y build correctos. No se crearon usuarios/pedidos de prueba ni se asignaron/revisaron/despacharon pedidos operativos para validar. La revisión de interfaz y transiciones con correo real queda en los pasos manuales anteriores.

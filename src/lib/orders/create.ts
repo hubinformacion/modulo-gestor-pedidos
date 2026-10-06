@@ -4,7 +4,7 @@ import { and, asc, eq, inArray, notLike, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { bankAccountsFromRows, paymentSetupReady, readPaymentGuide } from "@/lib/payments/config";
 import { withDatabase } from "@/db";
-import { bankAccounts, books, campuses, orderCounters, orderEmails, orderItems, orders, paymentGuides } from "@/db/schema";
+import { bankAccounts, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
 import { toPublicCampus } from "@/lib/campuses/catalog";
 import { createOrderDraftSchema } from "./validation";
 import { calculateQuote } from "./pricing";
@@ -67,6 +67,7 @@ export async function createOrder(input: unknown) {
     }).returning({ id: orders.id });
     await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, publisherImprint: line.book.publisherImprint, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
+    await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });
     return token;
   }));

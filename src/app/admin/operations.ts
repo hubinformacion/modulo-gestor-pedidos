@@ -3,14 +3,16 @@
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
-import { deliverOrderNotification } from "@/lib/orders/notifications";
+import { books, orderActivity, orderEmails, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
+import { getTrackedOrder } from "@/lib/orders/tracking";
+import { deliverOrderEmail } from "@/lib/orders/email";
+import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
-import { deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
+import { assignmentSchema, retryOrderMailSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return;
@@ -38,6 +40,7 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const [order] = await tx.select().from(orders).where(eq(orders.id, data.id)).for("update");
         if (!order) throw new OperationError("El pedido no existe.");
         checkVersion(order.updatedAt, data.version);
+        if (order.assignedTo !== actor.userId) throw new OperationError("Toma la atención del pedido para actualizarlo. Si está asignado a otro gestor, solo puedes consultarlo.");
         const status = data.imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
         if (order.orderStatus !== "PENDIENTE_PAGO" || status !== "EN_REVISION") throw new OperationError("Este pago ya no está pendiente de revisión.");
         const receipts = await tx.select().from(paymentReceipts).where(eq(paymentReceipts.orderId, order.id)).orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id));
@@ -45,12 +48,13 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const universidad = data.imprint === "universidad" ? data.decision : order.paymentStatusUniversidad;
         const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
         const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
-        await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO" }).where(eq(orders.id, order.id));
-        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId }).returning({ id: orderNotifications.id });
+        await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(data.imprint === "universidad" ? { rejectionUniversidad: data.decision === "RECHAZADO" ? data.reason : null } : { rejectionInstituto: data.decision === "RECHAZADO" ? data.reason : null }) }).where(eq(orders.id, order.id));
+        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", handlerName: actor.name } }).returning({ id: orderNotifications.id });
+        await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", detail: data.decision === "VERIFICADO" ? `Pago de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} verificado.${complete ? " Iniciamos la preparación." : ""}` : `Comprobante de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} rechazado: ${data.reason}` });
         return { token: order.trackingToken, notificationId: notification.id };
       });
     });
-    after(async () => { try { await deliverOrderNotification(outcome.notificationId); } catch { /* Preserve the event for retry. */ } });
+    after(async () => { try { await deliverOrderEmail(outcome.token); } catch { /* Preserve the event for retry. */ } });
     revalidatePath("/admin/pedidos", "layout");
     revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true, message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
@@ -70,14 +74,19 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
         const [order] = await tx.select().from(orders).where(eq(orders.id, data.id)).for("update");
         if (!order) throw new OperationError("El pedido no existe.");
         checkVersion(order.updatedAt, data.version);
+        if (order.assignedTo !== actor.userId) throw new OperationError("Toma la atención del pedido para actualizarlo. Si está asignado a otro gestor, solo puedes consultarlo.");
         if (![order.paymentStatusUniversidad, order.paymentStatusInstituto].every((status) => status === "NO_APLICA" || status === "VERIFICADO")) throw new OperationError("Verifica todos los pagos requeridos antes de despachar.");
         const expected = data.status === "DESPACHADO" ? "EN_PREPARACION" : "DESPACHADO";
         if (order.orderStatus !== expected) throw new OperationError("El pedido no admite ese cambio de estado.");
         if (data.status === "DESPACHADO" && order.deliveryType === "delivery" && !data.courier) throw new OperationError("Indica el courier para el envío a domicilio.");
-        await tx.update(orders).set({ orderStatus: data.status, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier }).where(eq(orders.id, order.id));
+        await tx.update(orders).set({ orderStatus: data.status, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
+          ...(data.status === "DESPACHADO" ? { shippingTrackingCode: order.deliveryType === "delivery" ? data.trackingCode || null : null, shippingTrackingUrl: order.deliveryType === "delivery" ? data.trackingUrl || null : null, dispatchedAt: new Date() } : { deliveredAt: new Date() }) }).where(eq(orders.id, order.id));
+        await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, handlerName: actor.name, deliveryType: order.deliveryType, courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: order.deliveryAddress } });
+        await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.status, detail: data.status === "ENTREGADO" ? "Entrega registrada. Gracias por tu pedido." : order.deliveryType === "recojo_campus" ? "Publicaciones listas para recoger en biblioteca." : `Pedido enviado por ${data.courier}${data.trackingCode ? ` · Guía ${data.trackingCode}` : ""}.` });
         return order.trackingToken;
       });
     });
+    scheduleOrderMail(token);
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${token}`);
     return { success: true, message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
   } catch (error) { return failure(error); }
@@ -126,5 +135,63 @@ export async function deleteBookAction(input: unknown): Promise<ActionResult> {
     });
     revalidatePath("/admin/inventario"); revalidatePath("/pedido"); revalidatePath("/admin/vista-previa");
     return { success: true, message: "Publicación eliminada." };
+  } catch (error) { return failure(error); }
+}
+
+function scheduleOrderMail(token: string) { after(async () => { try { await deliverOrderEmail(token); } catch (error) { reportServerError("order.mail.pending", error); } }); }
+
+export async function assignOrderAction(input: unknown): Promise<ActionResult> {
+  const parsed = assignmentSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: "Actualiza el pedido antes de asignarlo." };
+  try {
+    const requestHeaders = await headers();
+    const outcome = await withDatabase(async (db) => {
+      const actor = await getAuthorizedSession(db, requestHeaders);
+      return db.transaction(async (tx) => {
+        await assertAuthorized(tx, actor);
+        const [order] = await tx.select().from(orders).where(eq(orders.id, parsed.data.id)).for("update");
+        if (!order) throw new OperationError("El pedido no existe.");
+        if (["ENTREGADO", "CANCELADO"].includes(order.orderStatus)) throw new OperationError("Este pedido ya está cerrado.");
+        if (parsed.data.operation === "claim" && order.assignedTo === actor.userId) return { token: order.trackingToken, notify: false };
+        checkVersion(order.updatedAt, parsed.data.version);
+        if (parsed.data.operation === "claim") {
+          if (order.assignedTo) throw new OperationError("Otro gestor ya tomó este pedido. Actualiza la página.");
+          await tx.update(orders).set({ assignedTo: actor.userId, assignedName: actor.name, assignedAt: new Date() }).where(eq(orders.id, order.id));
+          await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "ASIGNADO", detail: `${actor.name} está a cargo de tu pedido.` });
+          await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "ASIGNADO", payload: { handlerName: actor.name, orderStatus: order.orderStatus } });
+        } else {
+          if (order.assignedTo !== actor.userId) throw new OperationError("Solo puedes liberar los pedidos que atiendes.");
+          await tx.update(orders).set({ assignedTo: null, assignedName: null, assignedAt: null }).where(eq(orders.id, order.id));
+          await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "LIBERADO", detail: "El pedido está disponible para un gestor del equipo." });
+        }
+        return { token: order.trackingToken, notify: parsed.data.operation === "claim" };
+      });
+    });
+    if (outcome.notify) scheduleOrderMail(outcome.token);
+    revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
+    return { success: true, message: parsed.data.operation === "claim" ? "El pedido quedó asignado a ti." : "Pedido disponible para otro gestor." };
+  } catch (error) { return failure(error); }
+}
+
+export async function retryOrderMailAction(input: unknown): Promise<ActionResult> {
+  const parsed = retryOrderMailSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: "Pedido no válido." };
+  try {
+    const requestHeaders = await headers();
+    const token = await withDatabase(async (db) => {
+      const actor = await getAuthorizedSession(db, requestHeaders);
+      return db.transaction(async (tx) => {
+        await assertAuthorized(tx, actor);
+        const [order] = await tx.select({ token: orders.trackingToken }).from(orders).where(eq(orders.id, parsed.data.id));
+        if (!order) throw new OperationError("El pedido no existe.");
+        await tx.update(orderNotifications).set({ status: "PENDIENTE", attempts: 0, lastAttemptAt: null }).where(and(eq(orderNotifications.orderId, parsed.data.id), eq(orderNotifications.status, "ERROR"), gte(orderNotifications.attempts, 5)));
+        await tx.update(orderEmails).set({ status: "PENDIENTE", attempts: 0, lastAttemptAt: null }).where(and(eq(orderEmails.orderId, parsed.data.id), eq(orderEmails.status, "ERROR"), gte(orderEmails.attempts, 5)));
+        return order.token;
+      });
+    });
+    const sent = await deliverOrderEmail(token);
+    const current = await getTrackedOrder(token);
+    revalidatePath("/admin/pedidos", "layout");
+    return { success: sent || Boolean(current?.emailHeadersVerified && !current?.hasPendingNotifications && current?.emailStatus === "ENVIADO"), message: sent ? "Avisos enviados en el hilo del pedido." : current?.emailHeadersVerified && !current.hasPendingNotifications ? "El hilo está verificado y no hay avisos pendientes." : "Hay avisos pendientes. Revisa la configuración o espera un minuto antes de reintentar." };
   } catch (error) { return failure(error); }
 }
