@@ -32,7 +32,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   function cancel() { setEditingId(null); setForm(emptyCampus); setErrors({}); setMessage(null); }
 
   function edit(row: CampusAdminRow) {
-    setEditingId(row.id); setForm({ name: row.name, libraryAddress: row.libraryAddress, latitude: row.latitude, longitude: row.longitude, googleMapsEmbedUrl: row.googleMapsEmbedUrl, status: row.status });
+    setEditingId(row.id); setForm({ name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, latitude: row.latitude, longitude: row.longitude, googleMapsEmbedUrl: row.googleMapsEmbedUrl, status: row.status });
     setErrors({}); setMessage(null); setConfirmId(null);
     requestAnimationFrame(() => { formRef.current?.scrollIntoView({ block: "start", behavior: "instant" }); formRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }); });
   }
@@ -82,6 +82,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{row.name}</h4><span className={`rounded-md px-2 py-1 text-[10px] font-medium ${row.status === "ACTIVO" ? "bg-secondary text-primary" : "bg-muted text-muted-foreground"}`}>{row.status === "ACTIVO" ? "Activo" : "Inactivo"}</span></div>
                 <p className="mt-2 text-xs leading-6 text-muted-foreground">{row.libraryAddress}</p>
+                {row.libraryLocation ? <p className="mt-1 text-xs font-medium">{row.libraryLocation}</p> : null}
                 <p className="mt-1 text-[11px] text-muted-foreground">{row.googleMapsEmbedUrl ? "Mapa personalizado" : row.latitude && row.longitude ? "Mapa por coordenadas" : "Mapa por dirección"}</p>
               </div>
               <div className="flex shrink-0 gap-1">
@@ -104,6 +105,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <legend className="sr-only">Datos del campus</legend>
             <Field id="campus-name" label="Nombre del campus" value={form.name} onChange={(event) => set("name", event.target.value)} error={errors.name} maxLength={120} required />
             <Field id="campus-address" label="Dirección de biblioteca" value={form.libraryAddress} onChange={(event) => set("libraryAddress", event.target.value)} error={errors.libraryAddress} maxLength={300} required />
+            <Field id="campus-library-location" label="Ubicación dentro del campus (opcional)" placeholder="Ej. Pabellón F, segundo piso" value={form.libraryLocation} onChange={(event) => set("libraryLocation", event.target.value)} error={errors.libraryLocation} maxLength={200} />
             <SelectField id="campus-status" label="Estado" value={form.status} onChange={(event) => set("status", event.target.value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
             <div className="border-t border-border pt-5">
               <h4 className="text-xs font-semibold">Ubicación precisa (opcional)</h4>

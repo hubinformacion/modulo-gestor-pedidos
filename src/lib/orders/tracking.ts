@@ -1,15 +1,17 @@
 import "server-only";
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { withReadDatabase } from "@/db";
-import { authorizedEmails, books, orderActivity, orderEmails, orderItems, orders, user } from "@/db/schema";
+import { authorizedEmails, books, campuses, orderActivity, orderEmails, orderItems, orders, user } from "@/db/schema";
+import { resolveOrderLocation } from "./location";
 import { trackingTokenSchema } from "./submission";
 
 export async function getTrackedOrder(token: unknown) {
   const valid = trackingTokenSchema.safeParse(token);
   if (!valid.success) return null;
   return withReadDatabase(async (db) => {
-    const [order] = await db.select().from(orders).where(eq(orders.trackingToken, valid.data));
-    if (!order) return null;
+    const [record] = await db.select({ order: orders, campus: campuses }).from(orders).leftJoin(campuses, eq(orders.deliveryCampus, campuses.id)).where(eq(orders.trackingToken, valid.data));
+    if (!record) return null;
+    const order = resolveOrderLocation(record.order, record.campus);
     const [items, mail, handler, activity] = await Promise.all([
       db.select({ title: sql<string>`coalesce(${orderItems.bookTitle}, ${books.title})`, publisherImprint: orderItems.publisherImprint, unitPrice: orderItems.unitPrice, quantity: orderItems.quantity, subtotal: orderItems.subtotal }).from(orderItems).innerJoin(books, eq(books.id, orderItems.bookId)).where(eq(orderItems.orderId, order.id)).orderBy(asc(books.title)),
       db.select().from(orderEmails).where(eq(orderEmails.orderId, order.id)),

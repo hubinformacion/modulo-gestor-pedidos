@@ -133,3 +133,5 @@ La autorización Google del administrador usa únicamente identidad; no sustituy
 Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas, editables en `/admin`, si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario se migran a la tabla `campuses`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.
 
 Flujo actualizado: autoasignación, operación por gestor responsable, historial, envío/guía/entrega, comprobantes automáticos y Gmail threads reales en [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
+
+Ubicación interna de biblioteca (library_location) editable en campus y snapshot del pedido; Maps por enlace en email. Recojo: evidencia fotográfica opcional al confirmar entrega, privada al equipo y separada de pagos. Bandeja como filtro select. Contrato vigente en atencion-y-comunicacion.md; migración 0011.

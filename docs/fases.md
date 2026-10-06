@@ -26,7 +26,7 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 
 **Estado:** código implementado; lint/tipos/build correctos y cabeceras/bloque/simulador verificados por HTTP local. Pendiente de revisión visual/final y aprobación para integrar. Dominios/proyecto Vercel/página WordPress definitivos pendientes; no considerar el despliegue realizado.
 
-**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migraciones 0007–0010 aplicadas; seguimiento sin identidad del gestor, sin correo de asignación, cierre SVG estático y carga sin preview que desaparece al finalizar; comprobantes privados con enlace directo Drive y lectores sincronizados, correos automáticos sin gestión manual; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
+**Ampliación solicitada:** autoasignación/historial, wizard de atención, seguimiento con progreso, recepción automática de comprobantes y avisos de entrega. Migraciones 0007–0011 aplicadas; seguimiento sin identidad del gestor, sin correo de asignación, cierre SVG estático y carga sin preview que desaparece al finalizar; comprobantes privados con enlace directo Drive y lectores sincronizados, correos automáticos sin gestión manual; dos hilos reparados con metadata real, sin reenviar correos. Ver [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
 
 **Entrega:** CSP frame-ancestors sin X-Frame-Options contradictorio, dominios configurables, altura postMessage segura, login externo para iframe, bloque/simulador WordPress bajo src, .env.example completo y configuración Vercel con pnpm.
 
@@ -45,3 +45,5 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 Ajuste vigente fase 6: card de pagos conservada al entregar, wizard administrativo compacto con notas privadas y correos con PNG estáticos derivados de SVG propios y avisos mixtos agrupados. Revisión manual en atencion-y-comunicacion.md, sin integrar la rama hasta aprobación.
 
 Conteo de cierre: cinco fases completadas e integradas localmente; queda una (fase 6) para revisión/aprobación y despliegue Vercel/WordPress con dominios reales y comprobación de PDF/Drive/Gmail en producción. Avisos mixtos agrupados, gráficos estáticos, card de pagos uniforme y refresco sin polling implementados. Consumo en [consumo-neon.md](consumo-neon.md).
+
+Último ajuste fase 6: ubicación interna editable de bibliotecas con snapshot/enlace Maps, filtro de bandeja desplegable y evidencia fotográfica opcional al cerrar recojo, privada para gestores. Migración 0011 aplicada; pendiente de revisión manual junto al despliegue final.

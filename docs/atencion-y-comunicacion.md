@@ -14,7 +14,7 @@ Se mantienen Google OAuth y authorized_emails; no registro libre ni roles nuevos
 
 ## Interfaz administrativa
 
-Bandejas Todos / Por asignar / Mis pedidos. Búsqueda por número/comprador/correo y filtro por estado; paginación de veinte. Tabla: pedido, comprador, gestor, modalidad, estado, importe, acción. Los pagos Universidad/Instituto están únicamente en el detalle.
+Filtro desplegable de bandeja: Todos / Por asignar / Mis pedidos, junto a Estado. Búsqueda por número/comprador/correo y filtro por estado; paginación de veinte. Tabla: pedido, comprador, gestor, modalidad, estado, importe, acción. Los pagos Universidad/Instituto están únicamente en el detalle.
 
 Atención guiada en cuatro etapas navegables: Atención → Pagos → Preparación → Entrega. La etapa actual se selecciona desde BD; verificar todos los pagos lleva a preparación, despachar a entrega. Se puede consultar cualquier etapa sin saltarse reglas de estado. Contexto lateral del comprador/publicaciones/importe; historial de quién hizo cada operación.
 
@@ -117,3 +117,19 @@ Comprobaciones finales del cambio: migración 0010 aplicada en Neon; lint, tipos
 Actualización manual: icono en las tres cabeceras de pedidos; title/aria-label y aviso accesible mientras actualiza. Usa router.refresh, conserva scroll y los estados de cliente que no cambian, con controles bloqueados durante la petición. Se deshabilita si hay carga, decisiones de pago, datos de despacho o nota en edición; comprobar de nuevo DOM al pulsar para cubrir cambios aún no observados. El observador DOM no consulta Neon. Cerrados permiten actualización manual, sin auto-focus refresh. Revisión: pulsar icono en seguimiento/bandeja/detalle, sin recarga completa; escribir una nota o iniciar archivo y comprobar bloqueo hasta finalizar o limpiar; verificar scroll/filtros.
 
 Comprobación del botón: lint y tipos correctos. Revisión visual/manual pendiente en seguimiento, bandeja y detalle; no se crearon datos ni se enviaron correos.
+
+## Ubicación de biblioteca y evidencia de recojo
+
+Campus incluye ubicación interna opcional (library_location, 200 caracteres) además de la dirección postal. CRUD valida en cliente/servidor, sin valores de pabellón inventados. Selección y confirmación de entrega muestran biblioteca/dirección/ubicación. Nuevos pedidos guardan delivery_library_location y delivery_map_url como snapshot; legacy sin snapshot usa campus vigente, sin modificar la dirección histórica. Al registrar salida/listo para recojo se fija esa ubicación en pedido y payload de aviso.
+
+Correo de envío/listo para recojo incluye dirección, ubicación interna si aplica y enlace Google Maps. No insertar iframe/script en email; Maps URLs no requiere API key. Coordenadas del campus se prefieren si están configuradas; búsqueda por dirección si no. Ver [Google Maps URLs](https://developers.google.com/maps/documentation/urls/get-started). No integrar Maps Static API ni activar facturación para un mapa de correo.
+
+Recojo en la etapa Entrega: imagen opcional JPG/PNG, máximo 3 MiB, solo gestor asignado en DESPACHADO. No solicita foto al marcar listo ni en delivery a domicilio. Tabla pickup_evidence separada de comprobantes financieros, con actor/fechas y estado de intención/carga/confirmación. UUID persistido y hash de contenido reutilizan ID Drive reservado en reintentos; validación de firma MIME, tipo y tamaño. Límite de cinco intenciones por pedido. Google fuera de las transacciones de negocio; antes y después se verifica autorización/gestor/versión/estado.
+
+Si la foto se seleccionó, debe guardarse en Drive antes del cierre. Fallo de subida/BD conserva intención e imagen seleccionada, no marca entrega ni genera su aviso. Es posible retirar la foto y confirmar sin evidencia. El cierre registra confirmed_at, estado/fecha, historial y outbox en una transacción. Archivo privado con permisos de carpeta, link directo en detalle administrativo; no aparece ni se adjunta al correo del comprador. Conflictos concurrentes pueden dejar intención pendiente recuperable con el mismo ID, no un archivo nuevo; no eliminar evidencia automáticamente.
+
+Migración 0011 agrega campos de ubicación y pickup_evidence. No se rellenaron pabellones, no se cambiaron estados ni se subieron fotos reales para validar. Bandeja se filtra con select junto a Estado; conserva URL, búsqueda/paginación y elimina consulta de contadores de tabs.
+
+Revisión manual: editar un campus y añadir “Pabellón F, segundo piso”; comprobar selección/confirmación, detalle/seguimiento y próximo aviso listo para recojo con link Maps. Cambiar coordenadas cuando se requiera precisión. Usar select de bandeja con Estado y buscar. Confirmar un recojo autorizado sin imagen y otro con JPG/PNG válido; foto visible únicamente al gestor en Drive. Tipo/tamaño inválido bloquea, fallo de carga permite reintentar sin duplicar; otro gestor/no autorizado no puede cerrar/adjuntar. Verificar que confirmar con imagen no genera dos avisos de entrega.
+
+Comprobaciones del ajuste: migración 0011 aplicada en Neon; lint, tipos y build correctos. Sin pabellones inventados, fotos/usuarios/pedidos ficticios, ni envío real de correos para validar. Quedan las revisiones visuales y de cierre/Drive/correo descritas arriba, con operaciones autorizadas.

@@ -18,6 +18,7 @@ export type Campus = {
   id: string;
   name: string;
   libraryAddress: string;
+  libraryLocation?: string;
   coordinates?: { latitude: number; longitude: number };
   googleMapsEmbedUrl?: string;
 };

@@ -1,7 +1,7 @@
 import { ArrowUpRight, MapPin, PackageCheck, Truck } from "lucide-react";
 import type { orders } from "@/db/schema";
 
-type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryAddress" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
+type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 
 export function DeliveryCard({ order }: { order: DeliveryOrder }) {
@@ -17,6 +17,8 @@ export function DeliveryCard({ order }: { order: DeliveryOrder }) {
     </div>
     <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6">
       <div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{pickup ? "Biblioteca" : "Dirección de entrega"}</p><p className="mt-2 text-sm font-medium leading-6">{order.deliveryAddress}</p>
+        {pickup && order.deliveryLibraryLocation ? <p className="mt-2 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
+        {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary underline underline-offset-4">Ver ubicación en Google Maps<ArrowUpRight className="size-3" /></a> : null}
         {order.deliveryDistrict ? <p className="mt-1 text-xs leading-6 text-muted-foreground">{order.deliveryDistrict}, {order.deliveryProvince}, {order.deliveryDepartment}</p> : null}
         {order.deliveryReference ? <p className="mt-2 text-xs leading-6 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
       </div>

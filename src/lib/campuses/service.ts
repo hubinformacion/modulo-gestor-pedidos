@@ -11,7 +11,7 @@ export async function saveCampus(db: Database, actor: AuthorizedActor, data: Cam
   return db.transaction(async (tx) => {
     await assertAuthorized(tx, actor);
     const values = {
-      name: data.name, libraryAddress: data.libraryAddress, latitude: data.latitude || null,
+      name: data.name, libraryAddress: data.libraryAddress, libraryLocation: data.libraryLocation, latitude: data.latitude || null,
       longitude: data.longitude || null, googleMapsEmbedUrl: data.googleMapsEmbedUrl || null, status: data.status,
     };
     if (id) {

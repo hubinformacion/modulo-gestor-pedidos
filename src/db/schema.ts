@@ -26,6 +26,7 @@ export const campuses = pgTable("campuses", {
   id: text("id").default(sql`gen_random_uuid()::text`).primaryKey(),
   name: text("name").notNull(),
   libraryAddress: text("library_address").notNull(),
+  libraryLocation: text("library_location").default("").notNull(),
   latitude: numeric("latitude", { precision: 10, scale: 7 }),
   longitude: numeric("longitude", { precision: 10, scale: 7 }),
   googleMapsEmbedUrl: text("google_maps_embed_url"),
@@ -92,6 +93,8 @@ export const orders = pgTable("orders", {
   deliveryUbigeo: text("delivery_ubigeo"),
   // Also stores the library address snapshot for campus pickup.
   deliveryAddress: text("delivery_address").notNull(),
+  deliveryLibraryLocation: text("delivery_library_location"),
+  deliveryMapUrl: text("delivery_map_url"),
   deliveryReference: text("delivery_reference"),
   deliveryRecipient: text("delivery_recipient").notNull(),
   deliveryRecipientType: recipientType("delivery_recipient_type").default("comprador").notNull(),
@@ -297,3 +300,20 @@ export const driveReaderGrants = pgTable("drive_reader_grants", {
   permissionId: text("permission_id").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [primaryKey({ columns: [table.folderId, table.email] }), uniqueIndex("drive_reader_grants_permission_unique").on(table.folderId, table.permissionId)]);
+
+// Durable upload intent and private evidence, separate from payment receipts.
+export const pickupEvidence = pgTable("pickup_evidence", {
+  id: uuid("id").primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  actorUserId: text("actor_user_id").references(() => authUser.id, { onDelete: "set null" }),
+  actorName: text("actor_name").notNull(),
+  driveFileId: text("drive_file_id").notNull().unique(),
+  driveViewUrl: text("drive_view_url"),
+  fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").notNull(),
+  contentHash: text("content_hash").notNull(),
+  size: integer("size").notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+  confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("pickup_evidence_order_idx").on(table.orderId), check("pickup_evidence_size", sql`${table.size} > 0 AND ${table.size} <= 3145728`), check("pickup_evidence_image_type", sql`${table.mimeType} IN ('image/jpeg','image/png')`)]);

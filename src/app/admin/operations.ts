@@ -1,17 +1,20 @@
 "use server";
 
+import { z } from "zod";
+import { preparePickupEvidence, PickupEvidenceError } from "@/lib/delivery/evidence";
+import { resolveOrderLocation } from "@/lib/orders/location";
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, orderActivity, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
+import { books, campuses, pickupEvidence, orderActivity, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
 import { deliverOrderEmail } from "@/lib/orders/email";
 import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
-import { internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
+import { pickupImageSchema, pickupImageUploadIdSchema, internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return;
@@ -19,7 +22,7 @@ function code(error: unknown): string | undefined {
   if ("cause" in error) return code(error.cause);
 }
 function failure(error: unknown): ActionResult {
-  return { success: false, message: error instanceof AccessError ? error.message : error instanceof OperationError ? error.message : code(error) === "23505" ? "Ese código de inventario ya existe." : code(error) === "23503" ? "La publicación tiene pedidos asociados. Desactívala para conservar el historial." : "No se pudo guardar. Actualiza la página e intenta nuevamente." };
+  return { success: false, message: error instanceof AccessError ? error.message : (error instanceof OperationError || error instanceof PickupEvidenceError) ? error.message : code(error) === "23505" ? "Ese código de inventario ya existe." : code(error) === "23503" ? "La publicación tiene pedidos asociados. Desactívala para conservar el historial." : "No se pudo guardar. Actualiza la página e intenta nuevamente." };
 }
 class OperationError extends Error {}
 function checkVersion(actual: Date, expected: string) {
@@ -62,12 +65,26 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
 }
 
 export async function dispatchOrderAction(input: unknown): Promise<ActionResult> {
-  const parsed = dispatchSchema.safeParse(input);
-  if (!parsed.success) return { success: false, message: "Revisa el estado y los datos del despacho." };
+  let payload: unknown = input;
+  let image: File | undefined;
+  let uploadId: string | undefined;
+  if (input instanceof FormData) {
+    const raw = z.string().max(7000).safeParse(input.get("data"));
+    if (!raw.success) return { success: false, message: "Revisa los datos de entrega." };
+    try { payload = JSON.parse(raw.data); } catch { return { success: false, message: "Revisa los datos de entrega." }; }
+    const imageResult = pickupImageSchema.safeParse(input.get("image"));
+    const idResult = pickupImageUploadIdSchema.safeParse(input.get("uploadId"));
+    if (!imageResult.success || !idResult.success) return { success: false, message: imageResult.success ? "Vuelve a seleccionar la imagen." : imageResult.error.issues[0].message };
+    image = imageResult.data; uploadId = idResult.data;
+  }
+  const parsed = dispatchSchema.safeParse(payload);
+  if (!parsed.success) return { success: false, message: "Revisa los datos de entrega." };
+  if (image && parsed.data.status !== "ENTREGADO") return { success: false, message: "La imagen se adjunta al confirmar el recojo." };
   try {
     const requestHeaders = await headers();
+    const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+    const evidenceId = image && uploadId ? await preparePickupEvidence(actor, parsed.data.id, parsed.data.version, uploadId, image) : null;
     const token = await withDatabase(async (db) => {
-      const actor = await getAuthorizedSession(db, requestHeaders);
       return db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
         const data = parsed.data;
@@ -79,9 +96,16 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
         const expected = data.status === "DESPACHADO" ? "EN_PREPARACION" : "DESPACHADO";
         if (order.orderStatus !== expected) throw new OperationError("El pedido no admite ese cambio de estado.");
         if (data.status === "DESPACHADO" && order.deliveryType === "delivery" && !data.courier) throw new OperationError("Indica el courier para el envío a domicilio.");
-        await tx.update(orders).set({ orderStatus: data.status, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
+        if (evidenceId) {
+          const [proof] = await tx.select().from(pickupEvidence).where(eq(pickupEvidence.id, evidenceId)).for("update");
+          if (!proof || proof.orderId !== order.id || proof.actorUserId !== actor.userId || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO" || order.deliveryType !== "recojo_campus") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
+          await tx.update(pickupEvidence).set({ confirmedAt: new Date() }).where(eq(pickupEvidence.id, proof.id));
+        }
+        const [campus] = order.deliveryCampus ? await tx.select().from(campuses).where(eq(campuses.id, order.deliveryCampus)).for("share") : [];
+        const destination = resolveOrderLocation(order, campus ?? null);
+        await tx.update(orders).set({ orderStatus: data.status, deliveryLibraryLocation: destination.deliveryLibraryLocation, deliveryMapUrl: destination.deliveryMapUrl, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
           ...(data.status === "DESPACHADO" ? { shippingTrackingCode: order.deliveryType === "delivery" ? data.trackingCode || null : null, shippingTrackingUrl: order.deliveryType === "delivery" ? data.trackingUrl || null : null, dispatchedAt: new Date() } : { deliveredAt: new Date() }) }).where(eq(orders.id, order.id));
-        await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: order.deliveryAddress } });
+        await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: destination.deliveryAddress, libraryLocation: destination.deliveryLibraryLocation ?? "", mapUrl: destination.deliveryMapUrl } });
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.status, detail: data.status === "ENTREGADO" ? "Entrega registrada. Gracias por tu pedido." : order.deliveryType === "recojo_campus" ? "Publicaciones listas para recoger en biblioteca." : `Pedido enviado por ${data.courier}${data.trackingCode ? ` · Guía ${data.trackingCode}` : ""}.` });
         return order.trackingToken;
       });
@@ -89,7 +113,10 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
     scheduleOrderMail(token);
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${token}`);
     return { success: true, message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
-  } catch (error) { return failure(error); }
+  } catch (error) {
+    if (!(error instanceof AccessError) && !(error instanceof OperationError) && !(error instanceof PickupEvidenceError)) reportServerError("dispatch.failed", error);
+    return failure(error);
+  }
 }
 
 export async function saveBookAction(input: unknown): Promise<ActionResult> {

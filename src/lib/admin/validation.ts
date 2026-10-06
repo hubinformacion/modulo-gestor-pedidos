@@ -31,3 +31,8 @@ export const filterSchema = z.object({
 export const internalNoteSchema = z.object({
   id: z.uuid(), content: z.string().trim().min(3, "Escribe al menos 3 caracteres.").max(2000, "Máximo 2000 caracteres."),
 });
+
+export const pickupImageSchema = z.instanceof(File)
+  .refine((file) => file.size > 0 && file.size <= 3 * 1024 * 1024, "La imagen debe pesar hasta 3 MB.")
+  .refine((file) => ["image/jpeg", "image/png"].includes(file.type), "Usa una imagen JPG o PNG.");
+export const pickupImageUploadIdSchema = z.uuid();

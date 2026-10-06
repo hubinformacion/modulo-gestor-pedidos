@@ -5,6 +5,7 @@ import { nanoid } from "nanoid";
 import { bankAccountsFromRows, paymentSetupReady, readPaymentGuide } from "@/lib/payments/config";
 import { withDatabase } from "@/db";
 import { bankAccounts, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
+import { campusMapUrls } from "@/lib/orders/campus-map";
 import { toPublicCampus } from "@/lib/campuses/catalog";
 import { createOrderDraftSchema } from "./validation";
 import { calculateQuote } from "./pricing";
@@ -36,6 +37,7 @@ export async function createOrder(input: unknown) {
     const validated = createOrderDraftSchema(catalog, activeCampuses.map(toPublicCampus)).safeParse(data);
     if (!validated.success) throw new OrderInputError(validated.error.issues[0]?.message ?? "Revisa tus datos.");
     const { cart, buyer, delivery } = validated.data;
+    const pickupCampus = delivery.type === "recojo_campus" ? activeCampuses.find((campus) => campus.id === delivery.campus) : undefined;
     const quote = calculateQuote(catalog, cart, buyer.type, delivery);
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
     const { rows: [clock] } = await tx.execute<{ year: number }>(sql`SELECT extract(year FROM current_timestamp AT TIME ZONE 'America/Lima')::int AS year`);
@@ -57,6 +59,8 @@ export async function createOrder(input: unknown) {
       deliveryType: delivery.type, deliveryCampus: delivery.campus || null, deliveryZone: location?.zone ?? null,
       deliveryDepartment: location?.department.name ?? null, deliveryCity: location?.district.name ?? null,
       deliveryProvince: location?.province.name ?? null, deliveryDistrict: location?.district.name ?? null, deliveryUbigeo: delivery.district || null,
+      deliveryLibraryLocation: pickupCampus?.libraryLocation ?? null,
+      deliveryMapUrl: pickupCampus ? campusMapUrls(toPublicCampus(pickupCampus)).searchUrl : null,
       deliveryAddress: delivery.address, deliveryReference: delivery.reference || null, deliveryRecipient: delivery.recipient,
       deliveryRecipientType: delivery.recipientType, deliveryRecipientDocument: delivery.recipientDocument, deliveryRecipientPhone: delivery.recipientPhone,
       subtotalUniversidad: centsToDecimal(university?.subtotal ?? 0), subtotalInstituto: centsToDecimal(institute?.subtotal ?? 0),

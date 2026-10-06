@@ -11,6 +11,7 @@ export function CampusLocation({ campus }: { campus: Campus }) {
         <div>
           <p className="text-xs font-semibold">Biblioteca · {campus.name}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{campus.libraryAddress}</p>
+          {campus.libraryLocation ? <p className="mt-2 text-xs font-medium">{campus.libraryLocation}</p> : null}
           <p className="mt-1 text-xs font-medium">Recojo del libro en la biblioteca</p>
         </div>
       </div>

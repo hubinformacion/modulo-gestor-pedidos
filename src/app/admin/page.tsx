@@ -40,7 +40,7 @@ export default async function AuthorizedEmailsPage() {
       </section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
-        <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
+        <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
       </section>} banks={<section aria-labelledby="bank-accounts-title">
         <h2 id="bank-accounts-title" className="text-lg font-semibold tracking-tight">Cuentas bancarias</h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Gestiona las alternativas de pago de cada sello. Los pedidos anteriores conservan las cuentas que recibieron al registrarse.</p>

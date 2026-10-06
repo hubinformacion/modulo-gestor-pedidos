@@ -22,7 +22,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   if (!parsed.success) notFound();
   const detail = await orderDetail(parsed.data);
   if (!detail) notFound();
-  const { order, items, receipts, activity, notes } = detail;
+  const { order, items, receipts, activity, notes, evidence } = detail;
   const version = order.updatedAt.toISOString();
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const mine = order.assignedTo === actor.userId;
@@ -31,6 +31,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const deliveryDetails = <div className="rounded-lg border border-border p-4">
     <h3 className="flex items-center gap-2 text-xs font-semibold"><Truck className="size-4 text-primary" />{order.deliveryType === "delivery" ? "Entrega a domicilio" : "Recojo en biblioteca"}</h3>
     <p className="mt-2 text-xs leading-6">{order.deliveryAddress}</p>
+    {order.deliveryType === "recojo_campus" && order.deliveryLibraryLocation ? <p className="mt-1 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
+    {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-block text-[10px] font-medium text-primary underline">Ver ubicación en Google Maps ↗</a> : null}
     {order.deliveryDistrict ? <p className="text-[10px] leading-5 text-muted-foreground">{order.deliveryDistrict}, {order.deliveryProvince}, {order.deliveryDepartment}</p> : null}
     {order.deliveryReference ? <p className="mt-1 text-[10px] leading-5 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
     <dl className="mt-3 grid gap-2 border-t border-border pt-3 text-[11px] sm:grid-cols-2"><div><dt className="text-muted-foreground">Recibe / recoge</dt><dd className="mt-1 font-medium">{order.deliveryRecipient}</dd></div><div><dt className="text-muted-foreground">Documento · teléfono</dt><dd className="mt-1">{order.deliveryRecipientDocument ?? order.customerDocument}<br />{order.deliveryRecipientPhone ?? order.customerPhone}</dd></div></dl>
@@ -68,6 +70,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       {order.deliveredAt ? <div className="rounded-md bg-emerald-50 p-3 text-emerald-800"><dt>Entrega confirmada</dt><dd className="mt-1 font-medium">{dateFormat.format(order.deliveredAt)}</dd></div> : null}
       </dl>{order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-semibold text-primary underline">Consultar envío ↗</a> : null}
       {mine && order.orderStatus === "DESPACHADO" ? <DispatchControls id={order.id} version={version} status="DESPACHADO" delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} /> : !closed && order.orderStatus !== "DESPACHADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Pendiente de registrar salida o disponibilidad.</p> : null}
+      {evidence.length ? <div className="mt-3 border-t border-border pt-3"><h4 className="text-xs font-semibold">Evidencia del recojo</h4>{evidence.map((file) => <div key={file.id} className="mt-2"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-xs font-medium text-primary underline">{file.fileName}</a><p className="mt-1 text-[10px] text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt!)}</p></div>)}</div> : null}
       {order.orderStatus === "CANCELADO" ? <p className="mt-3 text-xs text-muted-foreground">Este pedido está cancelado.</p> : null}
       </section></div>
     </div>,
