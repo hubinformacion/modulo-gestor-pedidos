@@ -11,7 +11,7 @@ import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
-import { assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
+import { internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return;
@@ -167,5 +167,24 @@ export async function assignOrderAction(input: unknown): Promise<ActionResult> {
     });
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true, message: parsed.data.operation === "claim" ? "El pedido quedó asignado." : "Pedido disponible para otro gestor." };
+  } catch (error) { return failure(error); }
+}
+
+export async function addInternalNoteAction(input: unknown): Promise<ActionResult> {
+  const parsed = internalNoteSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
+  try {
+    const requestHeaders = await headers();
+    await withDatabase(async (db) => {
+      const actor = await getAuthorizedSession(db, requestHeaders);
+      await db.transaction(async (tx) => {
+        await assertAuthorized(tx, actor);
+        const [order] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, parsed.data.id)).for("share");
+        if (!order) throw new OperationError("El pedido no existe.");
+        await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "NOTA_INTERNA", detail: parsed.data.content });
+      });
+    });
+    revalidatePath(`/admin/pedidos/${parsed.data.id}`);
+    return { success: true, message: "Nota interna guardada." };
   } catch (error) { return failure(error); }
 }

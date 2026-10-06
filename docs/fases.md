@@ -41,3 +41,5 @@ Nunca hacer commits en `main`. Trabajar en una rama por fase. Al cerrar cada fas
 - Código/utilidades/migraciones bajo `src`; configuración de herramientas en raíz solo cuando la convención lo necesita.
 - Sin landing, contenido promocional, logos ni referencias corporativas en la interfaz.
 - Inter por defecto, tema claro, blanco y `#6802C1`.
+
+Ajuste vigente fase 6: card de pagos conservada al entregar, wizard administrativo compacto con notas privadas y correos con GIF animados derivados de SVG propios. Revisión manual en atencion-y-comunicacion.md, sin integrar la rama hasta aprobación.

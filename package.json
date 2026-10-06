@@ -14,7 +14,8 @@
     "db:seed": "tsx src/db/seed.ts",
     "db:seed:demo": "tsx src/db/seed.ts --demo",
     "iframe:preview": "tsx src/iframe/serve-simulator.ts",
-    "iframe:snippet": "tsx src/iframe/generate-snippet.ts"
+    "iframe:snippet": "tsx src/iframe/generate-snippet.ts",
+    "email:assets": "tsx src/assets/email/generate.ts"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",
@@ -52,6 +53,7 @@
     "drizzle-kit": "0.31.11",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.8",
+    "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "5.9.3"

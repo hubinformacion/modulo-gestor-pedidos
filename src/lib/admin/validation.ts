@@ -27,3 +27,7 @@ export const filterSchema = z.object({
   owner: z.enum(["all", "mine", "unassigned", "participated"]).catch("all"),
   page: z.coerce.number().int().min(1).max(100000).catch(1),
 });
+
+export const internalNoteSchema = z.object({
+  id: z.uuid(), content: z.string().trim().min(3, "Escribe al menos 3 caracteres.").max(2000, "Máximo 2000 caracteres."),
+});

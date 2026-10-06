@@ -40,12 +40,13 @@ export async function orderDetail(id: string) {
   return withReadDatabase(async (db) => {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return null;
-    const [items, receipts, activity] = await Promise.all([
+    const [items, receipts, activity, notes] = await Promise.all([
       db.select({ id: orderItems.id, title: sql<string>`coalesce(${orderItems.bookTitle}, ${books.title})`, imprint: orderItems.publisherImprint, price: orderItems.unitPrice, quantity: orderItems.quantity, subtotal: orderItems.subtotal }).from(orderItems).innerJoin(books, eq(books.id, orderItems.bookId)).where(eq(orderItems.orderId, id)).orderBy(asc(orderItems.id)),
       db.select().from(paymentReceipts).where(eq(paymentReceipts.orderId, id)).orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id)),
-      db.select().from(orderActivity).where(eq(orderActivity.orderId, id)).orderBy(desc(orderActivity.createdAt)).limit(50),
+      db.select().from(orderActivity).where(and(eq(orderActivity.orderId, id), ne(orderActivity.eventType, "NOTA_INTERNA"))).orderBy(desc(orderActivity.createdAt)).limit(50),
+      db.select({ id: orderActivity.id, content: orderActivity.detail, author: orderActivity.actorName, createdAt: orderActivity.createdAt }).from(orderActivity).where(and(eq(orderActivity.orderId, id), eq(orderActivity.eventType, "NOTA_INTERNA"))).orderBy(desc(orderActivity.createdAt), desc(orderActivity.id)).limit(50),
     ]);
-    return { order, items, receipts, activity };
+    return { order, items, receipts, activity, notes };
   });
 }
 

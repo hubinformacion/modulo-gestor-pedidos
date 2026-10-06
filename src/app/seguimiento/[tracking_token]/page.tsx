@@ -23,7 +23,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
   const tracking = await getTrackedOrder(tracking_token);
   if (!tracking) notFound();
   const { order, items, activity } = tracking;
-  const banks = order.orderStatus === "ENTREGADO" ? null : await getOrderBankAccounts(order.paymentAccounts);
+  const banks = await getOrderBankAccounts(order.paymentAccounts);
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");
   const events = activity.filter((event, index) => index === 0 || event.detail !== activity[index - 1].detail);
@@ -31,7 +31,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Mi pedido</p><h1 className="page-heading mt-2">Pedido {order.orderNumber}</h1><p className="mt-3 text-xs text-muted-foreground">Hola, {order.customerName}. Aquí encontrarás cada avance de tu compra.</p></div><p className="text-[10px] text-muted-foreground">Registrado {dateFormat.format(order.createdAt)}</p></div>
     <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]"><div className="space-y-6"><CustomerProgress order={order} deliveredAt={order.deliveredAt} />
       <DeliveryCard order={order} />
-      {order.orderStatus !== "ENTREGADO" ? <section aria-labelledby="payments-title"><div className="flex flex-wrap items-end justify-between gap-2"><h2 id="payments-title" className="text-base font-semibold">Pagos y comprobantes</h2><Link href={`/seguimiento/${tracking_token}/guia`} className="text-xs font-semibold text-primary underline underline-offset-4">Guía de pago PDF</Link></div><p className="mt-2 text-xs leading-6 text-muted-foreground">{order.orderStatus !== "PENDIENTE_PAGO" ? "Aquí puedes consultar los pagos y comprobantes de tu compra." : order.orderType === "mixto" ? "Son dos depósitos independientes, uno por cada sello. Adjunta el comprobante en su sección." : "Deposita en una de las cuentas indicadas y adjunta el comprobante."}</p><div className="mt-4 space-y-4">{applicable.map((imprint) => {
+      <section aria-labelledby="payments-title"><div className="flex flex-wrap items-end justify-between gap-2"><h2 id="payments-title" className="text-base font-semibold">Pagos y comprobantes</h2><Link href={`/seguimiento/${tracking_token}/guia`} className="text-xs font-semibold text-primary underline underline-offset-4">Guía de pago PDF</Link></div><p className="mt-2 text-xs leading-6 text-muted-foreground">{order.orderStatus !== "PENDIENTE_PAGO" ? "Aquí puedes consultar los pagos y comprobantes de tu compra." : order.orderType === "mixto" ? "Son dos depósitos independientes, uno por cada sello. Adjunta el comprobante en su sección." : "Deposita en una de las cuentas indicadas y adjunta el comprobante."}</p><div className="mt-4 space-y-4">{applicable.map((imprint) => {
         const accounts = banks?.[imprint];
         const payment = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
         const reason = imprint === "universidad" ? order.rejectionUniversidad : order.rejectionInstituto;
@@ -43,7 +43,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
           {canUpload ? <ReceiptArea token={tracking_token} imprint={imprint} enabled={googleConfigured()} /> : null}</>}
 
         </div></section>;
-      })}</div></section> : null}
+      })}</div></section>
 
     </div><aside className="space-y-5"><section className="rounded-xl border border-border p-5"><h2 className="text-sm font-semibold">Detalle de tu compra</h2><ul className="mt-4 space-y-3">{items.map((item, index) => <li key={index} className="flex justify-between gap-3 text-xs"><div><p className="font-medium leading-5">{item.quantity} × {item.title}</p><p className="mt-1 text-[10px] text-muted-foreground">{formatMoney(toCents(item.unitPrice))} c/u</p></div><span className="shrink-0 tabular-nums">{formatMoney(toCents(item.subtotal))}</span></li>)}</ul><div className="mt-5 space-y-3 border-t border-border pt-4 text-xs"><div className="flex justify-between"><span>Publicaciones</span><span>{formatMoney(toCents(order.subtotalUniversidad) + toCents(order.subtotalInstituto))}</span></div><div className="flex justify-between"><span>Costo por envío</span><span>{formatMoney(toCents(order.shippingCost))}</span></div><div className="flex justify-between text-base font-semibold"><span>Total</span><span>{formatMoney(toCents(order.total))}</span></div></div></section>
 

@@ -9,6 +9,7 @@ import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
+import { readMailArt, type MailArt } from "@/lib/orders/mail-art";
 import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
 import { imprintNames } from "@/lib/orders/types";
 import type { getTrackedOrder } from "@/lib/orders/tracking";
@@ -96,7 +97,7 @@ export async function readSentMailHeaders(messageId: string) {
   }, "gmail.metadata");
 }
 
-async function sendMime({ tracking, html, text, attachment, notificationId }: { tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
+async function sendMime({ tracking, html, text, attachment, notificationId, art, artCid }: { art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const to = z.email().parse(tracking.order.customerEmail);
   const boundary = `mixed_${randomUUID()}`;
@@ -113,9 +114,13 @@ async function sendMime({ tracking, html, text, attachment, notificationId }: { 
   ];
   const body = [`--${alternative}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(text)),
     `--${alternative}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(html)), `--${alternative}--`];
-  const raw = attachment ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/alternative; boundary="${alternative}"`, "", ...body,
+  const related = `related_${randomUUID()}`;
+  const illustration = await readMailArt(art);
+  const relatedBody = [`--${related}`, `Content-Type: multipart/alternative; boundary="${alternative}"`, "", ...body,
+    `--${related}`, "Content-Type: image/gif", "Content-Transfer-Encoding: base64", `Content-ID: <${artCid}>`, `Content-Disposition: inline; filename="${art}.gif"`, "", base64Lines(illustration), `--${related}--`, ""];
+  const raw = attachment ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
     `--${boundary}`, `Content-Type: application/pdf; name="${attachment.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${attachment.filename}"`, "", base64Lines(attachment.content), `--${boundary}--`, ""].join("\r\n")
-    : [...headers, `Content-Type: multipart/alternative; boundary="${alternative}"`, "", ...body, ""].join("\r\n");
+    : [...headers, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody].join("\r\n");
   return retryOnce(async () => {
     const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.send({ userId: "me", requestBody: { raw: Buffer.from(raw).toString("base64url"), ...(notificationId && tracking.emailThreadId ? { threadId: tracking.emailThreadId } : {}) } }, { timeout: 20_000, retry: false });
     if (!response.data.id || !response.data.threadId) throw new Error("NO_GMAIL_ID");
@@ -125,12 +130,13 @@ async function sendMime({ tracking, html, text, attachment, notificationId }: { 
 
 export async function sendOrderConfirmationEmail(tracking: Tracking) {
   const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=recepcion`;
+  const artCid = `state-${tracking.order.id}@${new URL(getPublicOrigin()).hostname}`;
   const intro = emailTemplates[tracking.order.orderType];
   const amounts = (["universidad", "instituto"] as const)
     .filter((imprint) => (imprint === "universidad" ? tracking.order.paymentStatusUniversidad : tracking.order.paymentStatusInstituto) !== "NO_APLICA")
     .map((imprint) => `${imprintNames[imprint]}: ${formatMoney(toCents(imprint === "universidad" ? tracking.order.totalUniversidad : tracking.order.totalInstituto))}`)
     .join("\n");
-  return sendMime({ tracking, html: renderOrderEmail(tracking, { intro, link }),
+  return sendMime({ tracking, art: "received", artCid, html: renderOrderEmail(tracking, { intro, link, artCid }),
     text: `Pedido ${tracking.order.orderNumber}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Seguimiento y pago: ${link}\nGuía de pago adjunta en PDF.`,
     attachment: await readOrderPaymentGuide(tracking.order),
   });
@@ -150,5 +156,7 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const notice = notices[notification.eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
   const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=${notification.id}`;
-  return sendMime({ tracking, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\nSeguimiento: ${link}` });
+  const art: MailArt = notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
+  const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
+  return sendMime({ tracking, art, artCid, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\nSeguimiento: ${link}` });
 }
