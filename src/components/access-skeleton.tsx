@@ -12,9 +12,9 @@ const bones: SkeletonResult = {
   ],
 };
 
-export function AccessSkeleton() {
+export function AccessSkeleton({ label = "Cargando administración" }: { label?: string }) {
   return (
-    <div role="status" aria-label="Cargando administración" aria-busy="true">
+    <div role="status" aria-label={label} aria-busy="true">
       <Skeleton loading initialBones={bones} color="#e7e7ed" animate="pulse" fallback={<div className="h-70 rounded-lg bg-muted motion-safe:animate-pulse" />}>
         <div className="h-70" />
       </Skeleton>

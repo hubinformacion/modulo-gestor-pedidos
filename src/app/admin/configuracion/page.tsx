@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { CajaSettings } from "@/components/caja/settings";
 import { asc } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { authorizedEmails, bankAccounts, campuses } from "@/db/schema";
@@ -36,8 +37,8 @@ export default async function AuthorizedEmailsPage() {
       <SettingsTabs emails={<section aria-labelledby="emails-title">
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
-      <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
-      </section>} campuses={<section aria-labelledby="campuses-title">
+      <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "gestor").map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
+      </section>} caja={<section><h2 className="text-lg font-semibold tracking-tight">Responsables de caja</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Una cuenta por sello, con acceso exclusivo a sus solicitudes de boletas y facturas. Ingresa desde /caja con Google.</p><CajaSettings canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "caja" && row.publisherImprint).map((row) => ({ email: row.email, imprint: row.publisherImprint! }))} /></section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
         <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />

@@ -14,20 +14,31 @@ async function authorizeIdentity(db: Database, result: SessionIdentity | null): 
   if (!result) throw new AccessError("UNAUTHENTICATED");
   const email = authorizedEmailSchema.safeParse(result.user.email);
   if (!result.user.emailVerified || !email.success) throw new AccessError("FORBIDDEN");
-  const [allowed] = await db.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
+  const [allowed] = await db.select().from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
   if (!allowed) throw new AccessError("FORBIDDEN");
-  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name };
+  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, role: allowed.role, publisherImprint: allowed.publisherImprint };
 }
 function accessFailure(error: unknown): never {
   if (error instanceof AccessError) throw error;
   reportServerError("access.session.unavailable", error);
   throw new AccessError("UNAVAILABLE");
 }
-export async function getAuthorizedSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+export async function getSignedInSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
   try {
     const result = await createAuth(db).api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
     return await authorizeIdentity(db, result);
   } catch (error) { return accessFailure(error); }
+}
+
+export async function getAuthorizedSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+  const actor = await getSignedInSession(db, requestHeaders);
+  if (actor.role !== "gestor") throw new AccessError("FORBIDDEN");
+  return actor;
+}
+export async function getCajaSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+  const actor = await getSignedInSession(db, requestHeaders);
+  if (actor.role !== "caja" || !actor.publisherImprint) throw new AccessError("FORBIDDEN");
+  return actor;
 }
 
 // Only proxy can forward renewed cookies. RSC/actions retain authoritative,
@@ -53,4 +64,14 @@ export const requirePageAccess = cache(async (): Promise<AuthorizedActor> => {
     throw new AccessError("UNAVAILABLE");
   }
   return actor;
+});
+
+export const requireCajaAccess = cache(async () => {
+  const requestHeaders = await headers();
+  try { return await withDatabase((db) => getCajaSession(db, requestHeaders)); }
+  catch (error) {
+    if (error instanceof AccessError && error.code === "UNAUTHENTICATED") redirect("/login");
+    if (error instanceof AccessError && error.code === "FORBIDDEN") redirect("/acceso");
+    throw error;
+  }
 });

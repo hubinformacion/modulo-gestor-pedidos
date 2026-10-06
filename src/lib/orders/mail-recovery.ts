@@ -14,7 +14,7 @@ export async function needsOrderMailRecovery(orderId: string): Promise<boolean> 
         (${orderEmails.status} <> 'ENVIADO' AND ${orderEmails.attempts} < 5)
         OR (${orderEmails.status} = 'ENVIADO' AND EXISTS (
           SELECT 1 FROM ${orderNotifications} n
-          WHERE n.order_id = ${orderEmails.orderId} AND n.status <> 'ENVIADO' AND n.event_type <> 'ASIGNADO'
+          WHERE n.order_id = ${orderEmails.orderId} AND n.status NOT IN ('ENVIADO','OMITIDO') AND n.event_type <> 'ASIGNADO'
             AND n.attempts < 5 AND (n.last_attempt_at IS NULL OR n.last_attempt_at < now() - interval '3 minutes')
         ))
       )` }).from(orderEmails).where(sql`${orderEmails.orderId} = ${orderId}`);

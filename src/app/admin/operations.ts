@@ -1,5 +1,7 @@
 "use server";
 
+import { createCajaRequest } from "@/lib/caja/service";
+import { recoverCajaMail } from "@/lib/caja/email";
 import { z } from "zod";
 import { preparePickupEvidence, PickupEvidenceError } from "@/lib/delivery/evidence";
 import { resolveOrderLocation } from "@/lib/orders/location";
@@ -51,12 +53,14 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
         const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
         await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(data.imprint === "universidad" ? { rejectionUniversidad: data.decision === "RECHAZADO" ? data.reason : null } : { rejectionInstituto: data.decision === "RECHAZADO" ? data.reason : null }) }).where(eq(orders.id, order.id));
+        if (data.decision === "VERIFICADO") await createCajaRequest(tx, order.id, data.imprint);
         const notify = data.decision === "RECHAZADO" || complete;
         if (notify) await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(complete && order.orderType === "mixto" ? { scope: "pedido" } : {}) } });
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", detail: data.decision === "VERIFICADO" ? `Pago de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} verificado.${complete ? " Iniciamos la distribución." : ""}` : `Comprobante de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} rechazado: ${data.reason}` });
         return { token: order.trackingToken, notify };
       });
     });
+    if (parsed.data.decision === "VERIFICADO") after(async () => { await recoverCajaMail(); });
     if (outcome.notify) after(async () => { try { await deliverOrderEmail(outcome.token); } catch { /* Preserve the event for retry. */ } });
     revalidatePath("/admin/pedidos", "layout");
     revalidatePath(`/seguimiento/${outcome.token}`);

@@ -99,20 +99,22 @@ export async function readSentMailHeaders(messageId: string) {
   }, "gmail.metadata");
 }
 
-async function sendMime({ tracking, html, text, attachment, notificationId, art, artCid }: { art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
+export type PdfAttachment = { filename: string; content: Buffer };
+export type MailAudience = { to: string; cc: string[]; subject: string; threadId?: string | null; lastRfcMessageId?: string | null; references?: string[] };
+async function sendMime({ tracking, html, text, attachment, attachments = [], audience, notificationId, art, artCid }: { attachments?: PdfAttachment[]; audience?: MailAudience; art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
-  const to = z.email().parse(tracking.order.customerEmail);
+  const to = z.email().parse(audience?.to ?? tracking.order.customerEmail);
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);
   const headers = [
     `From: Fondo Editorial <${from}>`, `To: ${to}`,
-    ...(to.toLowerCase() === MASTER_EMAIL ? [] : [`Cc: ${MASTER_EMAIL}`]),
-    `Subject: ${notificationId && tracking.emailSubjectHeader ? formatSubject(tracking.emailSubjectHeader) : formatSubject(emailSubject(tracking.order.orderNumber))}`,
+    ...(audience ? (audience.cc.length ? [`Cc: ${[...new Set(audience.cc.map((email) => z.email().parse(email)))].filter((email) => email !== to).join(", ")}`] : []) : (to.toLowerCase() === MASTER_EMAIL ? [] : [`Cc: ${MASTER_EMAIL}`])),
+    `Subject: ${audience ? formatSubject(audience.subject) : notificationId && tracking.emailSubjectHeader ? formatSubject(tracking.emailSubjectHeader) : formatSubject(emailSubject(tracking.order.orderNumber))}`,
     `Date: ${new Date().toUTCString()}`,
-    ...(tracking.handlerEmail && ![to.toLowerCase(), MASTER_EMAIL, from.toLowerCase()].includes(tracking.handlerEmail.toLowerCase()) ? [`Bcc: ${z.email().parse(tracking.handlerEmail)}`] : []),
+    ...(!audience && tracking.handlerEmail && ![to.toLowerCase(), MASTER_EMAIL, from.toLowerCase()].includes(tracking.handlerEmail.toLowerCase()) ? [`Bcc: ${z.email().parse(tracking.handlerEmail)}`] : []),
     `Message-ID: ${messageId}`, "MIME-Version: 1.0",
-    ...(notificationId ? [`In-Reply-To: ${tracking.emailLastRfcMessageId ?? originalMessageId(tracking)}`, `References: ${[...new Set([originalMessageId(tracking), ...tracking.emailReferences.slice(-8), tracking.emailLastRfcMessageId ?? originalMessageId(tracking)])].join("\r\n ")}`] : []),
+    ...(audience ? (audience.lastRfcMessageId ? [`In-Reply-To: ${audience.lastRfcMessageId}`, `References: ${[...new Set([...(audience.references ?? []), audience.lastRfcMessageId])].slice(-10).join("\r\n ")}`] : []) : notificationId ? [`In-Reply-To: ${tracking.emailLastRfcMessageId ?? originalMessageId(tracking)}`, `References: ${[...new Set([originalMessageId(tracking), ...tracking.emailReferences.slice(-8), tracking.emailLastRfcMessageId ?? originalMessageId(tracking)])].join("\r\n ")}`] : []),
   ];
   const body = [`--${alternative}`, "Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(text)),
     `--${alternative}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(html)), `--${alternative}--`];
@@ -120,11 +122,12 @@ async function sendMime({ tracking, html, text, attachment, notificationId, art,
   const illustration = await readMailArt(art);
   const relatedBody = [`--${related}`, `Content-Type: multipart/alternative; boundary="${alternative}"`, "", ...body,
     `--${related}`, "Content-Type: image/png", "Content-Transfer-Encoding: base64", `Content-ID: <${artCid}>`, `Content-Disposition: inline; filename="${art}.png"`, "", base64Lines(illustration), `--${related}--`, ""];
-  const raw = attachment ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
-    `--${boundary}`, `Content-Type: application/pdf; name="${attachment.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${attachment.filename}"`, "", base64Lines(attachment.content), `--${boundary}--`, ""].join("\r\n")
+  const pdfs = attachment ? [attachment, ...attachments] : attachments;
+  const raw = pdfs.length ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
+    ...pdfs.flatMap((pdf) => [`--${boundary}`, `Content-Type: application/pdf; name="${pdf.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${pdf.filename}"`, "", base64Lines(pdf.content)]), `--${boundary}--`, ""].join("\r\n")
     : [...headers, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody].join("\r\n");
   return retryOnce(async () => {
-    const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.send({ userId: "me", requestBody: { raw: Buffer.from(raw).toString("base64url"), ...(notificationId && tracking.emailThreadId ? { threadId: tracking.emailThreadId } : {}) } }, { timeout: 20_000, retry: false });
+    const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.send({ userId: "me", requestBody: { raw: Buffer.from(raw).toString("base64url"), ...((audience?.threadId ?? (!audience && notificationId ? tracking.emailThreadId : null)) ? { threadId: audience?.threadId ?? tracking.emailThreadId! } : {}) } }, { timeout: 20_000, retry: false });
     if (!response.data.id || !response.data.threadId) throw new Error("NO_GMAIL_ID");
     return { id: response.data.id, threadId: response.data.threadId, messageId, rootMessageId: originalMessageId(tracking) };
   });
@@ -144,7 +147,7 @@ export async function sendOrderConfirmationEmail(tracking: Tracking) {
   });
 }
 
-export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string>; createdAt: Date }) {
+export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string>; createdAt: Date }, attachments?: PdfAttachment[]) {
   if (!tracking.emailHeadersVerified || !tracking.emailThreadId || !tracking.emailRfcMessageId || !tracking.emailSubjectHeader) throw new Error("GMAIL_THREAD_NOT_VERIFIED");
   const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "";
   const payload = notification.payload;
@@ -154,13 +157,19 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
     PAGO_VERIFICADO: { title: grouped ? "Pagos confirmados" : `Pago verificado · ${imprint}`, body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Tus publicaciones pasan a distribución." : "Este pago está verificado. Continuaremos con la distribución cuando se verifique el otro sello." },
     PAGO_RECHAZADO: { title: `Necesitamos otro comprobante · ${imprint}`, body: payload.reason || "Revisa el comprobante y adjunta uno nuevo desde tu seguimiento." },
     DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""} ${courierEstimate(payload.deliveryZone || tracking.order.deliveryZone)}` },
+    DOCUMENTOS_VENTA: { title: payload.correction === "true" ? "Documentos de venta actualizados" : "Tus documentos de venta", body: `${payload.correction === "true" ? "Adjuntamos las versiones corregidas" : "Adjuntamos la boleta o factura"}${tracking.order.orderType === "mixto" ? " de ambos sellos editoriales" : " de tu pedido"}. Conserva los PDF adjuntos para tu registro.` },
     ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
   };
   const notice = notices[notification.eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
   const link = customerTrackingUrl(tracking.order.trackingToken);
-  const art: MailArt = notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
+  const art: MailArt = notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
   const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
-  return sendMime({ tracking, art, artCid, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
+  return sendMime({ tracking, art, artCid, attachments, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
+}
+
+export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string) {
+  const artCid = `caja-${notificationId}@${new URL(getPublicOrigin()).hostname}`;
+  return sendMime({ tracking, audience, notificationId, html, text, art: "verified", artCid });
 }

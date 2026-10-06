@@ -9,6 +9,7 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 - Compra en cuatro pasos con precios por tipo de comprador, ubigeo nacional y recojo en bibliotecas.
 - Stock y numeración anual transaccionales; importes y datos de compra conservados como snapshots.
 - Pagos independientes por sello y carga automática de comprobantes en Drive.
+- Caja por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
 - Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
 - Inventario editable en tabla; configuración de autorizados, campus, ubicaciones y cuentas.
 - Correos de avance en un mismo hilo, guías PDF y recuperación automática de avisos.
@@ -44,9 +45,11 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/admin` | Redirige a Pedidos |
 | `/admin/pedidos` | Bandeja y atención de pedidos |
 | `/admin/inventario` | Publicaciones, stock y precios |
+| `/caja` | Bandeja exclusiva de caja, por sello |
+| `/caja/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
 
-El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás comparten funciones operativas. Cada pedido tiene un gestor responsable de sus cambios de estado.
+El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Los responsables de caja tienen acceso exclusivo a su sello en `/caja`, configurado desde la pestaña Responsables de caja. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
 
 ## Producción en Vercel
 
@@ -121,3 +124,11 @@ Mantén su contenido alineado con las cuentas vigentes y los dos depósitos de u
 No hay consultas periódicas del navegador: las pantallas actualizan tras operaciones, al volver a la pestaña o mediante el icono de actualizar. Un fallo temporal de BD no cierra la sesión; la cola conserva los avisos para recuperación. Revisa consumo de Neon, logs Vercel y vencimiento/revocación del token propietario ante incidentes.
 
 [AGENTS.md](AGENTS.md) conserva el contexto técnico y las reglas de trabajo para próximas sesiones.
+
+## Emisión por caja
+
+Configura un correo Google por sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión y comprobantes mediante enlaces privados de la aplicación; no recibe acceso a la carpeta completa de Drive.
+
+Caja adjunta un PDF de hasta 3 MB, revisa el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial conserva las versiones anteriores y el correo de corrección reúne los documentos vigentes.
+
+Para validar esta funcionalidad antes de integrarla, utiliza una BD de validación separada y aplica allí `pnpm db:migrate` (migración 0012). No configures usuarios de caja en la BD de producción mientras ejecute una versión que todavía no distingue ese rol. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.

@@ -201,9 +201,14 @@ export const paymentReceipts = pgTable("payment_receipts", {
 
 export const authorizedEmails = pgTable("authorized_emails", {
   email: text("email").primaryKey(),
+  role: text("role").$type<"gestor" | "caja">().default("gestor").notNull(),
+  publisherImprint: publisherImprint("publisher_imprint"),
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
+  uniqueIndex("authorized_emails_caja_imprint_unique").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
+  check("authorized_emails_role", sql`(${table.role} = 'gestor' AND ${table.publisherImprint} IS NULL) OR (${table.role} = 'caja' AND ${table.publisherImprint} IS NOT NULL)`),
+  check("authorized_emails_master_role", sql`${table.email} <> 'distribucionfe@continental.edu.pe' OR ${table.role} = 'gestor'`),
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
 ]);
 
@@ -255,9 +260,9 @@ export const orderNotifications = pgTable("order_notifications", {
 }, (table) => [
   index("order_notifications_order_idx").on(table.orderId, table.createdAt),
   index("order_notifications_retry_idx").on(table.status, table.lastAttemptAt),
-  check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO')`),
-  check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`),
-  check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO')`),
+  check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA')`),
+  check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
+  check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA')`),
 ]);
 
 export const orderActivity = pgTable("order_activity", {
@@ -317,3 +322,69 @@ export const pickupEvidence = pgTable("pickup_evidence", {
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("pickup_evidence_order_idx").on(table.orderId), check("pickup_evidence_size", sql`${table.size} > 0 AND ${table.size} <= 3145728`), check("pickup_evidence_image_type", sql`${table.mimeType} IN ('image/jpeg','image/png')`)]);
+
+// Caja is independent of delivery. One request per applicable imprint, with
+// immutable upload revisions and separate internal Gmail conversations.
+export const cajaRequests = pgTable("caja_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  status: text("status").$type<"PENDIENTE" | "FINALIZADA" | "DEVUELTA">().default("PENDIENTE").notNull(),
+  cycle: integer("cycle").default(1).notNull(),
+  draftDocumentId: uuid("draft_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
+  finalizedDocumentId: uuid("finalized_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
+  returnReason: text("return_reason"),
+  finalizedBy: text("finalized_by"),
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
+  gmailThreadId: text("gmail_thread_id"),
+  subjectHeader: text("subject_header"),
+  lastRfcMessageId: text("last_rfc_message_id"),
+  rfcReferences: jsonb("rfc_references").$type<string[]>().default([]).notNull(),
+  leaseId: uuid("lease_id"),
+  leaseUntil: timestamp("lease_until", { withTimezone: true }),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("caja_requests_order_imprint_unique").on(table.orderId, table.publisherImprint),
+  index("caja_requests_inbox_idx").on(table.publisherImprint, table.status, table.createdAt),
+  check("caja_requests_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA') AND ${table.cycle} > 0`),
+  check("caja_requests_finalized", sql`${table.status} <> 'FINALIZADA' OR (${table.finalizedDocumentId} IS NOT NULL AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL)`),
+]);
+export const saleDocuments = pgTable("sale_documents", {
+  id: uuid("id").primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  cycle: integer("cycle").notNull(),
+  actorEmail: text("actor_email").notNull(),
+  driveFileId: text("drive_file_id").notNull().unique(),
+  driveViewUrl: text("drive_view_url"),
+  contentHash: text("content_hash").notNull(),
+  fileName: text("file_name").notNull(),
+  size: integer("size").notNull(),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("sale_documents_request_idx").on(table.requestId), check("sale_documents_size", sql`${table.size} BETWEEN 1 AND 3145728 AND ${table.cycle} > 0`)]);
+export const cajaNotifications = pgTable("caja_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  cycle: integer("cycle").notNull(),
+  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA">().notNull(),
+  reason: text("reason"),
+  status: text("status").default("PENDIENTE").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  gmailMessageId: text("gmail_message_id"),
+  rfcMessageId: text("rfc_message_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType),
+  index("caja_notifications_retry_idx").on(table.status, table.lastAttemptAt),
+  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA')`),
+  check("caja_notifications_state", sql`${table.status} IN ('PENDIENTE','ENVIANDO','ENVIADO','ERROR')`),
+]);
+export const saleDocumentBatches = pgTable("sale_document_batches", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  batchKey: text("batch_key").notNull().unique(),
+  documentIds: jsonb("document_ids").$type<string[]>().notNull(),
+  correction: boolean("correction").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

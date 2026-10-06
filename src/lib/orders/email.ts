@@ -1,4 +1,5 @@
 import "server-only";
+import { beginSaleDelivery, readSaleBatch, salePdfBytes, StaleDocumentBatch } from "@/lib/caja/service";
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, isNull, lt, ne, or } from "drizzle-orm";
 import { withDatabase } from "@/db";
@@ -79,19 +80,22 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
     if (!await synchronizeOrderThread(token)) return outcome;
     threadReady = true;
     for (let index = 0; index < 20 && Date.now() - started < 60_000; index++) {
-      const [event] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.eventType, "ASIGNADO"), ne(orderNotifications.status, "ENVIADO"))).orderBy(asc(orderNotifications.createdAt), asc(orderNotifications.id)).limit(1));
+      const [event] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.eventType, "ASIGNADO"), and(ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.status, "OMITIDO")))).orderBy(asc(orderNotifications.createdAt), asc(orderNotifications.id)).limit(1));
       if (!event) break;
       if (event.attempts >= 5 || (event.lastAttemptAt && Date.now() - event.lastAttemptAt.getTime() < (event.status === "ENVIANDO" ? 180_000 : 60_000))) break;
       const current = await getTrackedOrder(token);
       if (!current) break;
-      await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIANDO", attempts: event.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderNotifications.id, event.id)));
+      if (event.eventType === "DOCUMENTOS_VENTA") { if (!await beginSaleDelivery(event)) continue; }
+      else await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIANDO", attempts: event.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderNotifications.id, event.id)));
       try {
-        const sent = await sendOrderUpdateEmail(current, event);
+        const attachments = event.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document, imprint }) => ({ filename: `${current.order.billingRuc ? "factura" : "boleta"}-${imprint}-${current.order.orderNumber}.pdf`, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
+        const sent = await sendOrderUpdateEmail(current, event, attachments);
         await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id)));
         outcome.sent = true;
         if (sent.threadId !== current.emailThreadId) { threadReady = false; await withDatabase((db) => db.update(orderEmails).set({ headersVerified: false, threadIssue: "GMAIL_THREAD_MISMATCH" }).where(eq(orderEmails.orderId, tracking.order.id))); break; }
         if (!await synchronizeOrderThread(token)) { threadReady = false; break; }
       } catch (error) {
+        if (error instanceof StaleDocumentBatch) { await withDatabase((db) => db.update(orderNotifications).set({ status: "OMITIDO" }).where(eq(orderNotifications.id, event.id))); continue; }
         await withDatabase((db) => db.update(orderNotifications).set({ status: "ERROR" }).where(eq(orderNotifications.id, event.id)));
         threadReady = false;
         reportServerError("order.mail.update", error); break;
@@ -103,7 +107,7 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
       const released = await tx.update(orderEmails).set({ leaseId: null, leaseUntil: null }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.leaseId, leaseId))).returning({ id: orderEmails.orderId });
       if (!released.length || !threadReady) return false;
       const [next] = await tx.select({ id: orderNotifications.id }).from(orderNotifications).where(and(
-        eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.eventType, "ASIGNADO"), lt(orderNotifications.attempts, 5),
+        eq(orderNotifications.orderId, tracking.order.id), and(ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.status, "OMITIDO")), ne(orderNotifications.eventType, "ASIGNADO"), lt(orderNotifications.attempts, 5),
         or(isNull(orderNotifications.lastAttemptAt), and(ne(orderNotifications.status, "ENVIANDO"), lt(orderNotifications.lastAttemptAt, new Date(Date.now() - 60_000))), and(eq(orderNotifications.status, "ENVIANDO"), lt(orderNotifications.lastAttemptAt, new Date(Date.now() - 180_000)))),
       )).limit(1);
       return Boolean(next);

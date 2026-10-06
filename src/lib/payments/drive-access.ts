@@ -17,7 +17,7 @@ export async function synchronizeDriveReaders(): Promise<void> {
   await withDatabase((db) => db.transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`drive-readers:${folderId}`}))`);
-    const allowed = new Set((await tx.select({ email: authorizedEmails.email }).from(authorizedEmails)).map((row) => row.email));
+    const allowed = new Set((await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.role, "gestor"))).map((row) => row.email));
     const managed = await tx.select().from(driveReaderGrants).where(eq(driveReaderGrants.folderId, folderId));
     for (const grant of managed) {
       if (allowed.has(grant.email) && grant.email !== owner) continue;

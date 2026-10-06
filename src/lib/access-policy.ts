@@ -31,6 +31,8 @@ export type AuthorizedActor = {
   sessionId: string;
   email: string;
   name: string;
+  role: "gestor" | "caja";
+  publisherImprint: "universidad" | "instituto" | null;
 };
 
 export type AccessActionResult = {

@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: {
         </span>
         <h1 id="login-title" className="page-heading">Iniciar sesión</h1>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">
-          Usa tu cuenta de Google para acceder a la administración.
+          Usa tu cuenta de Google para acceder al sistema.
         </p>
         {message ? (
           <p role="alert" className="mt-6 rounded-lg border border-border bg-muted p-4 text-sm leading-6">{message}</p>

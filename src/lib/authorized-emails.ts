@@ -13,7 +13,7 @@ async function assertCurrentMaster(tx: Transaction, actor: AuthorizedActor) {
   if (!isMasterEmail(actor.email)) throw new AccessError("FORBIDDEN");
   const [allowed] = await tx.select().from(authorizedEmails)
     .where(eq(authorizedEmails.email, MASTER_EMAIL)).for("share");
-  if (!allowed) throw new AccessError("FORBIDDEN");
+  if (!allowed || allowed.role !== "gestor") throw new AccessError("FORBIDDEN");
   const [validSession] = await tx.select({ id: session.id }).from(session)
     .innerJoin(user, eq(user.id, session.userId))
     .where(and(

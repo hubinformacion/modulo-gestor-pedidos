@@ -6,6 +6,14 @@ import { AccessError } from "@/lib/access-policy";
 export async function proxy(request: NextRequest) {
   try {
     const session = await withDatabase((db) => getAuthorizedRequestSession(db, request.headers));
+    const isCaja = request.nextUrl.pathname.startsWith("/caja");
+    if ((isCaja && session.actor.role !== "caja") || (!isCaja && session.actor.role !== "gestor")) {
+      if (request.headers.has("next-action")) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403, headers: { "Cache-Control": "no-store" } });
+      const response = NextResponse.redirect(new URL(session.actor.role === "caja" ? "/caja" : "/admin/pedidos", request.url));
+      for (const cookie of session.responseHeaders.getSetCookie()) response.headers.append("Set-Cookie", cookie);
+      response.headers.set("Cache-Control", "private, no-store");
+      return response;
+    }
     const response = NextResponse.next();
     for (const cookie of session.responseHeaders.getSetCookie()) response.headers.append("Set-Cookie", cookie);
     response.headers.set("Cache-Control", "private, no-store");
@@ -30,4 +38,4 @@ export async function proxy(request: NextRequest) {
   }
 }
 
-export const config = { matcher: ["/admin/:path*"] };
+export const config = { matcher: ["/admin/:path*", "/caja/:path*"] };

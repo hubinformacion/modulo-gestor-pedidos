@@ -1,4 +1,5 @@
 import "server-only";
+import { recoverCajaMail } from "@/lib/caja/email";
 import { and, asc, eq, exists, gte, isNull, lt, ne, or } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { orderEmails, orderNotifications, orders } from "@/db/schema";
@@ -11,6 +12,7 @@ export async function processBackgroundJobs() {
   let permissionsSynced = false;
   try { await synchronizeDriveReaders(); permissionsSynced = true; }
   catch (error) { reportServerError("jobs.drive.access", error); }
+  const cajaProcessed = await recoverCajaMail(true);
   const cutoff = new Date(Date.now() - 3600_000);
   // Only retry failed sends, never messages Gmail has already accepted.
   await withDatabase(async (db) => {
@@ -19,7 +21,7 @@ export async function processBackgroundJobs() {
   });
   const pending = await withReadDatabase((db) => db.select({ token: orders.trackingToken }).from(orders).innerJoin(orderEmails, eq(orderEmails.orderId, orders.id)).where(and(
     or(isNull(orderEmails.leaseUntil), lt(orderEmails.leaseUntil, new Date())),
-    or(ne(orderEmails.status, "ENVIADO"), exists(db.select({ id: orderNotifications.id }).from(orderNotifications).where(and(eq(orderNotifications.orderId, orders.id), ne(orderNotifications.eventType, "ASIGNADO"), ne(orderNotifications.status, "ENVIADO"))))),
+    or(ne(orderEmails.status, "ENVIADO"), exists(db.select({ id: orderNotifications.id }).from(orderNotifications).where(and(eq(orderNotifications.orderId, orders.id), ne(orderNotifications.eventType, "ASIGNADO"), and(ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.status, "OMITIDO")))))),
   )).orderBy(asc(orderEmails.lastAttemptAt), asc(orders.createdAt)).limit(20));
   let processed = 0;
   for (const row of pending) {
@@ -27,5 +29,5 @@ export async function processBackgroundJobs() {
     try { await deliverOrderEmail(row.token); processed++; }
     catch (error) { reportServerError("jobs.order.mail", error); }
   }
-  return { permissionsSynced, processedOrders: processed };
+  return { permissionsSynced, processedOrders: processed, processedCajaRequests: cajaProcessed };
 }

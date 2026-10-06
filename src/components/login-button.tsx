@@ -22,7 +22,7 @@ export function LoginButton({ configured }: { configured: boolean }) {
     setError(null);
     try {
       const result = await authClient.signIn.social({
-        provider: "google", callbackURL: "/admin", errorCallbackURL: "/login",
+        provider: "google", callbackURL: "/acceso", errorCallbackURL: "/login",
       });
       if (result.error) throw new Error("SIGN_IN_FAILED");
     } catch {
