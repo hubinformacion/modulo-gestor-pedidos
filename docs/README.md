@@ -10,6 +10,7 @@ Leer estos archivos para recuperar el contexto antes de trabajar:
 - [admin-dashboard.md](admin-dashboard.md): pedidos, revisión por sello, despacho e inventario; revisión manual de fase 5.
 - [atencion-y-comunicacion.md](atencion-y-comunicacion.md): contrato vigente de gestores, pasos, comprobantes automáticos y threads reales.
 - [iframe-wordpress.md](iframe-wordpress.md): CSP, protocolo de altura, bloque/simulador WordPress, variables y despliegue Vercel.
+- [despliegue-produccion.md](despliegue-produccion.md): URLs definitivas, variables, callback Google y bloque WordPress.
 - [desarrollo.md](desarrollo.md): estructura, variables, comandos y criterios de interfaz/revisión.
 
 [AGENTS.md](../AGENTS.md) contiene las instrucciones resumidas y obligatorias. Mantener esta documentación actualizada cuando el usuario cambie un requisito o se cierre una fase. No conservar criterios sustituidos como instrucciones activas.

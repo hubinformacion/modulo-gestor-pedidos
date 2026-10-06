@@ -13,7 +13,7 @@ El usuario validó los cambios y autorizó la integración. El código de las se
 
 ## Pendiente de publicación
 
-El usuario publicará primero en Vercel y WordPress y después proporcionará las URLs. No se ha verificado ni realizado un despliegue Vercel desde este workspace. La configuración local sigue apuntando a localhost y no tiene proyecto Vercel vinculado.
+El usuario publicó en Vercel y aportó ambas URLs; los sitios responden HTTP 200. Falta configurar dominios/callback/cron y verificar el iframe y las integraciones en el despliegue real. La configuración local sigue apuntando a localhost; no hay acceso autenticado a los paneles Vercel/Google Cloud. Pasos exactos en [despliegue-produccion.md](despliegue-produccion.md).
 
 1. Importar `main` en Vercel y configurar las variables de `.env.example` con los dominios reales y credenciales privadas.
 2. Registrar callback Google, configurar `WORDPRESS_ORIGINS` y activar el cron con `CRON_SECRET`. Ejecutar migraciones explícitamente en la BD destino si es diferente; la BD local ya tiene hasta 0011.

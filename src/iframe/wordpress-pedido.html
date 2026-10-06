@@ -1,0 +1,39 @@
+<div style="width:100%;margin:0 auto">
+  <iframe data-fec-iframe src="https://modulo-gestor-pedidos.vercel.app/pedido" title="Pedido de publicaciones" width="100%" height="720" style="display:block;width:100%;height:720px;border:0;background:#fff" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+  <noscript><a href="https://modulo-gestor-pedidos.vercel.app/pedido" target="_blank" rel="noopener noreferrer">Abrir el formulario de pedido</a></noscript>
+</div>
+<script>
+(function () {
+  function connect(frame) {
+    if (frame.dataset.fecConnected) return;
+    frame.dataset.fecConnected = "true";
+    var origin = new URL(frame.src, window.location.href).origin;
+    var timer = 0;
+    var attempts = 0;
+    var receivedHeight = false;
+    function initialize() {
+      if (!frame.isConnected || receivedHeight || attempts >= 10) return;
+      attempts += 1;
+      frame.contentWindow.postMessage({ type: "fec:iframe:init", version: 1 }, origin);
+      timer = window.setTimeout(initialize, 1000);
+    }
+    function receive(event) {
+      if (event.origin !== origin || event.source !== frame.contentWindow) return;
+      var data = event.data;
+      if (!data || data.type !== "fec:iframe:height" || data.version !== 1 || !Number.isInteger(data.height) || data.height < 128 || data.height > 100000) return;
+      receivedHeight = true;
+      window.clearTimeout(timer);
+      frame.style.height = data.height + "px";
+      frame.dispatchEvent(new CustomEvent("fec:iframe:resized", { detail: { height: data.height } }));
+    }
+    window.addEventListener("message", receive);
+    frame.addEventListener("load", function () {
+      window.clearTimeout(timer); attempts = 0; receivedHeight = false; initialize();
+    });
+    initialize();
+  }
+  function mount() { document.querySelectorAll("iframe[data-fec-iframe]").forEach(connect); }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });
+  else mount();
+})();
+</script>
