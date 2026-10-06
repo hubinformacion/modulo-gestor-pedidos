@@ -49,3 +49,5 @@ Conteo de cierre: cinco fases completadas e integradas localmente; queda una (fa
 Último ajuste fase 6: ubicación interna editable de bibliotecas con snapshot/enlace Maps, filtro de bandeja desplegable y evidencia fotográfica opcional al cerrar recojo, privada para gestores. Migración 0011 aplicada; pendiente de revisión manual junto al despliegue final.
 
 Ajuste vigente: FilePond para evidencia de recojo, Distribución como término visible, plazos courier, historiales con scroll y corrección de renovación/error temporal de sesión. Cola de sello único diagnosticada; pruebas 8-2026 descartadas a petición del usuario, sin envío. Flujo operativo automático sin aprobaciones por mensaje. Fase 6 sigue pendiente de revisión e integración.
+
+Foto de recojo ahora automática al seleccionar, independiente de la confirmación; evidencia persiste antes del cierre. Botones de correo sin número de pedido y texto de carga reducido. Sin migración adicional; fase 6 en revisión.

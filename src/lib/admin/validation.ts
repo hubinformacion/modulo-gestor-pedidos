@@ -6,7 +6,7 @@ export const assignmentSchema = z.object({ id: z.uuid(), version: z.iso.datetime
 export type ActionResult = { success: boolean; message: string };
 const version = z.iso.datetime();
 export const reviewSchema = z.object({ id: z.uuid(), imprint: z.enum(["universidad", "instituto"]), receiptId: z.uuid(), version, decision: z.enum(["VERIFICADO", "RECHAZADO"]), reason: z.string().trim().max(500).default("") }).refine((value) => value.decision !== "RECHAZADO" || value.reason.length >= 5, "Explica el motivo del rechazo (al menos 5 caracteres).");
-export const dispatchSchema = z.object({ id: z.uuid(), version, status: z.enum(["DESPACHADO", "ENTREGADO"]), courier: z.string().trim().max(150), trackingCode: z.string().trim().max(120).default(""), trackingUrl: z.union([z.literal(""), z.url().max(2000).refine((value) => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; }, "Usa un enlace HTTPS válido.")]).transform((value) => value ? new URL(value).toString() : "").default("") });
+export const dispatchSchema = z.object({ id: z.uuid(), version, evidenceId: z.uuid().nullable().optional().default(null), status: z.enum(["DESPACHADO", "ENTREGADO"]), courier: z.string().trim().max(150), trackingCode: z.string().trim().max(120).default(""), trackingUrl: z.union([z.literal(""), z.url().max(2000).refine((value) => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; }, "Usa un enlace HTTPS válido.")]).transform((value) => value ? new URL(value).toString() : "").default("") });
 const price = z.string().trim().regex(/^\d{1,10}(\.\d{1,2})?$/, "Usa un importe en soles con hasta dos decimales.");
 export const bookSchema = z.object({
   inventoryCode: z.string().trim().min(1, "Ingresa el código.").max(80),
@@ -36,3 +36,5 @@ export const pickupImageSchema = z.instanceof(File)
   .refine((file) => file.size > 0 && file.size <= 3 * 1024 * 1024, "La imagen debe pesar hasta 3 MB.")
   .refine((file) => ["image/jpeg", "image/png"].includes(file.type), "Usa una imagen JPG o PNG.");
 export const pickupImageUploadIdSchema = z.uuid();
+
+export const pickupUploadSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), uploadId: pickupImageUploadIdSchema });

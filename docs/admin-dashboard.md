@@ -38,4 +38,4 @@ Historial de atención en el sidebar derecho, bajo comprador/publicaciones; cons
 
 Gestión compacta y notas internas (NOTA_INTERNA append-only, actor/fecha en order_activity). Panel debajo del wizard, visible a autorizados; consultas públicas con allowlist excluyen comentarios. No cambia pedido/estado ni genera correo. Contrato y revisión en [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
 
-Campus permite ubicación interna (pabellón/piso) separada de dirección; visible en compra, seguimiento y correo listo. En cierre de recojo, foto JPG/PNG opcional hasta 3 MiB; link Drive privado en detalle tras entrega. No mezclar evidencias con recibos de pagos ni exponerlas al comprador.
+Campus permite ubicación interna (pabellón/piso) separada de dirección; visible en compra, seguimiento y correo listo. En cierre de recojo, foto JPG/PNG opcional hasta 3 MiB que sube al seleccionarla, antes del cierre; link Drive privado en detalle tras entrega. No mezclar evidencias con recibos de pagos ni exponerlas al comprador.

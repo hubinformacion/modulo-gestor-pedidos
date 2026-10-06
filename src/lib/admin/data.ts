@@ -43,7 +43,7 @@ export async function orderDetail(id: string) {
       db.select().from(paymentReceipts).where(eq(paymentReceipts.orderId, id)).orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id)),
       db.select().from(orderActivity).where(and(eq(orderActivity.orderId, id), ne(orderActivity.eventType, "NOTA_INTERNA"))).orderBy(desc(orderActivity.createdAt)).limit(50),
       db.select({ id: orderActivity.id, content: orderActivity.detail, author: orderActivity.actorName, createdAt: orderActivity.createdAt }).from(orderActivity).where(and(eq(orderActivity.orderId, id), eq(orderActivity.eventType, "NOTA_INTERNA"))).orderBy(desc(orderActivity.createdAt), desc(orderActivity.id)).limit(50),
-      db.select().from(pickupEvidence).where(and(eq(pickupEvidence.orderId, id), sql`${pickupEvidence.confirmedAt} IS NOT NULL`)).orderBy(desc(pickupEvidence.confirmedAt)),
+      db.select().from(pickupEvidence).where(and(eq(pickupEvidence.orderId, id), sql`${pickupEvidence.uploadedAt} IS NOT NULL`)).orderBy(desc(pickupEvidence.uploadedAt), desc(pickupEvidence.id)),
     ]);
     return { order, items, receipts, activity, notes, evidence };
   });

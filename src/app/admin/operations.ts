@@ -14,7 +14,7 @@ import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
-import { pickupImageSchema, pickupImageUploadIdSchema, internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
+import { pickupImageSchema, pickupUploadSchema, internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return;
@@ -64,26 +64,33 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
   } catch (error) { return failure(error); }
 }
 
-export async function dispatchOrderAction(input: unknown): Promise<ActionResult> {
-  let payload: unknown = input;
-  let image: File | undefined;
-  let uploadId: string | undefined;
-  if (input instanceof FormData) {
-    const raw = z.string().max(7000).safeParse(input.get("data"));
-    if (!raw.success) return { success: false, message: "Revisa los datos de entrega." };
-    try { payload = JSON.parse(raw.data); } catch { return { success: false, message: "Revisa los datos de entrega." }; }
-    const imageResult = pickupImageSchema.safeParse(input.get("image"));
-    const idResult = pickupImageUploadIdSchema.safeParse(input.get("uploadId"));
-    if (!imageResult.success || !idResult.success) return { success: false, message: imageResult.success ? "Vuelve a seleccionar la imagen." : imageResult.error.issues[0].message };
-    image = imageResult.data; uploadId = idResult.data;
-  }
-  const parsed = dispatchSchema.safeParse(payload);
-  if (!parsed.success) return { success: false, message: "Revisa los datos de entrega." };
-  if (image && parsed.data.status !== "ENTREGADO") return { success: false, message: "La imagen se adjunta al confirmar el recojo." };
+export async function uploadPickupEvidenceAction(input: unknown): Promise<{ success: true; evidenceId: string } | { success: false; message: string }> {
+  const form = z.instanceof(FormData).safeParse(input);
+  if (!form.success) return { success: false, message: "Revisa la imagen." };
+  const metadata = pickupUploadSchema.safeParse({ id: form.data.get("id"), version: form.data.get("version"), uploadId: form.data.get("uploadId") });
+  const file = pickupImageSchema.safeParse(form.data.get("image"));
+  if (!metadata.success || !file.success) return { success: false, message: file.success ? "Actualiza los datos del pedido." : file.error.issues[0].message };
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-    const evidenceId = image && uploadId ? await preparePickupEvidence(actor, parsed.data.id, parsed.data.version, uploadId, image) : null;
+    const evidenceId = await preparePickupEvidence(actor, metadata.data.id, metadata.data.version, metadata.data.uploadId, file.data);
+    // No route revalidation: keep the uploader mounted until processing completes.
+    // Uploading evidence never changes the delivery state or sends an email.
+    return { success: true, evidenceId };
+  } catch (error) {
+    if (!(error instanceof AccessError) && !(error instanceof PickupEvidenceError)) reportServerError("pickup.upload.failed", error);
+    return { success: false, message: error instanceof AccessError || error instanceof PickupEvidenceError ? error.message : "No se pudo cargar. Conserva la imagen y reintenta." };
+  }
+}
+
+export async function dispatchOrderAction(input: unknown): Promise<ActionResult> {
+  const parsed = dispatchSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: "Revisa los datos de entrega." };
+  const evidenceId = parsed.data.evidenceId;
+  if (evidenceId && parsed.data.status !== "ENTREGADO") return { success: false, message: "La evidencia corresponde al cierre del recojo." };
+  try {
+    const requestHeaders = await headers();
+    const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const token = await withDatabase(async (db) => {
       return db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
@@ -98,7 +105,7 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
         if (data.status === "DESPACHADO" && order.deliveryType === "delivery" && !data.courier) throw new OperationError("Indica el courier para el envío a domicilio.");
         if (evidenceId) {
           const [proof] = await tx.select().from(pickupEvidence).where(eq(pickupEvidence.id, evidenceId)).for("update");
-          if (!proof || proof.orderId !== order.id || proof.actorUserId !== actor.userId || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO" || order.deliveryType !== "recojo_campus") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
+          if (!proof || proof.orderId !== order.id || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO" || order.deliveryType !== "recojo_campus") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
           await tx.update(pickupEvidence).set({ confirmedAt: new Date() }).where(eq(pickupEvidence.id, proof.id));
         }
         const [campus] = order.deliveryCampus ? await tx.select().from(campuses).where(eq(campuses.id, order.deliveryCampus)).for("share") : [];
