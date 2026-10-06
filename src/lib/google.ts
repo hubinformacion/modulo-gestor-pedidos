@@ -5,6 +5,7 @@ import { OAuth2Client } from "google-auth-library";
 import { drive } from "googleapis/build/src/apis/drive/index.js";
 import { gmail } from "googleapis/build/src/apis/gmail/index.js";
 import { z } from "zod";
+import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getOrderBankAccounts, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
@@ -19,11 +20,14 @@ function ownerAuth() {
   return client;
 }
 
-async function retryOnce<T>(operation: () => Promise<T>): Promise<T> {
+export class GoogleOperationError extends Error {
+  constructor(public readonly stage: string, cause: unknown) { super("GOOGLE_OPERATION_FAILED", { cause }); }
+}
+async function retryOnce<T>(operation: () => Promise<T>, stage: string | (() => string) = "google.request"): Promise<T> {
   try { return await operation(); }
   catch {
     try { return await operation(); }
-    catch { throw new Error("GOOGLE_OPERATION_FAILED"); }
+    catch (cause) { throw new GoogleOperationError(typeof stage === "function" ? stage() : stage, cause); }
   }
 }
 
@@ -37,24 +41,44 @@ export async function reserveDriveFileId() {
 
 export async function uploadFileToDrive({ id, name, mimeType, bytes }: { id: string; name: string; mimeType: string; bytes: Buffer }) {
   const api = drive({ version: "v3", auth: ownerAuth() });
+  let stage = "drive.lookup";
   return retryOnce(async () => {
-    // Checking the reserved ID makes retries safe after an ambiguous create response.
+    // Reserved IDs reconcile ambiguous uploads without creating another file.
+    stage = "drive.lookup";
     let exists = false;
     try {
       await api.files.get({ fileId: id, fields: "id" }, { timeout: 15_000, retry: false });
       exists = true;
     } catch (error) {
-      const code = error && typeof error === "object" && "code" in error ? Number(error.code) : 0;
-      if (code !== 404) throw error;
+      if (safeErrorDetails(error).status !== 404) throw error;
     }
-    if (!exists) await api.files.create({
-      requestBody: { id, name, parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!] },
-      media: { mimeType, body: Readable.from(bytes) }, fields: "id",
-    }, { timeout: 20_000, retry: false });
-    await api.permissions.create({ fileId: id, requestBody: { type: "anyone", role: "reader" } }, { timeout: 15_000, retry: false });
-    const response = await api.files.get({ fileId: id, fields: "webViewLink" }, { timeout: 15_000, retry: false });
+    if (!exists) {
+      stage = "drive.upload";
+      await api.files.create({ requestBody: { id, name, parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!] }, media: { mimeType, body: Readable.from(bytes) }, fields: "id" }, { timeout: 20_000, retry: false });
+    }
+    stage = "drive.read_link";
+    const response = await api.files.get({ fileId: id, fields: "webViewLink,permissions(type,role)" }, { timeout: 15_000, retry: false });
+    const readableByLink = response.data.permissions?.some((permission) => permission.type === "anyone" && ["reader", "writer", "commenter"].includes(permission.role ?? ""));
+    if (!readableByLink) {
+      stage = "drive.share";
+      try {
+        await api.permissions.create({ fileId: id, requestBody: { type: "anyone", role: "reader" } }, { timeout: 15_000, retry: false });
+      } catch (error) {
+        const details = safeErrorDetails(error);
+        // Workspace can forbid public links while permitting the owner to read.
+        // Keep the file private: authorized staff use the authenticated viewer.
+        if (!details.reason || !["publishOutNotPermitted", "domainPolicy", "cannotShareAcrossDomains"].includes(details.reason)) throw error;
+      }
+    }
     return { driveFileId: id, driveViewUrl: response.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view` };
-  });
+  }, () => stage);
+}
+
+export async function readFileFromDrive(fileId: string): Promise<Readable> {
+  return retryOnce(async () => {
+    const response = await drive({ version: "v3", auth: ownerAuth() }).files.get({ fileId, alt: "media" }, { responseType: "stream", timeout: 20_000, retry: false });
+    return response.data as unknown as Readable;
+  }, "drive.download");
 }
 
 function base64Lines(value: Buffer) { return value.toString("base64").match(/.{1,76}/g)?.join("\r\n") ?? ""; }

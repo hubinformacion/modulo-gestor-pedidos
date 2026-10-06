@@ -1,5 +1,6 @@
 "use server";
 
+import { reportServerError } from "@/lib/server-diagnostics";
 import { after } from "next/server";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
@@ -22,6 +23,7 @@ export async function uploadReceiptAction(input: unknown): Promise<{ success: tr
     revalidatePath(`/seguimiento/${metadata.data.token}`);
     return { success: true, receiptId };
   } catch (error) {
+    if (!(error instanceof OrderInputError)) reportServerError("receipt.upload.failed", error);
     return { success: false, message: error instanceof OrderInputError ? error.message : "No pudimos completar la carga. El archivo permanece seleccionado; reintenta sin retirarlo." };
   }
 }

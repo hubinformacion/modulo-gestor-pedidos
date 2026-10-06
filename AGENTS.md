@@ -48,6 +48,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Una zona FilePond por sello aplicable (dos en mixtos), carga automática sin selector; validación tipo/tamaño y preview. Confirmar después de cargar cambia solo ese pago a EN_REVISION y avisa por correo.
 - Validación de stock y pedido/items en una transacción; falta de stock aborta todo.
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
+- Comprobantes: si Google prohíbe compartir públicamente, conservar privados y registrar; lectura desde /admin/comprobantes/[id] con sesión+correo en BD. No imprimir objetos de error Google/Drizzle ni credenciales/payload en logs.
 - Drive/Gmail: cuenta propietaria con refresh token; try/catch y un reintento sin perder la carga. MIME HTML + PDF según tipo; PDFs en `src/assets/pdfs`, fuera de public. Revisar adjunto en Vercel.
 - Campus dinámicos en BD (`campuses`), CRUD en `/admin` por cualquier autorizado; solo el maestro gestiona correos. Ocho iniciales sembrados una vez por migración. Inactivos fuera del wizard; pedidos asociados impiden borrado. Coordenadas/URL de mapa editables por interfaz. No inventar coordenadas.
 - Ubigeo local nacional en `src/data/ubigeo`: departamento/provincia/distrito, zona derivada de provincia `1501`/`0701` para Lima/Callao. Costos solo en resumen. Precio único aplicado, sin portada/comparación de tarifas; sellos en badges sin prefijo.
