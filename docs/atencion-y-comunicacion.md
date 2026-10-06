@@ -163,3 +163,17 @@ Correo inicial: “Pagar y seguir mi pedido”. Actualizaciones: “Ver seguimie
 Revisión: adjuntar foto en recojo DESPACHADO sin pulsar entrega; debe existir en Drive y mostrar acuse, mientras el pedido sigue DESPACHADO y no hay correo nuevo. Recargar: foto registrada y acuse siguen disponibles. Confirmar: una entrega/aviso, sin segunda subida. Fallar/reintentar usa el mismo archivo. Revisar el próximo correo inicial/actualización y sus botones breves.
 
 Comprobaciones: lint, tipos y build correctos; sin migración adicional, subida de fotos ficticias ni envío de correo para validar. Revisión funcional de carga automática, recarga/acuse y cierre con evidencia pendiente en navegador mediante operaciones autorizadas.
+
+## Identidad WordPress y rutas administrativas
+
+/admin lleva a /admin/pedidos; configuración en /admin/configuracion y alias /admin/configuración. Páginas/actions conservan sesión/autorización actuales. No cambiar cookies SameSite ni CORS para conseguir un iframe administrativo; con los dominios actuales el bloqueo de cookies de terceros hace preferible administración en Vercel, en pestaña propia.
+
+Correos enlazan a https://fondoeditorial.continental.edu.pe/pedido/#seguimiento/TOKEN, sin aviso de recepción ni ID de notificación en la URL. Fragmento no se transmite como query HTTP ni referrer; sí es credencial del comprador, por lo que no debe recopilarse en analítica ni logs del padre. Receptor solo acepta nanoid32 y construye ruta de seguimiento dentro del origen fijo del iframe. En otros despliegues configurar WORDPRESS_ORDER_URL; desarrollo sin variable usa localhost. OAuth, APP_URL y BETTER_AUTH_URL mantienen origen Next. Hilos dependen de asunto/referencias/Gmail threadId, no de ?aviso. Navegación directa a seguimiento en producción redirige a WordPress cuando Sec-Fetch-Dest=document; iframe/RSC sigue sirviendo el contenido, sin loop.
+
+Nuevo bloque WP se requiere para interpretar fragmentos y reconectar mediante ready/init. Root bridge deja de recrearse cuando RSC trae un array nuevo de orígenes idénticos. Altura usa bounds de contenido redondeados, sin sumar altura que provoque crecimiento con vistas 100vh; CSS overflow se aplica solo con handshake válido. Parent fuerza ancho 100%, altura recibida sin tope de CSS/aspect-ratio del tema; no ampliar fuera de su contenedor Elementor. Scroll de historia local sigue disponible. Encabezado del pedido proporciona separación visual respecto del header sticky; el tema padre controla su propio header.
+
+Correo conserva texto/CTA y PNG transparentes estáticos. Regenerados desde SVG con máscara, sin rectángulo de fondo ni rellenos blancos en badges. Revisar móviles/dark mode del cliente de correo real, sin cambiar el tema claro de la app.
+
+Revisión manual: /admin autenticado abre bandeja; ambas rutas de configuración sirven la pantalla. Pegar bloque WP nuevo, abrir un seguimiento desde próximo correo: URL padre WordPress, contenido pedido en iframe. Transición wizard→tracking y actualizar datos mantienen altura con un solo scroll de documento. Cambiar móvil/escritorio y plegar historial; revisar ancho del bloque y header. No reenviar mensajes antiguos para validar.
+
+Comprobaciones del ajuste: lint, tipos y build correctos, JavaScript del receptor válido y ocho PNG con alpha en esquinas y cero píxeles blancos opacos. Sin correos de prueba, pedidos/usuarios ficticios ni cambios de credenciales. Revisión visual en WordPress/móvil, navegación de ticket y scroll real pendiente tras sustituir el bloque y desplegar estos cambios.

@@ -138,7 +138,7 @@ export function OrderWizard({ catalog, campuses, preview = false, submissionEnab
           <fieldset disabled={submitting} className="min-w-0">
           <div className="mb-7">
             <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paso {step + 1} de 4</p>
-            <h1 ref={headingRef} tabIndex={-1} className="page-heading scroll-mt-6 outline-none">{steps[step].title}</h1>
+            <h2 ref={headingRef} tabIndex={-1} className="page-heading scroll-mt-6 outline-none">{steps[step].title}</h2>
             <p className="mt-3 max-w-lg text-sm leading-6 text-muted-foreground">{steps[step].description}</p>
           </div>
           {errorMessage ? <div ref={errorRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm leading-6 text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive">{errorMessage}</div> : null}

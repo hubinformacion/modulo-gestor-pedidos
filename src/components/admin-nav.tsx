@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 const items = [
   { href: "/admin/pedidos", label: "Pedidos", Icon: ClipboardList },
   { href: "/admin/inventario", label: "Inventario", Icon: Package },
-  { href: "/admin", label: "Configuración", Icon: UsersRound },
+  { href: "/admin/configuracion", label: "Configuración", Icon: UsersRound },
   { href: "/admin/vista-previa", label: "Vista previa del pedido", Icon: BookOpen },
 ];
 

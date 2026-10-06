@@ -25,3 +25,5 @@ Guía: [iframe-wordpress.md](iframe-wordpress.md). Contrato funcional: [atencion
 ## Reglas que permanecen
 
 Solo pnpm, sin suites automatizadas salvo solicitud expresa. Inter, tema claro, fondo blanco y `#6802C1`. Código/migraciones/utilidades bajo `src`, sin landing/logos/CLAUDE.md. Nunca hacer commits directos en `main`: cambios posteriores en rama de trabajo, con revisión antes de integrar. No subir secretos ni inventar catálogo, dominios, campus o coordenadas.
+
+Ajuste de producción en revisión: admin por defecto pedidos/configuración aparte, seguimiento de correos dentro de WordPress, reconexión/altura/ancho de iframe, título del pedido y PNG transparentes. Bloque WordPress actualizado debe sustituir al anterior antes de revisar enlaces.

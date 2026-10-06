@@ -34,7 +34,7 @@ async function changeBank(input: unknown, operation: "create" | "update" | "dele
       return saveBank(db, actor, parsed.data, id);
     });
     if (result.success) {
-      revalidatePath("/admin", "layout");
+      revalidatePath("/admin/configuracion", "page");
       revalidatePath("/pedido");
     }
     return result;

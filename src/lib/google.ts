@@ -9,6 +9,7 @@ import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
+import { customerTrackingUrl } from "@/lib/orders/customer-links";
 import { courierEstimate } from "@/lib/orders/courier";
 import { readMailArt, type MailArt } from "@/lib/orders/mail-art";
 import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
@@ -130,7 +131,7 @@ async function sendMime({ tracking, html, text, attachment, notificationId, art,
 }
 
 export async function sendOrderConfirmationEmail(tracking: Tracking) {
-  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=recepcion`;
+  const link = customerTrackingUrl(tracking.order.trackingToken);
   const artCid = `state-${tracking.order.id}@${new URL(getPublicOrigin()).hostname}`;
   const intro = emailTemplates[tracking.order.orderType];
   const amounts = (["universidad", "instituto"] as const)
@@ -157,7 +158,7 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   };
   const notice = notices[notification.eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
-  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=${notification.id}`;
+  const link = customerTrackingUrl(tracking.order.trackingToken);
   const art: MailArt = notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
   const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;

@@ -63,7 +63,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-Abrir `http://localhost:3000`: dirige a configuración en `/admin` o al ingreso, sin landing. Compra pública en `/pedido`; revisión con DEMO en `/admin/vista-previa`, protegida y sin escritura de pedidos. Datos del comprador en memoria durante el recorrido y persistidos solo al confirmar un pedido real.
+Abrir `http://localhost:3000`: dirige a pedidos en `/admin/pedidos` o al ingreso, sin landing. Compra pública en `/pedido`; revisión con DEMO en `/admin/vista-previa`, protegida y sin escritura de pedidos. Datos del comprador en memoria durante el recorrido y persistidos solo al confirmar un pedido real.
 
 Sin configuración válida, el ingreso queda temporalmente no disponible y se deniega acceso protegido.
 

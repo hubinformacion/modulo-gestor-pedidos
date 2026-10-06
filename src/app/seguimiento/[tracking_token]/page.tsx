@@ -4,7 +4,10 @@ import { deliverOrderEmail } from "@/lib/orders/email";
 import { reportServerError } from "@/lib/server-diagnostics";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { headers } from "next/headers";
+import { customerTrackingUrl } from "@/lib/orders/customer-links";
+import { getPublicOrigin } from "@/lib/payments/config";
+import { notFound, redirect } from "next/navigation";
 import { CheckCircle2, WalletCards } from "lucide-react";
 import { getTrackedOrder } from "@/lib/orders/tracking";
 import { getOrderBankAccounts, googleConfigured } from "@/lib/payments/config";
@@ -26,6 +29,8 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
   const { tracking_token } = await params;
   const tracking = await getTrackedOrder(tracking_token);
   if (!tracking) notFound();
+  const publicLink = customerTrackingUrl(tracking_token);
+  if ((await headers()).get("sec-fetch-dest") === "document" && new URL(publicLink).origin !== getPublicOrigin()) redirect(publicLink);
   const { order, items, activity } = tracking;
   after(async () => {
     try { if (await needsOrderMailRecovery(order.id)) await deliverOrderEmail(order.trackingToken); }
@@ -35,7 +40,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");
   const events = activity.filter((event, index) => index === 0 || event.detail !== activity[index - 1].detail);
-  return <main id="contenido" className="mx-auto max-w-6xl px-5 py-7 sm:px-10 sm:py-10">
+  return <main id="contenido" className="public-order-surface mx-auto w-full max-w-6xl px-5 py-7 sm:px-10 sm:py-10">
     <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-semibold uppercase tracking-wider text-primary">Mi pedido</p><h1 className="page-heading mt-2">Pedido {order.orderNumber}</h1><p className="mt-3 text-xs text-muted-foreground">Hola, {order.customerName}. Aquí encontrarás cada avance de tu compra.</p></div><div className="flex items-center gap-3"><p className="text-[10px] text-muted-foreground">Registrado {dateFormat.format(order.createdAt)}</p><OrderLiveRefresh finished={closed} /></div></div>
     <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]"><div className="space-y-6"><CustomerProgress order={order} deliveredAt={order.deliveredAt} />
       <DeliveryCard order={order} />

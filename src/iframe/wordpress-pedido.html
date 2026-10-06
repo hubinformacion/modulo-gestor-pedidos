@@ -1,5 +1,5 @@
-<div style="width:100%;margin:0 auto">
-  <iframe data-fec-iframe src="https://modulo-gestor-pedidos.vercel.app/pedido" title="Pedido de publicaciones" width="100%" height="720" style="display:block;width:100%;height:720px;border:0;background:#fff" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
+<div data-fec-embed style="display:block;width:100%;max-width:100%;min-width:0;margin:0;box-sizing:border-box;padding-top:16px;scroll-margin-top:112px">
+  <iframe data-fec-iframe src="https://modulo-gestor-pedidos.vercel.app/pedido" title="Pedido de publicaciones" width="100%" height="720" style="display:block;width:100%;max-width:100%;min-width:0;height:720px;border:0;background:#fff" referrerpolicy="no-referrer" allow="fullscreen"></iframe>
   <noscript><a href="https://modulo-gestor-pedidos.vercel.app/pedido" target="_blank" rel="noopener noreferrer">Abrir el formulario de pedido</a></noscript>
 </div>
 <script>
@@ -7,30 +7,48 @@
   function connect(frame) {
     if (frame.dataset.fecConnected) return;
     frame.dataset.fecConnected = "true";
-    var origin = new URL(frame.src, window.location.href).origin;
+    var base = new URL(frame.src, window.location.href);
+    var origin = base.origin;
     var timer = 0;
     var attempts = 0;
     var receivedHeight = false;
+    frame.style.setProperty("width", "100%", "important");
+    frame.style.setProperty("max-width", "100%", "important");
+    frame.style.setProperty("display", "block");
+    frame.style.setProperty("max-height", "none", "important");
+    frame.style.setProperty("min-height", "0", "important");
+    frame.style.setProperty("aspect-ratio", "auto", "important");
     function initialize() {
       if (!frame.isConnected || receivedHeight || attempts >= 10) return;
       attempts += 1;
       frame.contentWindow.postMessage({ type: "fec:iframe:init", version: 1 }, origin);
       timer = window.setTimeout(initialize, 1000);
     }
+    function reconnect() {
+      window.clearTimeout(timer); attempts = 0; receivedHeight = false; initialize();
+    }
     function receive(event) {
       if (event.origin !== origin || event.source !== frame.contentWindow) return;
       var data = event.data;
-      if (!data || data.type !== "fec:iframe:height" || data.version !== 1 || !Number.isInteger(data.height) || data.height < 128 || data.height > 100000) return;
+      if (!data || data.version !== 1) return;
+      if (data.type === "fec:iframe:ready") { reconnect(); return; }
+      if (data.type !== "fec:iframe:height" || !Number.isInteger(data.height) || data.height < 128 || data.height > 100000) return;
       receivedHeight = true;
       window.clearTimeout(timer);
-      frame.style.height = data.height + "px";
+      frame.style.setProperty("height", data.height + "px", "important");
       frame.dispatchEvent(new CustomEvent("fec:iframe:resized", { detail: { height: data.height } }));
     }
+    function openTracking() {
+      if (base.pathname.replace(/\/$/, "") !== "/pedido") return;
+      var match = window.location.hash.match(/^#seguimiento\/([A-Za-z0-9_-]{32})$/);
+      if (!match) return;
+      var target = new URL("/seguimiento/" + match[1], origin);
+      if (frame.src !== target.href) frame.src = target.href;
+    }
     window.addEventListener("message", receive);
-    frame.addEventListener("load", function () {
-      window.clearTimeout(timer); attempts = 0; receivedHeight = false; initialize();
-    });
-    initialize();
+    window.addEventListener("hashchange", openTracking);
+    frame.addEventListener("load", reconnect);
+    openTracking(); initialize();
   }
   function mount() { document.querySelectorAll("iframe[data-fec-iframe]").forEach(connect); }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", mount, { once: true });

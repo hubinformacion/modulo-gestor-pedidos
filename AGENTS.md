@@ -32,7 +32,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 
 ## Orden de fases
 
-1. `feat/01-auth-y-google`: completada e integrada; acceso y configuración en `/admin`.
+1. `feat/01-auth-y-google`: completada e integrada; acceso y configuración en `/admin/configuracion`.
 2. `feat/02-schema-y-seed`: completada e integrada; esquema y seed DEMO en Neon.
 3. `feat/03-wizard-frontend`: publicaciones → comprador → entrega → confirmación, Zod y precios/flete dinámicos.
 4. `feat/04-pedidos-pagos-drive`: creación transaccional, numeración anual/stock, tracking, FilePond, Drive/Gmail y PDFs.
@@ -50,7 +50,7 @@ Sistema de pedidos del Fondo Editorial Continental: Next.js en Vercel, integrado
 - Número `secuencial-año`, contador por año con lock transaccional, sin serial global. Tracking nanoid >=24, único/indexado.
 - Comprobantes privados, enlaces directos Drive solo en administración. Sin visor/proxy local. Sincronizar lectores nominados de la carpeta con authorized_emails, registrar ACL en drive_reader_grants y retirar permisos gestionados al revocar. No mostrar archivos/nombres al comprador tras la carga. No imprimir objetos de error Google/Drizzle ni credenciales/payload en logs.
 - Drive/Gmail: cuenta propietaria con refresh token; try/catch y un reintento sin perder la carga. MIME HTML + PDF según tipo; PDFs en `src/assets/pdfs`, fuera de public. Revisar adjunto en Vercel.
-- Campus dinámicos en BD (`campuses`), CRUD en `/admin` por cualquier autorizado; solo el maestro gestiona correos. Ocho iniciales sembrados una vez por migración. Inactivos fuera del wizard; pedidos asociados impiden borrado. Coordenadas/URL de mapa editables por interfaz. No inventar coordenadas.
+- Campus dinámicos en BD (`campuses`), CRUD en `/admin/configuracion` por cualquier autorizado; solo el maestro gestiona correos. Ocho iniciales sembrados una vez por migración. Inactivos fuera del wizard; pedidos asociados impiden borrado. Coordenadas/URL de mapa editables por interfaz. No inventar coordenadas.
 - Ubigeo local nacional en `src/data/ubigeo`: departamento/provincia/distrito, zona derivada de provincia `1501`/`0701` para Lima/Callao. Costos solo en resumen. Precio único aplicado, sin portada/comparación de tarifas; sellos en badges sin prefijo.
 - Quien recibe/recoge: comprador actual u otra persona (nombres, DNI, teléfono), con validación Zod y derivación server-side en fase 4.
 - No X-Frame-Options contradictorio con CSP del iframe.
@@ -65,14 +65,14 @@ Usar Context7 para documentación vigente de librerías, frameworks, SDKs, APIs,
 
 ## Contrato de fase 4
 
-- Creación real solo con cuentas activas de ambos sellos en BD, Google propietario, APP_URL y tres PDF. `/admin` gestiona cuentas; las cuentas operativas se completan/activan desde BD por interfaz, sin inventar datos. PDF se selecciona por nombre/tipo; usuario acepta temporalmente Universidad/Mixto idénticos y los reemplazará.
+- Creación real solo con cuentas activas de ambos sellos en BD, Google propietario, APP_URL y tres PDF. `/admin/configuracion` gestiona cuentas; las cuentas operativas se completan/activan desde BD por interfaz, sin inventar datos. PDF se selecciona por nombre/tipo; usuario acepta temporalmente Universidad/Mixto idénticos y los reemplazará.
 - UUID de intento único, hash y locks: reintento no duplica pedido/stock. Snapshot de título/cuentas/consentimiento. Numeración por año de Lima desde BD.
 - Tracking nanoid 32, privado por token; no referrer/no-store. FilePond 3 MiB por archivo, zona por sello aplicable y asociación fija, carga automática a Drive y revisión inmediata, sin confirmación del comprador. Intentos persistidos con ID Drive reservado; no quitar archivo si hay error.
 - Correo en outbox persistente con after inmediato y reintento automático protegido por CRON_SECRET; fallo no borra pedido. Avisos de comprobantes, asignación, pagos, envío y entrega en el mismo hilo; comprador, copia al maestro y Bcc al gestor vigente autorizado. Gmail metadata propietario obligatorio para obtener Message-ID/Subject/threadId reales. Sin pruebas automatizadas. Validación real Google/PDF en Vercel pendiente de configuración. [Detalle vigente](docs/pedidos-pagos.md).
 
 ## Contrato de fase 5
 
-- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario` como tabla con edición y alta inline; borrado con diálogo breve de confirmación; configuración en `/admin` con pestañas de correos, campus, cuentas e integraciones. Cualquier autorizado consulta/toma pedidos disponibles; solo el asignado registra pagos/estados. Todos operan inventario.
+- Pedidos en `/admin/pedidos`, detalle por UUID; inventario en `/admin/inventario` como tabla con edición y alta inline; borrado con diálogo breve de confirmación; configuración en `/admin/configuracion` con pestañas de correos, campus, cuentas e integraciones. Cualquier autorizado consulta/toma pedidos disponibles; solo el asignado registra pagos/estados. Todos operan inventario.
 - Aprobar/rechazar solo pagos `EN_REVISION` de pedidos `PENDIENTE_PAGO`, con comprobante más reciente del sello. Lock del pedido y control de versión evitan revisión obsoleta; conservar el otro sello. Distribución solo con todos los requeridos verificados.
 - Autoasignación con lock e historial por actor; revocación libera pedidos abiertos. Bandejas Todos/Mis pedidos/Por asignar.
 - Despacho desde distribución, courier obligatorio para delivery; guía/URL HTTPS opcionales, fecha y aviso al comprador; recojo usa despacho como listo en biblioteca. Entrega solo desde despacho. No añadir cancelación/reposición de stock sin definir ese flujo.
@@ -124,3 +124,8 @@ Ver [docs/atencion-y-comunicacion.md](docs/atencion-y-comunicacion.md): sustituy
 - Evidencia opcional de recojo: FilePond sube al seleccionar y muestra solo “Imagen adjunta.” al terminar. Una carga exitosa aparece en admin y persiste al recargar antes de finalizar entrega; no tocar versión/estado ni enviar correo por foto. Cierre recibe evidenceId (Zod), comprueba pedido/imagen lista y gestor actual; conserva autor original si cambió gestor. Sin bytes/Google en dispatchOrderAction. Botones de correo sin número de pedido: “Pagar y seguir mi pedido” y “Ver seguimiento”; asunto/cabecera/referencias conservan identificación.
 
 - Dominios reales confirmados: app https://modulo-gestor-pedidos.vercel.app, WordPress https://fondoeditorial.continental.edu.pe/pedido/. WORDPRESS_ORIGINS solo https://fondoeditorial.continental.edu.pe; APP_URL/BETTER_AUTH_URL origen Vercel. Instrucciones exactas docs/despliegue-produccion.md y bloque src/iframe/wordpress-pedido.html. Ambos HTTP 200; CSP actual self impide iframe hasta configurar/redeploy. Sin credenciales de consola para cambiar env/Google Cloud automáticamente.
+
+- /admin redirige a /admin/pedidos. Configuración en /admin/configuracion, alias /admin/configuración; navegación y revalidaciones apuntan a esa página. Administración se recomienda en ventana propia Vercel; no relajar cookies/permisos para incrustarla en WordPress.
+- Correos sin ?aviso. Seguimiento del comprador enlaza a WordPress /pedido/#seguimiento/TOKEN; receptor valida token nanoid32 y abre iframe Vercel /seguimiento/TOKEN, sin URLs arbitrarias. En despliegue confirmado usa esa página por defecto; WORDPRESS_ORDER_URL permite sobreescribir para otros entornos. APP_URL/BETTER_AUTH_URL siguen Vercel. No enviar token mediante postMessage ni fabricar correos/pedidos de prueba.
+- Bridge usa dependencia estable de orígenes por valor (RSC refresh no reinicia), mensaje ready→init para reconectar/hidratación lenta y ResizeObserver para alturas. Overflow vertical del documento iframe se desactiva solo tras handshake válido; historial mantiene scroll propio. Public-order-surface ocupa todo el ancho del bloque padre sin max-width/gutters duplicados al incrustar. Reemplazar bloque WP por src/iframe/wordpress-pedido.html actualizado.
+- /pedido tiene encabezado funcional sin logos ni landing; títulos del paso h2. Ilustraciones de correo SVG/PNG estáticas con alpha real, sin fondo/placas blancas; recortes por máscara para símbolos superpuestos. Números en asunto/cabecera se conservan para identificar hilo.

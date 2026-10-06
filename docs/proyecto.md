@@ -36,7 +36,7 @@ Instalar paquetes de fases posteriores cuando corresponda, sin adelantar sus fun
 - Una cuenta Google verificada previamente autorizada puede crear su usuario de better-auth al ingresar por primera vez. Un correo no autorizado no puede crear usuario ni sesión.
 - Validar también el correo recibido de Google en ingresos posteriores y consultar la autorización vigente con cada petición protegida.
 - Todos los autorizados operan el sistema, gestionan campus y consultan la lista; solo el maestro añade o elimina correos. El maestro no se elimina desde la aplicación.
-- Configuración en `/admin`: lista sencilla con alta/baja, sin gestor de usuarios ni de roles. Pedidos e inventario conservan rutas propias.
+- Configuración en `/admin/configuracion`: lista sencilla con alta/baja, sin gestor de usuarios ni de roles. Pedidos e inventario conservan rutas propias.
 - Normalizar correos a minúsculas y quitar espacios externos; `added_by` procede de la sesión, nunca del cliente.
 - Comprobar sesión válida y tabla en el middleware (`src/proxy.ts` en Next 16), páginas y Server Actions. Una cookie presente no demuestra autorización.
 - Revocar un correo y eliminar sus sesiones en una misma transacción. La revocación no depende de cachés; reautorizar exige una sesión nueva.
@@ -130,7 +130,7 @@ La autorización Google del administrador usa únicamente identidad; no sustituy
 
 ## Información externa aún necesaria
 
-Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas, editables en `/admin`, si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario se migran a la tabla `campuses`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.
+Acceso a Vercel; dominios reales de Vercel/WordPress; cuentas bancarias por sello; catálogo y precios/stock iniciales; coordenadas/URLs precisas de bibliotecas, editables en `/admin/configuracion`, si la búsqueda por dirección no coincide; PDFs de pago aprobados y credenciales Drive/Gmail. Google OAuth y Neon ya configurados; ocho campus/direcciones proporcionados por el usuario se migran a la tabla `campuses`. No inventar datos para producción ni escribir secretos en documentación, commits o mensajes.
 
 Flujo actualizado: autoasignación, operación por gestor responsable, historial, envío/guía/entrega, comprobantes automáticos y Gmail threads reales en [atencion-y-comunicacion.md](atencion-y-comunicacion.md).
 

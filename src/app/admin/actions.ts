@@ -21,7 +21,7 @@ async function changeAccess(input: unknown, operation: "add" | "remove"): Promis
         ? addAuthorizedEmail(db, actor, email.data)
         : removeAuthorizedEmail(db, actor, email.data);
     });
-    if (result.success) { revalidatePath("/admin", "layout"); after(async () => { try { await synchronizeDriveReaders(); } catch (error) { reportServerError("drive.readers.pending", error); } }); }
+    if (result.success) { revalidatePath("/admin/configuracion", "page"); after(async () => { try { await synchronizeDriveReaders(); } catch (error) { reportServerError("drive.readers.pending", error); } }); }
     return result;
   } catch (error) {
     return {

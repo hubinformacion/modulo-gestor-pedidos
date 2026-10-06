@@ -79,3 +79,9 @@ Lint, tipos y build de producción correctos. Simulador servido en localhost:300
 No hubo revisión visual desde un navegador automatizado; posteriormente se verificaron cabeceras Gmail y se sincronizaron lectores Drive sin enviar mensajes; quedan pendientes la altura/renderizado en navegador, WordPress real y Drive/Gmail/PDF en Vercel. El build local usa APP_URL de desarrollo: para compras reales usar pnpm dev con la configuración local correspondiente, o el despliegue HTTPS configurado. No se añaden ni ejecutan suites de pruebas automatizadas.
 
 Dominios aportados y revisados: Vercel https://modulo-gestor-pedidos.vercel.app, WordPress https://fondoeditorial.continental.edu.pe/pedido/. Configuración exacta y hallazgos de CSP/iframe antiguo en [despliegue-produccion.md](despliegue-produccion.md). Bloque final src/iframe/wordpress-pedido.html. La validación anterior local no sustituye esta revisión pública.
+
+## Puente y seguimiento actualizados
+
+Cliente envía ready a orígenes exactos permitidos; padre verifica origin/source y responde init aun cuando terminaron los primeros diez intentos. La dependencia por valor de allowedOrigins impide perder parentOrigin por un refresh RSC. CSS embebido solo tras handshake: no scroll vertical del documento hijo, max-width del contenido eliminado y padding horizontal del padre conservado. Padre fija width 100%, max-height none/aspect-ratio auto y height !important según medida validada.
+
+El bloque nuevo reconoce #seguimiento/nanoid32 y carga /seguimiento/nanoid32 en el iframe del origen original. Un hash nunca puede elegir otro host/ruta arbitraria. No enviar tokens por postMessage. Correos sin ?aviso, guiados por WordPress; root layout y nonce mantienen permisos/rutas públicas anteriores. Mantener src/iframe/wordpress-pedido.html y script del tema sincronizados si el editor elimina el script inline.

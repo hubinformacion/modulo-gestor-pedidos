@@ -1,27 +1,25 @@
 "use client";
-
 import { useEffect } from "react";
 import { iframeHeightSchema, iframeInitSchema } from "@/lib/iframe/protocol";
 
 export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[] }) {
+  // RSC refreshes produce new arrays. Keep the connection while their values
+  // remain identical, including after navigating from wizard to tracking.
+  const originsKey = JSON.stringify(allowedOrigins);
   useEffect(() => {
     if (window.parent === window) return;
     const content = document.getElementById("app-content");
     if (!content) return;
-    const allowed = new Set([...allowedOrigins, window.location.origin]);
+    const allowed = new Set<string>([...JSON.parse(originsKey), window.location.origin]);
     let parentOrigin: string | null = null;
     let lastHeight = 0;
     let frame = 0;
     let disposed = false;
-    try {
-      const origin = new URL(document.referrer).origin;
-      if (allowed.has(origin)) parentOrigin = origin;
-    } catch { /* A no-referrer parent initializes the bridge with postMessage. */ }
-
+    const root = document.documentElement;
+    try { const origin = new URL(document.referrer).origin; if (allowed.has(origin)) parentOrigin = origin; }
+    catch { /* The validated parent handshake works with no-referrer. */ }
     function sendHeight(force = false) {
       if (!parentOrigin || disposed) return;
-      // Measuring the content avoids retaining the iframe's previous viewport
-      // height when switching from a long catalog to a shorter wizard step.
       const height = Math.max(128, Math.ceil(content!.getBoundingClientRect().height));
       const message = iframeHeightSchema.safeParse({ type: "fec:iframe:height", version: 1, height });
       if (!message.success || (!force && height === lastHeight)) return;
@@ -32,15 +30,24 @@ export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[
     function initialize(event: MessageEvent) {
       if (event.source !== window.parent || !allowed.has(event.origin) || !iframeInitSchema.safeParse(event.data).success) return;
       parentOrigin = event.origin;
-      sendHeight(true);
+      root.dataset.fecEmbedded = "true";
+      sendHeight(true); schedule();
     }
     const observer = new ResizeObserver(schedule);
     observer.observe(content);
     window.addEventListener("message", initialize);
     window.addEventListener("resize", schedule);
+    document.addEventListener("load", schedule, true);
     void document.fonts.ready.then(schedule);
+    // Reconnect even when hydration takes longer than the parent's first retry
+    // window. Each message has an exact allowed target, never a wildcard.
+    for (const origin of allowed) window.parent.postMessage({ type: "fec:iframe:ready", version: 1 }, origin);
     schedule();
-    return () => { disposed = true; observer.disconnect(); cancelAnimationFrame(frame); window.removeEventListener("message", initialize); window.removeEventListener("resize", schedule); };
-  }, [allowedOrigins]);
+    return () => {
+      disposed = true; observer.disconnect(); cancelAnimationFrame(frame);
+      window.removeEventListener("message", initialize); window.removeEventListener("resize", schedule);
+      document.removeEventListener("load", schedule, true); delete root.dataset.fecEmbedded;
+    };
+  }, [originsKey]);
   return null;
 }
