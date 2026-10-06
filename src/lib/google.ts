@@ -6,14 +6,14 @@ import { drive } from "googleapis/build/src/apis/drive/index.js";
 import { gmail } from "googleapis/build/src/apis/gmail/index.js";
 import { z } from "zod";
 import { safeErrorDetails } from "@/lib/server-diagnostics";
-import { googleConfigured, getOrderBankAccounts, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
+import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { MASTER_EMAIL } from "@/lib/access-policy";
 import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
 import { imprintNames } from "@/lib/orders/types";
 import type { getTrackedOrder } from "@/lib/orders/tracking";
 
-function ownerAuth() {
+export function ownerAuth() {
   if (!googleConfigured()) throw new Error("GOOGLE_NOT_CONFIGURED");
   const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET);
   client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
@@ -57,19 +57,7 @@ export async function uploadFileToDrive({ id, name, mimeType, bytes }: { id: str
       await api.files.create({ requestBody: { id, name, parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!] }, media: { mimeType, body: Readable.from(bytes) }, fields: "id" }, { timeout: 20_000, retry: false });
     }
     stage = "drive.read_link";
-    const response = await api.files.get({ fileId: id, fields: "webViewLink,permissions(type,role)" }, { timeout: 15_000, retry: false });
-    const readableByLink = response.data.permissions?.some((permission) => permission.type === "anyone" && ["reader", "writer", "commenter"].includes(permission.role ?? ""));
-    if (!readableByLink) {
-      stage = "drive.share";
-      try {
-        await api.permissions.create({ fileId: id, requestBody: { type: "anyone", role: "reader" } }, { timeout: 15_000, retry: false });
-      } catch (error) {
-        const details = safeErrorDetails(error);
-        // Workspace can forbid public links while permitting the owner to read.
-        // Keep the file private: authorized staff use the authenticated viewer.
-        if (!details.reason || !["publishOutNotPermitted", "domainPolicy", "cannotShareAcrossDomains"].includes(details.reason)) throw error;
-      }
-    }
+    const response = await api.files.get({ fileId: id, fields: "webViewLink" }, { timeout: 15_000, retry: false });
     return { driveFileId: id, driveViewUrl: response.data.webViewLink ?? `https://drive.google.com/file/d/${id}/view` };
   }, () => stage);
 }
@@ -136,17 +124,19 @@ async function sendMime({ tracking, html, text, attachment, notificationId }: { 
 }
 
 export async function sendOrderConfirmationEmail(tracking: Tracking) {
-  const banks = await getOrderBankAccounts(tracking.order.paymentAccounts);
-  if (!banks) throw new Error("BANKS_NOT_CONFIGURED");
-  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}`;
+  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=recepcion`;
   const intro = emailTemplates[tracking.order.orderType];
-  return sendMime({ tracking, html: renderOrderEmail(tracking, { intro, link, banks }),
-    text: `Pedido ${tracking.order.orderNumber}\n${intro}\nCosto por envío: ${formatMoney(toCents(tracking.order.shippingCost))}\nTotal: ${formatMoney(toCents(tracking.order.total))}\nSeguimiento: ${link}`,
+  const amounts = (["universidad", "instituto"] as const)
+    .filter((imprint) => (imprint === "universidad" ? tracking.order.paymentStatusUniversidad : tracking.order.paymentStatusInstituto) !== "NO_APLICA")
+    .map((imprint) => `${imprintNames[imprint]}: ${formatMoney(toCents(imprint === "universidad" ? tracking.order.totalUniversidad : tracking.order.totalInstituto))}`)
+    .join("\n");
+  return sendMime({ tracking, html: renderOrderEmail(tracking, { intro, link }),
+    text: `Pedido ${tracking.order.orderNumber}\nSeguimiento y pago: ${link}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Guía de pago adjunta en PDF.`,
     attachment: await readOrderPaymentGuide(tracking.order),
   });
 }
 
-export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string> }) {
+export async function sendOrderUpdateEmail(tracking: Tracking, notification: { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string>; createdAt: Date }) {
   if (!tracking.emailHeadersVerified || !tracking.emailThreadId || !tracking.emailRfcMessageId || !tracking.emailSubjectHeader) throw new Error("GMAIL_THREAD_NOT_VERIFIED");
   const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "";
   const payload = notification.payload;
@@ -160,6 +150,6 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   };
   const notice = notices[notification.eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
-  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}`;
-  return sendMime({ tracking, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\nSeguimiento: ${link}` });
+  const link = `${getPublicOrigin()}/seguimiento/${tracking.order.trackingToken}?aviso=${notification.id}`;
+  return sendMime({ tracking, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\nSeguimiento: ${link}` });
 }

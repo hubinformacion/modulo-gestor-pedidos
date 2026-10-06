@@ -60,3 +60,6 @@
 .filepond--panel-root { background: var(--muted); border: 1px dashed var(--border); border-radius: 0.75rem; }
 .filepond--drop-label { color: var(--muted-foreground); }
 .filepond--label-action { color: var(--primary); text-decoration-color: var(--primary); }
+
+/* Receipt details are retained for staff; the purchaser sees only progress and acknowledgement. */
+.receipt-pond .filepond--file-info { display: none; }

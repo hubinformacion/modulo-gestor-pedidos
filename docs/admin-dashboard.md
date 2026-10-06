@@ -8,7 +8,7 @@ Inter, blanco, acento `#6802C1`, Instituto `#e4000b`, sin logos ni landing. Nave
 
 `/admin/pedidos`: bandejas Todos/Por asignar/Mis pedidos/He participado, búsqueda por número/comprador/correo/gestor, filtro por estado y veinte pedidos por página. Tabla con gestor, modalidad y estado general; los pagos por sello se consultan en el detalle. Orden por creación/ID y filtros en URL.
 
-`/admin/pedidos/[id]`: ítems/precios snapshot, comprador/facturación, entrega/persona alternativa, importes por sello y todos los comprobantes ordenados del más reciente al anterior. Enlaces a `/admin/comprobantes/[id]` abren el visor protegido en otra pestaña. El servidor lee Drive como propietario y valida sesión/correo en BD; los comprobantes privados siguen accesibles para cualquier autorizado. Acceso al tracking del comprador, que es privado mediante token. No mostrar tokens en tabla ni usarlos en logs.
+`/admin/pedidos/[id]`: ítems/precios snapshot, comprador/facturación, entrega/persona alternativa, importes por sello y todos los comprobantes ordenados del más reciente al anterior. Enlaces directos a Drive en otra pestaña, con lectores de la carpeta sincronizados según authorized_emails. No se usa un visor local. Acceso al tracking del comprador, que es privado mediante token. No mostrar tokens en tabla ni usarlos en logs.
 
 ## Atención, pagos, entrega y correos
 

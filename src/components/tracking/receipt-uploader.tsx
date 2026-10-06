@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FilePond, registerPlugin } from "react-filepond";
 import FileValidateType from "filepond-plugin-file-validate-type";
@@ -13,12 +13,13 @@ import { uploadReceiptAction } from "@/app/seguimiento/[tracking_token]/actions"
 
 registerPlugin(FileValidateType, FileValidateSize, ImagePreview);
 export default function ReceiptUploader({ token, imprint, handlerName }: { token: string; imprint: Imprint; handlerName: string | null }) {
+  const pond = useRef<FilePond>(null);
   const [busy, setBusy] = useState(0);
   const [saved, setSaved] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const router = useRouter();
-  return <div data-order-editing={busy > 0 ? "true" : undefined}>
-    <FilePond name={`comprobante-${imprint}`} allowMultiple maxFiles={8} instantUpload maxParallelUploads={1} allowRevert={false}
+  return <div className="receipt-pond" data-order-editing={busy > 0 ? "true" : undefined}>
+    <FilePond ref={pond} credits={false} name={`comprobante-${imprint}`} allowMultiple maxFiles={8} instantUpload maxParallelUploads={1} allowRevert={false}
       acceptedFileTypes={["application/pdf", "image/jpeg", "image/png"]} maxFileSize="3MB" imagePreviewHeight={90}
       labelIdle={`Arrastra tu comprobante o <span class="filepond--label-action">selecciona archivos</span>`}
       labelFileTypeNotAllowed="Usa PDF, JPG o PNG" fileValidateTypeLabelExpectedTypes="Formatos permitidos: PDF, JPG y PNG"
@@ -27,8 +28,8 @@ export default function ReceiptUploader({ token, imprint, handlerName }: { token
       labelTapToRetry="Pulsa para reintentar" labelTapToCancel="" labelTapToUndo="" labelButtonRemoveItem="Retirar archivo"
       onaddfile={(error, item) => { if (!error) item.setMetadata("uploadId", crypto.randomUUID(), true); }}
       onprocessfilestart={() => setBusy((count) => count + 1)} onprocessfileabort={() => setBusy((count) => Math.max(0, count - 1))}
-      onprocessfile={(error) => { setBusy((count) => Math.max(0, count - 1)); if (!error) { setSaved(true); setMessage(null); } }} onprocessfiles={() => router.refresh()}
-      server={{ process: (_field, file, metadata, load, error, progress) => {
+      onprocessfile={(error, file) => { setBusy((count) => Math.max(0, count - 1)); if (!error) { setSaved(true); setMessage(null); window.setTimeout(() => pond.current?.removeFile(file.id, { revert: false, remove: false }), 0); } }} onprocessfiles={() => router.refresh()}
+      server={{ revert: null, remove: null, process: (_field, file, metadata, load, error, progress) => {
         const valid = receiptMetadataSchema.safeParse({ token, uploadId: metadata.uploadId, imprint });
         const actual = new File([file], file.name, { type: file.type });
         if (!valid.success || !receiptFileSchema.safeParse(actual).success) { error("Usa PDF, JPG o PNG de hasta 3 MB."); return; }

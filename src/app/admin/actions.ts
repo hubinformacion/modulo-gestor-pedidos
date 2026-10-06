@@ -1,5 +1,8 @@
 "use server";
 
+import { after } from "next/server";
+import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
+import { reportServerError } from "@/lib/server-diagnostics";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { withDatabase } from "@/db";
@@ -18,7 +21,7 @@ async function changeAccess(input: unknown, operation: "add" | "remove"): Promis
         ? addAuthorizedEmail(db, actor, email.data)
         : removeAuthorizedEmail(db, actor, email.data);
     });
-    if (result.success) revalidatePath("/admin", "layout");
+    if (result.success) { revalidatePath("/admin", "layout"); after(async () => { try { await synchronizeDriveReaders(); } catch (error) { reportServerError("drive.readers.pending", error); } }); }
     return result;
   } catch (error) {
     return {

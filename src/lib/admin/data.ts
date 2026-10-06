@@ -1,8 +1,10 @@
 import "server-only";
+import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
+import { reportServerError } from "@/lib/server-diagnostics";
 import { headers } from "next/headers";
 import { and, asc, count, desc, eq, exists, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { books, orderActivity, orderEmails, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
+import { books, orderActivity, orderItems, orders, paymentReceipts } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
 import type { z } from "zod";
 import { filterSchema } from "./validation";
@@ -34,17 +36,16 @@ export async function listOrders(filters: z.infer<typeof filterSchema>) {
 export async function orderDetail(id: string) {
   const requestHeaders = await headers();
   await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  try { await synchronizeDriveReaders(); } catch (error) { reportServerError("drive.readers.sync", error); }
   return withReadDatabase(async (db) => {
     const [order] = await db.select().from(orders).where(eq(orders.id, id));
     if (!order) return null;
-    const [items, receipts, activity, mail, notifications] = await Promise.all([
+    const [items, receipts, activity] = await Promise.all([
       db.select({ id: orderItems.id, title: sql<string>`coalesce(${orderItems.bookTitle}, ${books.title})`, imprint: orderItems.publisherImprint, price: orderItems.unitPrice, quantity: orderItems.quantity, subtotal: orderItems.subtotal }).from(orderItems).innerJoin(books, eq(books.id, orderItems.bookId)).where(eq(orderItems.orderId, id)).orderBy(asc(orderItems.id)),
       db.select().from(paymentReceipts).where(eq(paymentReceipts.orderId, id)).orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id)),
       db.select().from(orderActivity).where(eq(orderActivity.orderId, id)).orderBy(desc(orderActivity.createdAt)).limit(50),
-      db.select({ status: orderEmails.status, threadIssue: orderEmails.threadIssue, verified: orderEmails.headersVerified }).from(orderEmails).where(eq(orderEmails.orderId, id)),
-      db.select({ id: orderNotifications.id, status: orderNotifications.status, eventType: orderNotifications.eventType, createdAt: orderNotifications.createdAt }).from(orderNotifications).where(eq(orderNotifications.orderId, id)).orderBy(desc(orderNotifications.createdAt)).limit(20),
     ]);
-    return { order, items, receipts, activity, email: mail[0] ?? null, notifications };
+    return { order, items, receipts, activity };
   });
 }
 

@@ -3,7 +3,6 @@ import { z } from "zod";
 export const orderLabels = { PENDIENTE_PAGO: "Pendiente de pago", EN_PREPARACION: "En preparación", DESPACHADO: "Despachado", ENTREGADO: "Entregado", CANCELADO: "Cancelado" } as const;
 export const paymentLabels = { NO_APLICA: "No aplica", PENDIENTE: "Sin comprobante", EN_REVISION: "En revisión", VERIFICADO: "Verificado", RECHAZADO: "Rechazado" } as const;
 export const assignmentSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), operation: z.enum(["claim", "release"]) });
-export const retryOrderMailSchema = z.object({ id: z.uuid() });
 export type ActionResult = { success: boolean; message: string };
 const version = z.iso.datetime();
 export const reviewSchema = z.object({ id: z.uuid(), imprint: z.enum(["universidad", "instituto"]), receiptId: z.uuid(), version, decision: z.enum(["VERIFICADO", "RECHAZADO"]), reason: z.string().trim().max(500).default("") }).refine((value) => value.decision !== "RECHAZADO" || value.reason.length >= 5, "Explica el motivo del rechazo (al menos 5 caracteres).");

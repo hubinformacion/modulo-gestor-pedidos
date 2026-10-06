@@ -1,8 +1,8 @@
 "use client";
 import { useState, useTransition } from "react";
 import { sileo } from "sileo";
-import { assignOrderAction, reviewPaymentAction, dispatchOrderAction, retryOrderMailAction } from "@/app/admin/operations";
-import { assignmentSchema, dispatchSchema, reviewSchema, retryOrderMailSchema, type ActionResult } from "@/lib/admin/validation";
+import { assignOrderAction, reviewPaymentAction, dispatchOrderAction } from "@/app/admin/operations";
+import { assignmentSchema, dispatchSchema, reviewSchema, type ActionResult } from "@/lib/admin/validation";
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/order-wizard/fields";
 function notify(result: ActionResult) { if (result.success) sileo.success({ title: result.message }); else sileo.error({ title: result.message }); }
@@ -50,8 +50,4 @@ export function DispatchControls({ id, version, status, delivery, initialCourier
     <p className="text-xs leading-6 text-muted-foreground">{next === "ENTREGADO" ? "Marca la entrega cuando el comprador haya recibido o recogido sus publicaciones. Le enviaremos la confirmación." : delivery ? "Guarda cuando el pedido se entregue al courier. El comprador recibirá estos datos por correo." : "Guarda cuando las publicaciones estén disponibles en biblioteca. Avisaremos al comprador para que las recoja."}</p>
     <Button className="h-11 px-4" disabled={pending} type="submit">{pending ? "Guardando…" : next === "ENTREGADO" ? "Confirmar entrega y avisar" : delivery ? "Registrar envío y avisar" : "Listo para recoger y avisar"}</Button>{error ? <p role="alert" className="text-xs text-destructive">{error}</p> : null}
   </form>;
-}
-export function RetryOrderMail({ id }: { id: string }) {
-  const [pending, startTransition] = useTransition();
-  return <Button variant="outline" className="mt-3 h-9 text-xs" disabled={pending} onClick={() => { const parsed = retryOrderMailSchema.safeParse({ id }); if (!parsed.success) return; startTransition(async () => { try { notify(await retryOrderMailAction(parsed.data)); } catch { sileo.error({ title: "No se pudieron reintentar los avisos." }); } }); }}>{pending ? "Enviando…" : "Reintentar avisos pendientes"}</Button>;
 }

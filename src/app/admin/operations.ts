@@ -3,16 +3,15 @@
 import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, desc, eq, gte } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, orderActivity, orderEmails, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
-import { getTrackedOrder } from "@/lib/orders/tracking";
+import { books, orderActivity, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
 import { deliverOrderEmail } from "@/lib/orders/email";
 import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
-import { assignmentSchema, retryOrderMailSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
+import { assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return;
@@ -169,29 +168,6 @@ export async function assignOrderAction(input: unknown): Promise<ActionResult> {
     });
     if (outcome.notify) scheduleOrderMail(outcome.token);
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true, message: parsed.data.operation === "claim" ? "El pedido quedó asignado a ti." : "Pedido disponible para otro gestor." };
-  } catch (error) { return failure(error); }
-}
-
-export async function retryOrderMailAction(input: unknown): Promise<ActionResult> {
-  const parsed = retryOrderMailSchema.safeParse(input);
-  if (!parsed.success) return { success: false, message: "Pedido no válido." };
-  try {
-    const requestHeaders = await headers();
-    const token = await withDatabase(async (db) => {
-      const actor = await getAuthorizedSession(db, requestHeaders);
-      return db.transaction(async (tx) => {
-        await assertAuthorized(tx, actor);
-        const [order] = await tx.select({ token: orders.trackingToken }).from(orders).where(eq(orders.id, parsed.data.id));
-        if (!order) throw new OperationError("El pedido no existe.");
-        await tx.update(orderNotifications).set({ status: "PENDIENTE", attempts: 0, lastAttemptAt: null }).where(and(eq(orderNotifications.orderId, parsed.data.id), eq(orderNotifications.status, "ERROR"), gte(orderNotifications.attempts, 5)));
-        await tx.update(orderEmails).set({ status: "PENDIENTE", attempts: 0, lastAttemptAt: null }).where(and(eq(orderEmails.orderId, parsed.data.id), eq(orderEmails.status, "ERROR"), gte(orderEmails.attempts, 5)));
-        return order.token;
-      });
-    });
-    const sent = await deliverOrderEmail(token);
-    const current = await getTrackedOrder(token);
-    revalidatePath("/admin/pedidos", "layout");
-    return { success: sent || Boolean(current?.emailHeadersVerified && !current?.hasPendingNotifications && current?.emailStatus === "ENVIADO"), message: sent ? "Avisos enviados en el hilo del pedido." : current?.emailHeadersVerified && !current.hasPendingNotifications ? "El hilo está verificado y no hay avisos pendientes." : "Hay avisos pendientes. Revisa la configuración o espera un minuto antes de reintentar." };
+    return { success: true, message: parsed.data.operation === "claim" ? "El pedido quedó asignado." : "Pedido disponible para otro gestor." };
   } catch (error) { return failure(error); }
 }

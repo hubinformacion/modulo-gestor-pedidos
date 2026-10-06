@@ -112,3 +112,5 @@ Fase 6: configuración/protocolo en `src/lib/iframe`, puente en `src/components/
 Migración 0007: atención asignada/historial, entrega y metadata/lease de Gmail. Contrato: [atencion-y-comunicacion.md](atencion-y-comunicacion.md). .env.example incluye gmail.metadata propietario; reponer ese refresh token también en Vercel.
 
 Lecturas paralelas de páginas (detalle/lista/inventario/configuración/seguimiento) usan `withReadDatabase`: Drizzle Neon HTTP, SELECT solo en su tipo, timeout y un reintento únicamente de fallos transitorios de lectura. Autorización y transacciones mantienen Pool por petición, sin reejecutar mutaciones. Errores del driver se normalizan a Error sin causa cruda: React no puede serializar ErrorEvent, y los logs excluyen SQL/params/credenciales.
+
+Migración 0008: permisos lectores Drive gestionados en drive_reader_grants. Enlaces directos para gestores; comprador solo ve confirmación. Reconciliación ACL y recuperación automática de correos en /api/internal/jobs; CRON_SECRET en .env.example, cron diario en vercel.json. No ejecutar el worker contra pedidos operativos como comprobación técnica: puede enviar avisos pendientes.

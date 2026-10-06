@@ -1,6 +1,6 @@
 import { sql } from "drizzle-orm";
 import { user as authUser } from "./auth-schema";
-import { type AnyPgColumn, boolean, check, index, integer, jsonb, numeric, pgEnum, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { type AnyPgColumn, boolean, check, index, integer, jsonb, numeric, pgEnum, pgTable, primaryKey, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export * from "./auth-schema";
 
@@ -289,3 +289,11 @@ export const paymentGuides = pgTable("payment_guides", {
   contentBase64: text("content_base64").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Keep managed Drive ACLs after email revocation until Google removal succeeds.
+export const driveReaderGrants = pgTable("drive_reader_grants", {
+  folderId: text("folder_id").notNull(),
+  email: text("email").notNull(),
+  permissionId: text("permission_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [primaryKey({ columns: [table.folderId, table.email] }), uniqueIndex("drive_reader_grants_permission_unique").on(table.folderId, table.permissionId)]);
