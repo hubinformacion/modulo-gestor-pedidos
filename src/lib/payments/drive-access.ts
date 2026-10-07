@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
-import { drive } from "googleapis/build/src/apis/drive/index.js";
+import { drive, type drive_v3 } from "googleapis/build/src/apis/drive/index.js";
 import { withDatabase } from "@/db";
 import { authorizedEmails, driveReaderGrants } from "@/db/schema";
 import { ownerAuth } from "@/lib/google";
@@ -19,23 +19,28 @@ export async function synchronizeDriveReaders(): Promise<void> {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`drive-readers:${folderId}`}))`);
     const allowed = new Set((await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.role, "gestor"))).map((row) => row.email));
     const managed = await tx.select().from(driveReaderGrants).where(eq(driveReaderGrants.folderId, folderId));
-    for (const grant of managed) {
-      if (allowed.has(grant.email) && grant.email !== owner) continue;
-      try { await api.permissions.delete({ fileId: folderId, permissionId: grant.permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
-      catch (error) { if (safeErrorDetails(error).status !== 404) throw error; }
-      await withDatabase((writer) => writer.delete(driveReaderGrants).where(and(eq(driveReaderGrants.folderId, folderId), eq(driveReaderGrants.email, grant.email))));
-    }
-    const permissions: { id?: string | null; type?: string | null; role?: string | null; emailAddress?: string | null }[] = [];
+    const permissions: drive_v3.Schema$Permission[] = [];
     let pageToken: string | undefined;
     do {
-      const response = await api.permissions.list({ fileId: folderId, supportsAllDrives: true, pageSize: 100, pageToken, fields: "nextPageToken,permissions(id,type,role,emailAddress)" }, { timeout: 15_000, retry: false });
+      const response = await api.permissions.list({ fileId: folderId, supportsAllDrives: true, pageSize: 100, pageToken, fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails)" }, { timeout: 15_000, retry: false });
       permissions.push(...(response.data.permissions ?? [])); pageToken = response.data.nextPageToken ?? undefined;
     } while (pageToken);
+    for (const grant of managed) {
+      if (allowed.has(grant.email) && grant.email !== owner) continue;
+      const effective = permissions.find((item) => item.id === grant.permissionId);
+      // A reader may have become an organizational writer/owner or inherited
+      // permission after creation. Never revoke those grants using stale state.
+      if (effective?.role === "reader" && !effective.permissionDetails?.some((detail) => detail.inherited)) {
+        try { await api.permissions.delete({ fileId: folderId, permissionId: grant.permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
+        catch (error) { if (safeErrorDetails(error).status !== 404) throw error; }
+      }
+      await withDatabase((writer) => writer.delete(driveReaderGrants).where(and(eq(driveReaderGrants.folderId, folderId), eq(driveReaderGrants.email, grant.email))));
+    }
     for (const email of allowed) {
       if (email === owner) continue;
       const existing = permissions.find((item) => item.type === "user" && item.emailAddress?.toLowerCase() === email);
-      // Pre-existing owners/writers are managed by the organization, not downgraded.
-      if (existing && ["owner", "writer", "organizer", "fileOrganizer"].includes(existing.role ?? "")) continue;
+      // Only direct reader grants belong to this application.
+      if (existing && (existing.role !== "reader" || existing.permissionDetails?.some((detail) => detail.inherited))) continue;
       let permissionId = existing?.id;
       if (!permissionId) {
         const granted = await api.permissions.create({ fileId: folderId, supportsAllDrives: true, sendNotificationEmail: false, requestBody: { type: "user", role: "reader", emailAddress: email }, fields: "id" }, { timeout: 15_000, retry: false });

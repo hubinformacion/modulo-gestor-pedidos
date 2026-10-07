@@ -63,7 +63,7 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
         clientSecret: env.GOOGLE_CLIENT_SECRET,
         requireEmailVerification: true,
         // Only the identity scopes are requested. Drive/Gmail use the owner's
-        // separate refresh token in phase 4, never an administrator's tokens.
+        // separate refresh token, never an administrator's tokens.
         scope: ["openid", "email", "profile"],
       },
     },

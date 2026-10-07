@@ -9,6 +9,7 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 - Compra en cuatro pasos con precios por tipo de comprador, ubigeo nacional y recojo en bibliotecas.
 - Cancelación previa al pago verificado y anulación del gestor antes del despacho, con restitución de stock e historial.
 - Stock y numeración anual transaccionales; importes y datos de compra conservados como snapshots.
+- Promociones por temporada y cupones con límites de uso, sin acumulación de descuentos.
 - Pagos independientes por sello y carga automática de comprobantes en Drive.
 - Caja por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
 - Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
@@ -20,7 +21,7 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 
 ## Tecnología
 
-Next.js App Router y Server Actions, React, TypeScript estricto, pnpm, Tailwind CSS y Base UI. Better Auth con Google OAuth y adaptador Drizzle; PostgreSQL en Neon. FilePond, Sileo, Boneyard y las APIs de Google Drive/Gmail completan el flujo.
+Next.js App Router y Server Actions, React, TypeScript estricto, pnpm, Tailwind CSS y Base UI. Better Auth con Google OAuth y adaptador Drizzle; PostgreSQL en Neon. FilePond, Sileo, `boneyard-js` y las APIs de Google Drive/Gmail completan el flujo.
 
 ## Desarrollo local
 
@@ -48,6 +49,8 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/admin` | Redirige a Pedidos |
 | `/admin/pedidos` | Bandeja y atención de pedidos |
 | `/admin/inventario` | Publicaciones, stock y precios |
+| `/admin/promociones` | Campañas, fechas, públicos y títulos |
+| `/admin/cupones` | Códigos, vigencia y límites de uso |
 | `/caja` | Bandeja exclusiva de caja, por sello |
 | `/caja/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
@@ -134,7 +137,7 @@ Configura un correo Google por sello desde **Configuración → Responsables de 
 
 Caja adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
-La funcionalidad requiere las migraciones 0012 y 0013. La BD de desarrollo ya está reiniciada y migrada; registra publicaciones, revisa las cuentas bancarias y configura los responsables para empezar. En un entorno con datos operativos, utiliza una BD de validación separada. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
+La funcionalidad requiere las migraciones 0012 y 0013. Para validar cambios futuros, utiliza una BD separada de producción. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
 
 El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias. Esta operación requiere la migración 0013.
 
@@ -153,3 +156,22 @@ En `/admin/cupones`, los gestores crean o generan un código, porcentaje de 1–
 Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código. Migración 0015 requerida.
 
 Promociones y cupones están integrados. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.
+
+## Puesta en operación
+
+1. Ingresa con el correo maestro en Administración y registra gestores y responsables de caja.
+2. Carga las publicaciones reales en Inventario con precios y stock; revisa campus, ubicaciones y cuentas bancarias en Configuración.
+3. Verifica el contenido de las tres guías PDF y su correspondencia con las cuentas vigentes. Configuración → Integraciones comprueba presencia/formato de configuración; no confirma que el token Google siga autorizado.
+4. Pega el bloque HTML completo del iframe en WordPress y revisa ancho/altura en móvil y escritorio. La aplicación desplegada no actualiza automáticamente el bloque de WordPress.
+
+El reinicio autorizado conserva configuración y migraciones, pero exige volver a registrar catálogo y accesos. Los archivos de Drive y correos ya enviados no se borran al reiniciar la BD. No repitas un reinicio sobre datos operativos.
+
+## Diagnóstico y continuidad
+
+- **Acceso:** comprobar autorización/rol en Configuración. Un 503 indica fallo temporal del servicio; no eliminar cookies ni cambiar permisos como solución.
+- **Archivos:** revisar credenciales del propietario, carpeta Drive y permisos. El usuario conserva la selección ante errores; reintentar el mismo archivo evita duplicados.
+- **Correos:** revisar errores `order.mail`, `caja.mail` y `jobs` en Vercel y autorización del token propietario. La cola reintenta automáticamente; no reenviar manualmente registros ENVIADO.
+- **Precios:** actualizar el resumen si cambió una campaña o cupón; el stock y los usos se confirman únicamente al crear el pedido.
+- **Dependencias:** ejecutar `pnpm audit --prod` al actualizar el stack. `pnpm-workspace.yaml` contiene un override puntual para el esbuild transitivo del loader de Drizzle; conservarlo hasta que la dependencia de origen incorpore una versión corregida.
+
+Conserva migraciones, snapshots, journal, guías y la atribución de los datos de ubigeo. Mantén desarrollo/validación en una BD separada y acuerda respaldos/restauración de la BD y conservación de archivos Drive antes de operar con datos reales. Las comprobaciones locales de código no sustituyen la validación real de Google OAuth, Drive/Gmail y el bloque WordPress.
