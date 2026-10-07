@@ -66,3 +66,7 @@
 /* Once the parent accepts height messages, only WordPress owns page scrolling. */
 html[data-fec-embedded="true"], html[data-fec-embedded="true"] body { overflow-x: hidden; overflow-y: hidden; }
 html[data-fec-embedded="true"] .public-order-surface { max-width: none; padding-inline: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-loading-bones] * { animation: none !important; }
+}

@@ -1,2 +1,2 @@
-import { WizardSkeleton } from "@/components/order-wizard/skeleton";
-export default function Loading() { return <WizardSkeleton />; }
+import { TrackingSkeleton } from "@/components/loading/screen-skeleton";
+export default function Loading() { return <TrackingSkeleton />; }

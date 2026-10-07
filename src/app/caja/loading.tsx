@@ -1,2 +1,2 @@
-import { AccessSkeleton } from "@/components/access-skeleton";
-export default function CajaLoading() { return <AccessSkeleton label="Cargando solicitudes de caja" />; }
+import { OrdersSkeleton } from "@/components/loading/screen-skeleton";
+export default function Loading() { return <OrdersSkeleton cashier />; }
