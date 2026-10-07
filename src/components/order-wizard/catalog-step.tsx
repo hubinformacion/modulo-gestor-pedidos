@@ -2,13 +2,14 @@ import { useState } from "react";
 import { BookOpen, Minus, Plus, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatMoney, toCents } from "@/lib/orders/money";
+import { formatMoney } from "@/lib/orders/money";
+import { bookPrice } from "@/lib/orders/pricing";
 import { type CatalogBook, type CartSelection, type CustomerKind, type Imprint } from "@/lib/orders/types";
 import { ImprintBadge } from "./imprint-badge";
 import { cn } from "@/lib/utils";
 
-export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
-  catalog: CatalogBook[]; cart: CartSelection[]; customerType: CustomerKind;
+export function CatalogStep({ catalog, cart, customerType, onQuantity, at }: {
+  at: number; catalog: CatalogBook[]; cart: CartSelection[]; customerType: CustomerKind;
   onQuantity: (book: CatalogBook, quantity: number) => void;
 }) {
   const [search, setSearch] = useState("");
@@ -47,14 +48,14 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity }: {
         <ul className="divide-y divide-border border-y border-border">
           {filtered.map((book) => {
             const quantity = cart.find((item) => item.bookId === book.id)?.quantity ?? 0;
-            const community = customerType === "comunidad_continental";
-            const price = toCents(community ? book.communityPrice : book.standardPrice);
+            const applied = bookPrice(book, customerType, at);
+            const price = applied.unitPrice;
             return (
               <li key={book.id} className={cn("grid gap-4 px-3 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center", quantity ? "bg-secondary/25" : "bg-white")}>
                 <div className="min-w-0">
 
                   <div className="min-w-0 flex-1">
-                    <ImprintBadge imprint={book.publisherImprint} />
+                    <ImprintBadge imprint={book.publisherImprint} />{applied.discountPercent ? <span className="ml-2 inline-block rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-primary">Promoción · {applied.discountPercent}%</span> : null}
                     <h3 className="mt-2 text-base font-semibold leading-6">{book.title}</h3>
                     <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
                     <p className="mt-1 text-[11px] text-muted-foreground">{book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>

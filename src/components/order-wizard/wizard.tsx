@@ -4,10 +4,10 @@ import { scrollWizardTo } from "@/lib/ui/wizard-scroll";
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { createOrderAction } from "@/app/pedido/actions";
+import { createOrderAction, reviewPricingAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
-import { calculateQuote } from "@/lib/orders/pricing";
+import { calculateQuote, quoteStamp } from "@/lib/orders/pricing";
 import { initialBuyer, initialDelivery, type BuyerDraft, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
 import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema, consentSchema } from "@/lib/orders/validation";
 import { cn } from "@/lib/utils";
@@ -26,7 +26,10 @@ const steps = [
   { name: "Confirmación", title: "Revisa tu pedido", description: "Comprueba las publicaciones, tus datos y el detalle de pago por cuenta." },
 ] as const;
 
-export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { catalog: CatalogBook[]; campuses: Campus[]; submissionEnabled?: boolean }) {
+export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEnabled = false }: { initialPricingAt: number; catalog: CatalogBook[]; campuses: Campus[]; submissionEnabled?: boolean }) {
+  const [pricedCatalog, setPricedCatalog] = useState<CatalogBook[] | null>(null);
+  const currentCatalog = pricedCatalog ?? catalog;
+  const [pricingAt, setPricingAt] = useState(initialPricingAt);
   const [step, setStep] = useState(0);
   const [submitting, startTransition] = useTransition();
   const requestId = useRef<string | null>(null);
@@ -41,7 +44,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
   const wizardRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
-  const quote = calculateQuote(catalog, cart, buyer.type, delivery);
+  const quote = calculateQuote(currentCatalog, cart, buyer.type, delivery, pricingAt);
 
   function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); }
 
@@ -74,7 +77,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (step === 0) {
-      const result = createCartSchema(catalog).safeParse(cart);
+      const result = createCartSchema(currentCatalog).safeParse(cart);
       if (!result.success) return showErrors(result.error.issues);
       setCart(result.data); goTo(1);
     } else if (step === 1) {
@@ -85,9 +88,15 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
     } else if (step === 2) {
       const result = createDeliverySchema(campuses).safeParse(delivery);
       if (!result.success) return showErrors(result.error.issues);
-      setDelivery(result.data); goTo(3);
+      setDelivery(result.data);
+      startTransition(async () => {
+        const prices = await reviewPricingAction({ cart, buyer, delivery: result.data }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
+        if (!prices.success) { showErrors([{ path: ["form"], message: prices.message }]); return; }
+        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]);
+        setPricingAt(prices.at); setConsentAccepted(false); goTo(3);
+      });
     } else {
-      const result = createOrderDraftSchema(catalog, campuses).safeParse({ cart, buyer, delivery });
+      const result = createOrderDraftSchema(currentCatalog, campuses).safeParse({ cart, buyer, delivery });
       if (!result.success) {
         const firstPath = result.error.issues[0]?.path[0];
         const invalidStep = firstPath === "cart" ? 0 : firstPath === "buyer" ? 1 : 2;
@@ -100,7 +109,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
       if (!submissionEnabled || sending.current) return;
       requestId.current ??= crypto.randomUUID();
       sending.current = true;
-      const payload = { requestId: requestId.current, cart, buyer, delivery, consent: { accepted: consentAccepted } };
+      const payload = { requestId: requestId.current, expectedQuote: quoteStamp(quote), cart, buyer, delivery, consent: { accepted: consentAccepted } };
       startTransition(async () => {
         try {
           const created = await createOrderAction(payload);
@@ -114,6 +123,11 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
 
   return (
     <div ref={wizardRef} className="scroll-mt-6">
+      {step === 3 ? <div className="mb-4 flex justify-end"><Button variant="ghost" className="text-xs text-primary" disabled={submitting} onClick={() => startTransition(async () => {
+        const prices = await reviewPricingAction({ cart, buyer, delivery }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
+        if (!prices.success) { showErrors([{ path: ["form"], message: prices.message }]); return; }
+        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(prices.at); setConsentAccepted(false);
+      })}>Actualizar precios</Button></div> : null}
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>
@@ -133,14 +147,14 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
           </div>
           {errorMessage ? <div ref={errorRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm leading-6 text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive">{errorMessage}</div> : null}
           <div key={step} className="enter-page">
-            {step === 0 ? <CatalogStep catalog={catalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
+            {step === 0 ? <CatalogStep at={pricingAt} catalog={currentCatalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
             {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsentAccepted(false); goTo(value); }} /> : null}
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">
             {step > 0 ? <Button type="button" variant="ghost" className="h-11 gap-2 px-3" onClick={() => goTo(step - 1)}><ArrowLeft aria-hidden="true" />Volver</Button> : <span />}
-            {step < 3 ? <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 && catalog.length === 0}>Continuar<ArrowRight aria-hidden="true" /></Button> : null}
+            {step < 3 ? <Button type="submit" className="h-11 gap-2 px-5" disabled={step === 0 && currentCatalog.length === 0}>Continuar<ArrowRight aria-hidden="true" /></Button> : null}
           </div>
           </fieldset>
         </form>

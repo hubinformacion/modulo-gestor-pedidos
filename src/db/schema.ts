@@ -108,6 +108,7 @@ export const orders = pgTable("orders", {
   totalUniversidad: money("total_universidad").notNull(),
   totalInstituto: money("total_instituto").notNull(),
   total: money("total").notNull(),
+  discountTotal: money("discount_total").default("0").notNull(),
   billingRuc: text("billing_ruc"),
   billingBusinessName: text("billing_business_name"),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
@@ -179,6 +180,10 @@ export const orderItems = pgTable("order_items", {
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
   bookTitle: text("book_title"),
   bookCode: text("book_code"),
+  baseUnitPrice: money("base_unit_price"),
+  discountPercent: integer("discount_percent").default(0).notNull(),
+  promotionId: uuid("promotion_id").references((): AnyPgColumn => promotions.id, { onDelete: "restrict" }),
+  promotionName: text("promotion_name"),
   unitPrice: money("unit_price").notNull(),
   quantity: integer("quantity").notNull(),
   subtotal: money("subtotal").notNull(),
@@ -403,3 +408,24 @@ export const driveFileReaderGrants = pgTable("drive_file_reader_grants", {
   managed: boolean("managed").default(true).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [primaryKey({ columns: [table.driveFileId, table.email] })]);
+
+export const promotions = pgTable("promotions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  communityPercent: integer("community_percent").default(0).notNull(),
+  publicPercent: integer("public_percent").default(0).notNull(),
+  scope: text("scope").$type<"all" | "selected">().notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  status: bookStatus("status").default("INACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [
+  index("promotions_dates_idx").on(table.status, table.startsAt, table.endsAt),
+  check("promotions_rates", sql`${table.communityPercent} BETWEEN 0 AND 99 AND ${table.publicPercent} BETWEEN 0 AND 99 AND (${table.communityPercent} > 0 OR ${table.publicPercent} > 0)`),
+  check("promotions_scope", sql`${table.scope} IN ('all','selected')`),
+  check("promotions_period", sql`${table.startsAt} < ${table.endsAt} AND btrim(${table.name}) <> ''`),
+]);
+export const promotionBooks = pgTable("promotion_books", {
+  promotionId: uuid("promotion_id").notNull().references(() => promotions.id, { onDelete: "cascade" }),
+  bookId: uuid("book_id").notNull().references(() => books.id, { onDelete: "restrict" }),
+}, (table) => [primaryKey({ columns: [table.promotionId, table.bookId] }), index("promotion_books_book_idx").on(table.bookId)]);

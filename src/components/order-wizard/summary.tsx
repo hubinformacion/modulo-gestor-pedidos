@@ -25,7 +25,7 @@ export function OrderSummary({ quote, onRemove, editable = true }: {
         ) : <p className="py-5 text-center text-xs leading-6 text-muted-foreground">Añade publicaciones para ver el detalle de tu pedido.</p>}
         {quote.lines.length ? <>
           <div className="mt-5 space-y-3 border-t border-border pt-5">
-            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Publicaciones</span><span className="tabular-nums">{formatMoney(quote.subtotal)}</span></div>
+            <div className="flex justify-between text-xs"><span className="text-muted-foreground">Publicaciones</span><span className="tabular-nums">{formatMoney(quote.originalSubtotal)}</span></div>{quote.discountTotal > 0 ? <div className="flex justify-between text-xs text-primary"><span>Descuento por promoción</span><span className="tabular-nums">−{formatMoney(quote.discountTotal)}</span></div> : null}
             <div className="flex justify-between gap-3 text-xs"><span className="text-muted-foreground">Costo por envío</span><span className="tabular-nums">{quote.shippingKnown ? formatMoney(quote.shippingCost) : "Por seleccionar"}</span></div>
             <div className="flex justify-between gap-3 border-t border-border pt-4"><span className="text-sm font-semibold">{quote.shippingKnown ? "Total" : "Subtotal"}</span><span className="text-xl font-semibold tracking-tight tabular-nums">{formatMoney(quote.total)}</span></div>
           </div>

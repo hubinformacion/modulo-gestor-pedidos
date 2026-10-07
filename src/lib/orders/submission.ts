@@ -4,6 +4,7 @@ import { consentSchema } from "./validation";
 export const submissionSchema = z.object({
   requestId: z.uuid(),
   cart: z.array(z.object({ bookId: z.uuid(), quantity: z.number().int().min(1).max(1000) })).min(1).max(100),
+  expectedQuote: z.string().max(16000).optional(),
   buyer: z.unknown(), delivery: z.unknown(), consent: consentSchema,
 });
 export const trackingTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32}$/);

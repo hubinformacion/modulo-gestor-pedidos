@@ -1,4 +1,5 @@
 import "server-only";
+import { decoratePromotions, loadPromotionRules } from "@/lib/discounts/catalog";
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray, notLike, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -8,7 +9,7 @@ import { bankAccounts, books, campuses, orderCounters, orderEmails, orderActivit
 import { campusMapUrls } from "@/lib/orders/campus-map";
 import { toPublicCampus } from "@/lib/campuses/catalog";
 import { createOrderDraftSchema } from "./validation";
-import { calculateQuote } from "./pricing";
+import { calculateQuote, quoteStamp } from "./pricing";
 import { centsToDecimal } from "./money";
 import { resolveLocation } from "./geography";
 import { consentVersion, OrderInputError, submissionSchema } from "./submission";
@@ -19,7 +20,8 @@ export async function createOrder(input: unknown) {
   const data = parsed.data;
   const ready = await paymentSetupReady();
   // Hash the user's immutable draft; never hash/trust any client prices.
-  const draftHash = createHash("sha256").update(JSON.stringify(data)).digest("hex");
+  const immutableDraft = { ...data }; delete immutableDraft.expectedQuote;
+  const draftHash = createHash("sha256").update(JSON.stringify(immutableDraft)).digest("hex");
   return withDatabase((db) => db.transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
     await tx.execute(sql`SET LOCAL statement_timeout = '20s'`);
@@ -31,6 +33,9 @@ export async function createOrder(input: unknown) {
     }
     const accounts = bankAccountsFromRows(await tx.select().from(bankAccounts).where(eq(bankAccounts.status, "ACTIVO")).orderBy(asc(bankAccounts.id)).for("share"));
     if (!accounts || !ready) throw new OrderInputError("El registro de pedidos no está disponible temporalmente. Conserva tus datos e inténtalo más tarde.");
+    const { rows: [pricingClock] } = await tx.execute<{ at: string }>(sql`SELECT current_timestamp::text AS at`);
+    const pricingAt = new Date(pricingClock.at);
+    const promotionRules = await loadPromotionRules(tx, pricingAt, true);
     // Lock in a fixed order: competing carts cannot oversell or deadlock on books.
     const catalog = await tx.select().from(books).where(and(inArray(books.id, data.cart.map((item) => item.bookId)), eq(books.status, "ACTIVO"), notLike(books.inventoryCode, "DEMO-%"))).orderBy(asc(books.id)).for("update");
     const activeCampuses = await tx.select().from(campuses).where(eq(campuses.status, "ACTIVO")).orderBy(asc(campuses.id)).for("share");
@@ -38,8 +43,9 @@ export async function createOrder(input: unknown) {
     if (!validated.success) throw new OrderInputError(validated.error.issues[0]?.message ?? "Revisa tus datos.");
     const { cart, buyer, delivery } = validated.data;
     const pickupCampus = delivery.type === "recojo_campus" ? activeCampuses.find((campus) => campus.id === delivery.campus) : undefined;
-    const quote = calculateQuote(catalog, cart, buyer.type, delivery);
+    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime());
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
+    if (data.expectedQuote && data.expectedQuote !== quoteStamp(quote)) throw new OrderInputError("Los precios o promociones cambiaron. Actualiza los precios y revisa el resumen antes de enviar.");
     const { rows: [clock] } = await tx.execute<{ year: number }>(sql`SELECT extract(year FROM current_timestamp AT TIME ZONE 'America/Lima')::int AS year`);
     const year = clock.year;
     // UPSERT acquires the year's row lock. Rollback also rolls back its increment.
@@ -65,11 +71,11 @@ export async function createOrder(input: unknown) {
       deliveryRecipientType: delivery.recipientType, deliveryRecipientDocument: delivery.recipientDocument, deliveryRecipientPhone: delivery.recipientPhone,
       subtotalUniversidad: centsToDecimal(university?.subtotal ?? 0), subtotalInstituto: centsToDecimal(institute?.subtotal ?? 0),
       shippingCost: centsToDecimal(quote.shippingCost), shippingUniversidad: centsToDecimal(university?.shipping ?? 0), shippingInstituto: centsToDecimal(institute?.shipping ?? 0),
-      totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total),
+      totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total), discountTotal: centsToDecimal(quote.discountTotal),
       billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null,
       paymentStatusUniversidad: university ? "PENDIENTE" : "NO_APLICA", paymentStatusInstituto: institute ? "PENDIENTE" : "NO_APLICA",
     }).returning({ id: orders.id });
-    await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
+    await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, baseUnitPrice: centsToDecimal(line.baseUnitPrice), discountPercent: line.discountPercent, promotionId: line.promotionId, promotionName: line.promotionName, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });

@@ -137,3 +137,10 @@ Caja adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador
 La funcionalidad requiere las migraciones 0012 y 0013. La BD de desarrollo ya está reiniciada y migrada; registra publicaciones, revisa las cuentas bancarias y configura los responsables para empezar. En un entorno con datos operativos, utiliza una BD de validación separada. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
 
 El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias. Esta operación requiere la migración 0013.
+
+
+## Promociones por temporada
+
+En `/admin/promociones`, los gestores registran campañas activas/inactivas, porcentajes separados para comunidad y público general y las publicaciones participantes (o todo el catálogo). Las fechas y horas se ingresan en horario de Perú. Usa 0 si un público no participa; los descuentos adicionales admiten porcentajes enteros del 1 al 99. La mayor promoción vigente por título se aplica automáticamente al precio correspondiente; el envío conserva su costo.
+
+El comprador revisa precios actualizados en confirmación; la creación vuelve a calcularlos en servidor y detiene el envío si cambió el resumen aceptado. Los pedidos guardan descuentos y precios aplicados, incluso al editar o desactivar campañas. Las campañas con pedidos asociados no se eliminan. Migración 0014 requerida.
