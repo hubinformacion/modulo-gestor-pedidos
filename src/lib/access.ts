@@ -1,11 +1,14 @@
 import "server-only";
+import { APIError } from "better-auth/api";
+import { DatabaseOperationError, isDatabaseFailure, transientDatabaseFailure } from "@/db/errors";
+import { getAuthEnvironment } from "./env";
 import { cache } from "react";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { withDatabase, type Database } from "@/db";
 import { authorizedEmails } from "@/db/schema";
-import { reportServerError } from "./server-diagnostics";
+import { reportServerError, safeErrorDetails } from "./server-diagnostics";
 import { createAuth } from "./auth";
 import { AccessError, authorizedEmailSchema, type AuthorizedActor } from "./access-policy";
 
@@ -20,14 +23,31 @@ async function authorizeIdentity(db: Database, result: SessionIdentity | null): 
 }
 function accessFailure(error: unknown): never {
   if (error instanceof AccessError) throw error;
-  reportServerError("access.session.unavailable", error);
+  const status = safeErrorDetails(error).status;
+  if (error instanceof APIError && status === 401) throw new AccessError("UNAUTHENTICATED");
+  if (error instanceof APIError && status === 403) throw new AccessError("FORBIDDEN");
+  reportServerError("access.session.unavailable", { stage: "auth.session", cause: error });
   throw new AccessError("UNAVAILABLE");
 }
 export async function getSignedInSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
-  try {
-    const result = await createAuth(db).api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
-    return await authorizeIdentity(db, result);
-  } catch (error) { return accessFailure(error); }
+  // Better Auth wraps driver failures in FAILED_TO_GET_SESSION. Capture their
+  // cause without logging payloads, and retry only this non-renewing read once.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let source: unknown;
+    try {
+      const auth = createAuth(db, getAuthEnvironment(), (error) => { source = error; });
+      const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
+      return await authorizeIdentity(db, result);
+    } catch (error) {
+      if (error instanceof AccessError) throw error;
+      const details = safeErrorDetails(error);
+      const retryable = transientDatabaseFailure(source ?? error) || (!source && details.code === "FAILED_TO_GET_SESSION" && details.status === 500);
+      if (attempt === 0 && retryable) continue;
+      if (source) reportServerError("access.session.source", isDatabaseFailure(source) ? new DatabaseOperationError(source, "auth.session.read") : { stage: "auth.session.read", cause: source });
+      return accessFailure(error);
+    }
+  }
+  throw new AccessError("UNAVAILABLE");
 }
 
 export async function getAuthorizedSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {

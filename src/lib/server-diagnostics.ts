@@ -12,9 +12,10 @@ export function safeErrorDetails(error: unknown) {
   let current = record(error);
   for (let depth = 0; current && depth < 6; depth++) {
     details.stage ??= machineCode(current.stage);
-    details.code ??= machineCode(current.code);
+    details.code ??= machineCode(current.code) ?? machineCode(record(current.body)?.code);
+    if (!details.code && ["ConfigurationError", "TypeError", "AbortError", "TimeoutError"].includes(String(current.name))) details.code = String(current.name);
     const response = record(current.response);
-    const status = response?.status ?? current.status ?? current.code;
+    const status = response?.status ?? current.statusCode ?? current.status ?? current.code;
     if (typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599) details.status ??= status;
     const apiError = record(record(response?.data)?.error);
     if (Array.isArray(apiError?.errors)) {

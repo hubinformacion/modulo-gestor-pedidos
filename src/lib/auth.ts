@@ -6,10 +6,11 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { eq } from "drizzle-orm";
 import type { Database } from "@/db";
 import * as schema from "@/db/schema";
+import { reportServerError } from "./server-diagnostics";
 import { authorizedEmailSchema } from "./access-policy";
 import { getAuthEnvironment, type AuthEnvironment } from "./env";
 
-export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironment()) {
+export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironment(), onFailure?: (error: unknown) => void) {
   type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
   const transactionScope = new AsyncLocalStorage<Transaction>();
   // Better Auth binds its adapter to the transaction, but application hooks
@@ -94,6 +95,16 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
         },
       },
     },
-    logger: { disabled: true },
+    logger: {
+      level: "error",
+      log: (level, _message, ...args) => {
+        if (level !== "error") return;
+        const failure = args.find((value) => value instanceof Error || (value && typeof value === "object" && ("cause" in value || "query" in value || "type" in value)));
+        if (failure) {
+          if (onFailure) onFailure(failure);
+          else reportServerError("auth.provider.failed", { stage: "auth.provider", cause: failure });
+        }
+      },
+    },
   });
 }
