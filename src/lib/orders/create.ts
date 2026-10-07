@@ -1,11 +1,12 @@
 import "server-only";
 import { decoratePromotions, loadPromotionRules } from "@/lib/discounts/catalog";
+import { assertCoupon } from "@/lib/discounts/coupons";
 import { createHash } from "node:crypto";
 import { and, asc, eq, inArray, notLike, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { bankAccountsFromRows, paymentSetupReady, readPaymentGuide } from "@/lib/payments/config";
 import { withDatabase } from "@/db";
-import { bankAccounts, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
+import { bankAccounts, coupons, couponRedemptions, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
 import { campusMapUrls } from "@/lib/orders/campus-map";
 import { toPublicCampus } from "@/lib/campuses/catalog";
 import { createOrderDraftSchema } from "./validation";
@@ -20,7 +21,8 @@ export async function createOrder(input: unknown) {
   const data = parsed.data;
   const ready = await paymentSetupReady();
   // Hash the user's immutable draft; never hash/trust any client prices.
-  const immutableDraft = { ...data }; delete immutableDraft.expectedQuote;
+  const immutableDraft: Record<string, unknown> = { ...data }; delete immutableDraft.expectedQuote;
+  if (!data.couponCode) delete immutableDraft.couponCode;
   const draftHash = createHash("sha256").update(JSON.stringify(immutableDraft)).digest("hex");
   return withDatabase((db) => db.transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
@@ -43,7 +45,9 @@ export async function createOrder(input: unknown) {
     if (!validated.success) throw new OrderInputError(validated.error.issues[0]?.message ?? "Revisa tus datos.");
     const { cart, buyer, delivery } = validated.data;
     const pickupCampus = delivery.type === "recojo_campus" ? activeCampuses.find((campus) => campus.id === delivery.campus) : undefined;
-    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime());
+    const [coupon] = data.couponCode ? await tx.select().from(coupons).where(eq(coupons.code, data.couponCode)).for("update") : [];
+    if (data.couponCode) assertCoupon(coupon, buyer.type, pricingAt);
+    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), coupon ? { code: coupon.code, percent: coupon.percent } : null);
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
     if (data.expectedQuote && data.expectedQuote !== quoteStamp(quote)) throw new OrderInputError("Los precios o promociones cambiaron. Actualiza los precios y revisa el resumen antes de enviar.");
     const { rows: [clock] } = await tx.execute<{ year: number }>(sql`SELECT extract(year FROM current_timestamp AT TIME ZONE 'America/Lima')::int AS year`);
@@ -71,11 +75,15 @@ export async function createOrder(input: unknown) {
       deliveryRecipientType: delivery.recipientType, deliveryRecipientDocument: delivery.recipientDocument, deliveryRecipientPhone: delivery.recipientPhone,
       subtotalUniversidad: centsToDecimal(university?.subtotal ?? 0), subtotalInstituto: centsToDecimal(institute?.subtotal ?? 0),
       shippingCost: centsToDecimal(quote.shippingCost), shippingUniversidad: centsToDecimal(university?.shipping ?? 0), shippingInstituto: centsToDecimal(institute?.shipping ?? 0),
-      totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total), discountTotal: centsToDecimal(quote.discountTotal),
+      totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total), discountTotal: centsToDecimal(quote.discountTotal), ...(quote.couponApplied && coupon ? { couponId: coupon.id, couponCode: coupon.code, couponPercent: coupon.percent } : {}),
       billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null,
       paymentStatusUniversidad: university ? "PENDIENTE" : "NO_APLICA", paymentStatusInstituto: institute ? "PENDIENTE" : "NO_APLICA",
     }).returning({ id: orders.id });
     await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, baseUnitPrice: centsToDecimal(line.baseUnitPrice), discountPercent: line.discountPercent, promotionId: line.promotionId, promotionName: line.promotionName, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
+    if (quote.couponApplied && coupon) {
+      await tx.update(coupons).set({ usedCount: coupon.usedCount + 1 }).where(eq(coupons.id, coupon.id));
+      await tx.insert(couponRedemptions).values({ orderId: order.id, couponId: coupon.id });
+    }
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });

@@ -4,6 +4,7 @@ import { consentSchema } from "./validation";
 export const submissionSchema = z.object({
   requestId: z.uuid(),
   cart: z.array(z.object({ bookId: z.uuid(), quantity: z.number().int().min(1).max(1000) })).min(1).max(100),
+  couponCode: z.string().trim().toUpperCase().max(32).regex(/^$|^[A-Z0-9_-]{3,32}$/).default(""),
   expectedQuote: z.string().max(16000).optional(),
   buyer: z.unknown(), delivery: z.unknown(), consent: consentSchema,
 });

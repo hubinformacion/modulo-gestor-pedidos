@@ -109,6 +109,9 @@ export const orders = pgTable("orders", {
   totalInstituto: money("total_instituto").notNull(),
   total: money("total").notNull(),
   discountTotal: money("discount_total").default("0").notNull(),
+  couponId: uuid("coupon_id").references((): AnyPgColumn => coupons.id, { onDelete: "restrict" }),
+  couponCode: text("coupon_code"),
+  couponPercent: integer("coupon_percent"),
   billingRuc: text("billing_ruc"),
   billingBusinessName: text("billing_business_name"),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
@@ -429,3 +432,28 @@ export const promotionBooks = pgTable("promotion_books", {
   promotionId: uuid("promotion_id").notNull().references(() => promotions.id, { onDelete: "cascade" }),
   bookId: uuid("book_id").notNull().references(() => books.id, { onDelete: "restrict" }),
 }, (table) => [primaryKey({ columns: [table.promotionId, table.bookId] }), index("promotion_books_book_idx").on(table.bookId)]);
+
+export const coupons = pgTable("coupons", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  code: text("code").notNull().unique(),
+  percent: integer("percent").notNull(),
+  audience: text("audience").$type<"all" | "comunidad_continental" | "publico_general">().default("all").notNull(),
+  maxUses: integer("max_uses"),
+  usedCount: integer("used_count").default(0).notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  status: bookStatus("status").default("INACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [
+  check("coupons_code", sql`${table.code} ~ '^[A-Z0-9_-]{3,32}$'`),
+  check("coupons_percent", sql`${table.percent} BETWEEN 1 AND 99`),
+  check("coupons_audience", sql`${table.audience} IN ('all','comunidad_continental','publico_general')`),
+  check("coupons_usage", sql`${table.usedCount} >= 0 AND (${table.maxUses} IS NULL OR (${table.maxUses} > 0 AND ${table.usedCount} <= ${table.maxUses}))`),
+  check("coupons_dates", sql`${table.startsAt} IS NULL OR ${table.endsAt} IS NULL OR ${table.startsAt} < ${table.endsAt}`),
+]);
+export const couponRedemptions = pgTable("coupon_redemptions", {
+  orderId: uuid("order_id").primaryKey().references(() => orders.id, { onDelete: "restrict" }),
+  couponId: uuid("coupon_id").notNull().references(() => coupons.id, { onDelete: "restrict" }),
+  releasedAt: timestamp("released_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("coupon_redemptions_coupon_idx").on(table.couponId)]);

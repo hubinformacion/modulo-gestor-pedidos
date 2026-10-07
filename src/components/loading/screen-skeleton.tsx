@@ -63,3 +63,7 @@ export function PublicationSkeleton() {
 export function LoginSkeleton({ checking = false }: { checking?: boolean }) {
   return <main id="contenido" className="flex min-h-[32rem] items-center justify-center px-6 py-14 sm:py-20"><div className="w-full max-w-sm"><LoadingRegion label={checking ? "Comprobando acceso" : "Cargando inicio de sesión"}><div className="mb-6 w-11"><Bones kind="action" /></div><Bones kind="heading" /><div className="mt-7"><Bones kind="action" /></div><div className="mt-7 border-t border-border pt-5"><Bones kind="lines" /></div></LoadingRegion></div></main>;
 }
+
+export function DiscountsSkeleton({ coupons = false }: { coupons?: boolean }) {
+  return <LoadingRegion label={coupons ? "Cargando cupones" : "Cargando promociones"}><Bones kind="heading" /><div className="mt-6 flex justify-end"><div className="w-40"><Bones kind="action" /></div></div><Table /></LoadingRegion>;
+}

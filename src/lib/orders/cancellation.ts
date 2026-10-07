@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, cajaNotifications, cajaRequests, orderActivity, orderEmails, orderItems, orderNotifications, orders } from "@/db/schema";
+import { books, coupons, couponRedemptions, cajaNotifications, cajaRequests, orderActivity, orderEmails, orderItems, orderNotifications, orders } from "@/db/schema";
 import { assertAuthorized } from "@/lib/transaction-access";
 import type { AuthorizedActor } from "@/lib/access-policy";
 import { canBuyerCancel } from "./cancellation-validation";
@@ -27,6 +27,15 @@ export async function cancelPurchase(input: { token?: string; id?: string; versi
       }
     }
     const now = new Date();
+    if (order.couponId && ![order.paymentStatusUniversidad, order.paymentStatusInstituto].includes("VERIFICADO")) {
+      const [redemption] = await tx.select().from(couponRedemptions).where(eq(couponRedemptions.orderId, order.id));
+      if (redemption && !redemption.releasedAt) {
+        const [coupon] = await tx.select().from(coupons).where(eq(coupons.id, redemption.couponId)).for("update");
+        if (!coupon || coupon.usedCount < 1) throw new CancellationError("Revisa el cupón de este pedido antes de anularlo.");
+        await tx.update(coupons).set({ usedCount: coupon.usedCount - 1 }).where(eq(coupons.id, coupon.id));
+        await tx.update(couponRedemptions).set({ releasedAt: now }).where(eq(couponRedemptions.orderId, order.id));
+      }
+    }
     await tx.update(orders).set({ orderStatus: "CANCELADO", cancelledAt: now, cancellationSource: actor ? "gestor" : "comprador", cancellationReason: input.reason || null, stockRestoredAt: order.stockRestoredAt ?? now }).where(eq(orders.id, order.id));
     await tx.update(orderNotifications).set({ status: "OMITIDO" }).where(and(eq(orderNotifications.orderId, order.id), inArray(orderNotifications.status, ["PENDIENTE", "ERROR"])));
     await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "CANCELADO", payload: { source: actor ? "gestor" : "comprador", reason: input.reason } });

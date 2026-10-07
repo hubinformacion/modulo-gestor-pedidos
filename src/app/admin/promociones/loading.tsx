@@ -1,2 +1,2 @@
-import { InventorySkeleton } from "@/components/loading/screen-skeleton";
-export default function Loading() { return <InventorySkeleton />; }
+import { DiscountsSkeleton } from "@/components/loading/screen-skeleton";
+export default function Loading() { return <DiscountsSkeleton />; }

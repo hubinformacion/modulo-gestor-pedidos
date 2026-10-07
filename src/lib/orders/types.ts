@@ -3,6 +3,7 @@ export type CustomerKind = "comunidad_continental" | "publico_general";
 export type DeliveryKind = "recojo_campus" | "delivery";
 export type ShippingZone = "lima_callao" | "provincia";
 
+export type CouponOffer = { code: string; percent: number };
 export type PromotionOffer = { id: string; name: string; communityPercent: number; publicPercent: number; startsAt: string; endsAt: string };
 export type CatalogBook = {
   id: string;

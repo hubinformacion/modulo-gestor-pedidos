@@ -8,7 +8,7 @@ import { createOrderAction, reviewPricingAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { calculateQuote, quoteStamp } from "@/lib/orders/pricing";
-import { initialBuyer, initialDelivery, type BuyerDraft, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
+import { initialBuyer, initialDelivery, type BuyerDraft, type CouponOffer, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
 import { createBuyerSchema, createCartSchema, createDeliverySchema, createOrderDraftSchema, consentSchema } from "@/lib/orders/validation";
 import { cn } from "@/lib/utils";
 import { CatalogStep } from "./catalog-step";
@@ -30,6 +30,9 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
   const [pricedCatalog, setPricedCatalog] = useState<CatalogBook[] | null>(null);
   const currentCatalog = pricedCatalog ?? catalog;
   const [pricingAt, setPricingAt] = useState(initialPricingAt);
+  const [couponInput, setCouponInput] = useState("");
+  const [couponOffer, setCouponOffer] = useState<CouponOffer | null>(null);
+  const [couponMessage, setCouponMessage] = useState("");
   const [step, setStep] = useState(0);
   const [submitting, startTransition] = useTransition();
   const requestId = useRef<string | null>(null);
@@ -44,14 +47,27 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
   const wizardRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
-  const quote = calculateQuote(currentCatalog, cart, buyer.type, delivery, pricingAt);
+  const quote = calculateQuote(currentCatalog, cart, buyer.type, delivery, pricingAt, couponOffer);
 
-  function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); }
+  function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); setCouponOffer(null); setCouponMessage(""); }
 
   function goTo(next: number) {
-    if (next < step) { setConsentAccepted(false); }
+    if (next < step) { setConsentAccepted(false); setCouponOffer(null); setCouponMessage(couponOffer ? "Vuelve a aplicar el cupón al confirmar el pedido." : ""); }
     setStep(next); setErrors({}); setErrorMessage("");
     scrollWizardTo(wizardRef.current, headingRef.current);
+  }
+
+  function applyCoupon() {
+    setCouponMessage("");
+    startTransition(async () => {
+      const result = await reviewPricingAction({ cart, buyer, delivery, couponCode: couponInput }).catch(() => ({ success: false as const, message: "No pudimos comprobar el cupón. Reintenta." }));
+      if (!result.success) { setCouponMessage(result.message); return; }
+      setPricedCatalog([...result.catalog, ...currentCatalog.filter((book) => !result.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(result.at); setCouponOffer(result.coupon); setConsentAccepted(false);
+      if (!result.coupon) { setCouponMessage("Ingresa un código para aplicar un cupón."); return; }
+      const priced = calculateQuote(result.catalog, cart, buyer.type, delivery, result.at, result.coupon);
+      setCouponInput(result.coupon.code);
+      setCouponMessage(priced.couponApplied ? `Cupón ${result.coupon.code} aplicado.` : "El precio actual ofrece igual o mayor ahorro. El cupón no se utilizará.");
+    });
   }
 
   function showErrors(issues: { path: PropertyKey[]; message: string }[]) {
@@ -109,7 +125,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
       if (!submissionEnabled || sending.current) return;
       requestId.current ??= crypto.randomUUID();
       sending.current = true;
-      const payload = { requestId: requestId.current, expectedQuote: quoteStamp(quote), cart, buyer, delivery, consent: { accepted: consentAccepted } };
+      const payload = { requestId: requestId.current, couponCode: quote.couponApplied?.code ?? "", expectedQuote: quoteStamp(quote), cart, buyer, delivery, consent: { accepted: consentAccepted } };
       startTransition(async () => {
         try {
           const created = await createOrderAction(payload);
@@ -124,9 +140,9 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
   return (
     <div ref={wizardRef} className="scroll-mt-6">
       {step === 3 ? <div className="mb-4 flex justify-end"><Button variant="ghost" className="text-xs text-primary" disabled={submitting} onClick={() => startTransition(async () => {
-        const prices = await reviewPricingAction({ cart, buyer, delivery }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
+        const prices = await reviewPricingAction({ cart, buyer, delivery, couponCode: couponOffer?.code ?? "" }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
         if (!prices.success) { showErrors([{ path: ["form"], message: prices.message }]); return; }
-        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(prices.at); setConsentAccepted(false);
+        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(prices.at); setCouponOffer(prices.coupon); setConsentAccepted(false);
       })}>Actualizar precios</Button></div> : null}
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
@@ -159,6 +175,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
           </fieldset>
         </form>
         <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
+        {step === 3 ? <section className="rounded-xl border border-border bg-white p-5"><label htmlFor="order-coupon" className="mb-3 block text-sm font-semibold">¿Tienes un cupón?</label><div className="flex gap-2"><input id="order-coupon" value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponOffer(null); setCouponMessage(""); setConsentAccepted(false); }} maxLength={32} placeholder="Ingresa tu código" disabled={submitting} className="h-10 min-w-0 flex-1 rounded-lg border border-input px-3 text-xs" /><Button type="button" variant="outline" className="h-10" disabled={submitting || !couponInput.trim()} onClick={applyCoupon}>Aplicar</Button></div>{couponOffer ? <Button type="button" variant="ghost" className="mt-2 h-8 px-0 text-xs text-primary" disabled={submitting} onClick={() => { setCouponOffer(null); setCouponInput(""); setCouponMessage(""); setConsentAccepted(false); }}>Retirar cupón</Button> : null}<p className="mt-3 text-[10px] leading-5 text-muted-foreground">Promociones y cupones no se combinan. Conservamos la opción con mayor ahorro.</p>{couponMessage ? <p role="status" className="mt-3 text-xs leading-6 text-primary">{couponMessage}</p> : null}</section> : null}
         <OrderSummary quote={quote} editable={step === 0 && !submitting} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} />
           {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); }} disabled={!consentAccepted || submitting || !submissionEnabled} pending={submitting} enabled={submissionEnabled} /> : null}
           <AccountBreakdown quote={quote} />

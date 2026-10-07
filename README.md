@@ -144,3 +144,12 @@ El comprador puede cancelar mientras ningún pago esté verificado, con motivo o
 En `/admin/promociones`, los gestores registran campañas activas/inactivas, porcentajes separados para comunidad y público general y las publicaciones participantes (o todo el catálogo). Las fechas y horas se ingresan en horario de Perú. Usa 0 si un público no participa; los descuentos adicionales admiten porcentajes enteros del 1 al 99. La mayor promoción vigente por título se aplica automáticamente al precio correspondiente; el envío conserva su costo.
 
 El comprador revisa precios actualizados en confirmación; la creación vuelve a calcularlos en servidor y detiene el envío si cambió el resumen aceptado. Los pedidos guardan descuentos y precios aplicados, incluso al editar o desactivar campañas. Las campañas con pedidos asociados no se eliminan. Migración 0014 requerida.
+
+
+## Cupones
+
+En `/admin/cupones`, los gestores crean o generan un código, porcentaje de 1–99%, público destinatario, vigencia opcional y cantidad máxima de usos o ilimitados. El comprador lo aplica en confirmación. No se combinan promociones y cupones: se comparan ambas alternativas completas y se conserva el mayor ahorro. En empate se conservan las promociones; no se consume el cupón. El envío mantiene su importe.
+
+Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código. Migración 0015 requerida.
+
+Para revisión, `feat/promociones-temporada` contiene campañas y `feat/cupones-descuento` se basa en ella y contiene ambas funcionalidades. La versión de producción no se actualiza hasta aprobación e integración de las ramas. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.

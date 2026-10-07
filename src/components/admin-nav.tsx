@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { UsersRound, Package, ClipboardList, Tags } from "lucide-react";
+import { UsersRound, Package, ClipboardList, Tags, TicketPercent } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const items = [
   { href: "/admin/pedidos", label: "Pedidos", Icon: ClipboardList },
   { href: "/admin/inventario", label: "Inventario", Icon: Package },
   { href: "/admin/promociones", label: "Promociones", Icon: Tags },
+  { href: "/admin/cupones", label: "Cupones", Icon: TicketPercent },
   { href: "/admin/configuracion", label: "Configuración", Icon: UsersRound },
 ];
 
