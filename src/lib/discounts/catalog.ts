@@ -17,6 +17,6 @@ export function decoratePromotions(catalog: CatalogBook[], rules: Awaited<Return
 export async function pricingClock() {
   const { withReadDatabase } = await import("@/db");
   const { sql } = await import("drizzle-orm");
-  const [clock] = await withReadDatabase((db) => db.select({ at: sql<string>`(extract(epoch FROM current_timestamp) * 1000)::bigint::text` }));
+  const [clock] = await withReadDatabase((db) => db.select({ at: sql<string>`(extract(epoch FROM current_timestamp) * 1000)::bigint::text` }).from(sql`(SELECT 1) AS clock_source`));
   return Number(clock.at);
 }
