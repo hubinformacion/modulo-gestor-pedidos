@@ -91,7 +91,7 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
   const parsed = dispatchSchema.safeParse(input);
   if (!parsed.success) return { success: false, message: "Revisa los datos de entrega." };
   const evidenceId = parsed.data.evidenceId;
-  if (evidenceId && parsed.data.status !== "ENTREGADO") return { success: false, message: "La evidencia corresponde al cierre del recojo." };
+  if (evidenceId && parsed.data.status !== "ENTREGADO") return { success: false, message: "La evidencia corresponde al cierre de la entrega." };
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
@@ -109,7 +109,7 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
         if (data.status === "DESPACHADO" && order.deliveryType === "delivery" && !data.courier) throw new OperationError("Indica el courier para el envío a domicilio.");
         if (evidenceId) {
           const [proof] = await tx.select().from(pickupEvidence).where(eq(pickupEvidence.id, evidenceId)).for("update");
-          if (!proof || proof.orderId !== order.id || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO" || order.deliveryType !== "recojo_campus") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
+          if (!proof || proof.orderId !== order.id || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
           await tx.update(pickupEvidence).set({ confirmedAt: new Date() }).where(eq(pickupEvidence.id, proof.id));
         }
         const [campus] = order.deliveryCampus ? await tx.select().from(campuses).where(eq(campuses.id, order.deliveryCampus)).for("share") : [];
@@ -226,4 +226,24 @@ export async function addInternalNoteAction(input: unknown): Promise<ActionResul
     revalidatePath(`/admin/pedidos/${parsed.data.id}`);
     return { success: true, message: "Nota interna guardada." };
   } catch (error) { return failure(error); }
+}
+
+export async function annulOrderAction(input: unknown): Promise<ActionResult> {
+  const { annulPurchaseSchema } = await import("@/lib/orders/cancellation-validation");
+  const { cancelPurchase, CancellationError } = await import("@/lib/orders/cancellation");
+  const parsed = annulPurchaseSchema.safeParse(input);
+  if (!parsed.success) return { success: false, message: parsed.error.issues[0].message };
+  try {
+    const requestHeaders = await headers();
+    const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+    const outcome = await cancelPurchase(parsed.data, actor);
+    scheduleOrderMail(outcome.token);
+    const { deliverCajaEmail } = await import("@/lib/caja/email");
+    after(async () => { for (const id of outcome.requestIds) await deliverCajaEmail(id); });
+    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath("/caja", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
+    return { success: true, message: "Pedido anulado y stock restituido." };
+  } catch (error) {
+    if (!(error instanceof CancellationError || error instanceof AccessError)) reportServerError("order.annul.failed", error);
+    return { success: false, message: error instanceof CancellationError || error instanceof AccessError ? error.message : "No pudimos anular el pedido. Reintenta." };
+  }
 }

@@ -23,7 +23,12 @@ export async function uploadSaleAction(input: unknown) {
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const document = await uploadSaleDocument(actor, parsed.data.id, parsed.data.uploadId, parsed.data.cycle, file.data);
     // No refresh during FilePond processing and no email before Finalizar.
-    return { success: true as const, ...document };
+    let href = `/caja/${parsed.data.id}/archivos/${document.documentId}`;
+    try {
+      const { ensureCajaFileReader } = await import("@/lib/caja/drive-access");
+      await ensureCajaFileReader(actor, parsed.data.id, document.driveFileId); href = document.driveViewUrl;
+    } catch (error) { reportServerError("caja.upload.access.pending", error); }
+    return { success: true as const, documentId: document.documentId, fileName: document.fileName, version: document.version, href };
   } catch (error) { return failure(error); }
 }
 export async function finalizeSaleAction(input: unknown) {
@@ -34,7 +39,7 @@ export async function finalizeSaleAction(input: unknown) {
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const outcome = await finalizeSaleDocument(actor, parsed.data);
     after(async () => { try { await Promise.allSettled([deliverCajaEmail(outcome.requestId), deliverOrderEmail(outcome.token)]); } catch (error) { reportServerError("caja.mail.pending", error); } });
-    revalidatePath("/caja", "layout"); revalidatePath("/admin/pedidos", "layout");
+    revalidatePath("/caja", "layout"); revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true as const, message: "Solicitud finalizada. Avisaremos al gestor y enviaremos los documentos al comprador cuando estén completos." };
   } catch (error) { return failure(error); }
 }
@@ -48,5 +53,18 @@ export async function returnSaleAction(input: unknown) {
     after(async () => { try { await deliverCajaEmail(outcome.requestId); } catch (error) { reportServerError("caja.return.mail", error); } });
     revalidatePath("/admin/pedidos", "layout"); revalidatePath("/caja", "layout");
     return { success: true as const, message: "Solicitud devuelta a caja." };
+  } catch (error) { return failure(error); }
+}
+
+export async function removeSaleDraftAction(input: unknown) {
+  const { removeDraftSchema } = await import("@/lib/caja/validation");
+  const { removeSaleDraft } = await import("@/lib/caja/service");
+  const parsed = removeDraftSchema.safeParse(input);
+  if (!parsed.success) return { success: false as const, message: "Revisa el PDF que deseas retirar." };
+  try {
+    const requestHeaders = await headers();
+    const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
+    const version = await removeSaleDraft(actor, parsed.data);
+    return { success: true as const, version };
   } catch (error) { return failure(error); }
 }

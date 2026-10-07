@@ -69,7 +69,7 @@ export async function createOrder(input: unknown) {
       billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null,
       paymentStatusUniversidad: university ? "PENDIENTE" : "NO_APLICA", paymentStatusInstituto: institute ? "PENDIENTE" : "NO_APLICA",
     }).returning({ id: orders.id });
-    await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, publisherImprint: line.book.publisherImprint, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
+    await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });

@@ -7,12 +7,15 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 ## Funcionalidades
 
 - Compra en cuatro pasos con precios por tipo de comprador, ubigeo nacional y recojo en bibliotecas.
+- Cancelación previa al pago verificado y anulación del gestor antes del despacho, con restitución de stock e historial.
 - Stock y numeración anual transaccionales; importes y datos de compra conservados como snapshots.
 - Pagos independientes por sello y carga automática de comprobantes en Drive.
 - Caja por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
 - Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
 - Inventario editable en tabla; configuración de autorizados, campus, ubicaciones y cuentas.
 - Correos de avance en un mismo hilo, guías PDF y recuperación automática de avisos.
+- Seguimiento por Pago/Distribución/Entrega, consultable después del cierre, con descarga de boletas/facturas.
+- Evidencia opcional de entrega o recojo mediante FilePond.
 - Seguimiento dentro de WordPress, altura adaptable, ilustraciones estáticas y tema claro.
 
 ## Tecnología
@@ -90,7 +93,7 @@ Comprobantes y evidencia fotográfica permanecen privados en Drive; la carpeta c
 
 ## WordPress
 
-Pega el contenido completo de [wordpress-pedido.html](src/iframe/wordpress-pedido.html) en un bloque HTML de la página de pedidos. El bloque usa el ancho de su contenedor, ajusta la altura y abre los enlaces de seguimiento `#seguimiento/TOKEN` dentro del iframe.
+Pega el contenido completo de [wordpress-pedido.html](src/iframe/wordpress-pedido.html) en un bloque HTML de la página de pedidos. El bloque añade 80 px de espacio superior en móviles para el header de WordPress (configurable con `--fec-mobile-top-space`), usa el ancho de su contenedor y ajusta la altura y abre los enlaces de seguimiento `#seguimiento/TOKEN` dentro del iframe.
 
 Para regenerarlo:
 
@@ -127,8 +130,10 @@ No hay consultas periódicas del navegador: las pantallas actualizan tras operac
 
 ## Emisión por caja
 
-Configura un correo Google por sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión y comprobantes mediante enlaces privados de la aplicación; no recibe acceso a la carpeta completa de Drive.
+Configura un correo Google por sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
 
-Caja adjunta un PDF de hasta 3 MB, revisa el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial conserva las versiones anteriores y el correo de corrección reúne los documentos vigentes.
+Caja adjunta un PDF de hasta 3 MB, consulta o retira el borrador desde FilePond y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial se muestra cuando hay correcciones y conserva versiones anteriores. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
 La funcionalidad requiere la migración 0012 y se valida con la versión de la rama de caja antes de integrarla. La BD de desarrollo ya está reiniciada y migrada; registra publicaciones, revisa las cuentas bancarias y configura los responsables para empezar. En un entorno con datos operativos, utiliza una BD de validación separada. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
+
+El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias. Esta operación requiere la migración 0013.

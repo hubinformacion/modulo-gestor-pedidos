@@ -136,6 +136,11 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
 export async function sendOrderConfirmationEmail(tracking: Tracking) {
   const link = customerTrackingUrl(tracking.order.trackingToken);
   const artCid = `state-${tracking.order.id}@${new URL(getPublicOrigin()).hostname}`;
+  if (tracking.order.orderStatus === "CANCELADO") {
+    const title = "Pedido cancelado";
+    const body = `El pedido está cerrado. No realices nuevos depósitos.${tracking.order.cancellationReason ? ` Motivo: ${tracking.order.cancellationReason}` : ""} Si realizaste un depósito, contacta al Fondo Editorial para coordinar su devolución.`;
+    return sendMime({ tracking, art: "rejected", artCid, html: renderOrderUpdate(tracking, { title, body, link, artCid, createdAt: tracking.order.cancelledAt ?? tracking.order.updatedAt }), text: `${title}\n${body}\nSeguimiento: ${link}` });
+  }
   const intro = emailTemplates[tracking.order.orderType];
   const amounts = (["universidad", "instituto"] as const)
     .filter((imprint) => (imprint === "universidad" ? tracking.order.paymentStatusUniversidad : tracking.order.paymentStatusInstituto) !== "NO_APLICA")
@@ -158,18 +163,19 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
     PAGO_RECHAZADO: { title: `Necesitamos otro comprobante · ${imprint}`, body: payload.reason || "Revisa el comprobante y adjunta uno nuevo desde tu seguimiento." },
     DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""} ${courierEstimate(payload.deliveryZone || tracking.order.deliveryZone)}` },
     DOCUMENTOS_VENTA: { title: payload.correction === "true" ? "Documentos de venta actualizados" : "Tus documentos de venta", body: `${payload.correction === "true" ? "Adjuntamos las versiones corregidas" : "Adjuntamos la boleta o factura"}${tracking.order.orderType === "mixto" ? " de ambos sellos editoriales" : " de tu pedido"}. Conserva los PDF adjuntos para tu registro.` },
+    CANCELADO: { title: payload.source === "gestor" ? "Pedido anulado por Fondo Editorial" : "Pedido cancelado", body: `El pedido está cerrado. No realices nuevos depósitos.${payload.reason ? ` Motivo: ${payload.reason}` : ""} Si realizaste un depósito, contacta al Fondo Editorial para coordinar su devolución.` },
     ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
   };
   const notice = notices[notification.eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
   const link = customerTrackingUrl(tracking.order.trackingToken);
-  const art: MailArt = notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
+  const art: MailArt = notification.eventType === "CANCELADO" ? "rejected" : notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
   const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
   return sendMime({ tracking, art, artCid, attachments, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
 }
 
-export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string) {
+export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string, art: MailArt = "verified") {
   const artCid = `caja-${notificationId}@${new URL(getPublicOrigin()).hostname}`;
-  return sendMime({ tracking, audience, notificationId, html, text, art: "verified", artCid });
+  return sendMime({ tracking, audience, notificationId, html, text, art, artCid });
 }

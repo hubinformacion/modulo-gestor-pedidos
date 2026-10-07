@@ -27,7 +27,7 @@ async function lockRequest(tx: Transaction, id: string) {
 }
 function checkCaja(request: typeof cajaRequests.$inferSelect, actor: AuthorizedActor, cycle: number) {
   if (actor.publisherImprint !== request.publisherImprint) throw new CajaError("No tienes acceso a esta solicitud.");
-  if (request.cycle !== cycle || request.status === "FINALIZADA") throw new CajaError("La solicitud cambió o ya fue finalizada. Actualiza la página.");
+  if (request.cycle !== cycle || ["FINALIZADA", "ANULADA"].includes(request.status)) throw new CajaError("La solicitud cambió o ya fue finalizada. Actualiza la página.");
 }
 function checkVersion(actual: Date, expected: string) {
   if (actual.toISOString() !== expected) throw new CajaError("La solicitud cambió. Actualiza los datos antes de continuar.");
@@ -67,13 +67,14 @@ export async function uploadSaleDocument(actor: AuthorizedActor, id: string, upl
     // An already persisted retry must not replace a newer draft.
     if (intent.document.uploadedAt && request.draftDocumentId !== uploadId) throw new CajaError("Hay un PDF más reciente. Actualiza la solicitud.");
     const [updated] = await tx.update(cajaRequests).set({ draftDocumentId: uploadId }).where(eq(cajaRequests.id, id)).returning();
-    return { documentId: uploadId, fileName: filename, version: updated.updatedAt.toISOString() };
+    return { documentId: uploadId, fileName: filename, version: updated.updatedAt.toISOString(), driveFileId: intent.document.driveFileId, driveViewUrl: uploaded.driveViewUrl };
   }));
 }
 export async function finalizeSaleDocument(actor: AuthorizedActor, input: { id: string; version: string; documentId: string }) {
   return withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
     const { order, request } = await lockRequest(tx, input.id);
+    if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido fue anulado. No admite emisión de documentos.");
     if (actor.publisherImprint !== request.publisherImprint) throw new CajaError("No tienes acceso a esta solicitud.");
     if (request.status === "FINALIZADA" && request.finalizedDocumentId === input.documentId) return { requestId: request.id, token: order.trackingToken };
     checkCaja(request, actor, request.cycle); checkVersion(request.updatedAt, input.version);
@@ -97,6 +98,7 @@ export async function returnSaleDocument(actor: AuthorizedActor, input: { id: st
   return withDatabase((db) => db.transaction(async (tx) => {
     await assertAuthorized(tx, actor);
     const { order, request } = await lockRequest(tx, input.id);
+    if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido fue anulado.");
     if (order.assignedTo !== actor.userId) throw new CajaError("Solo el gestor responsable puede devolver una solicitud.");
     checkVersion(request.updatedAt, input.version);
     if (request.status !== "FINALIZADA") throw new CajaError("Esta solicitud no está finalizada.");
@@ -141,4 +143,18 @@ export async function salePdfBytes(fileId: string, expectedHash: string) {
   if (!result.subarray(0, 5).equals(Buffer.from("%PDF-"))) throw new CajaError("El archivo almacenado no es un PDF válido.");
   if (createHash("sha256").update(result).digest("hex") !== expectedHash) throw new CajaError("El PDF almacenado cambió. Solicita una corrección a caja.");
   return result;
+}
+
+export async function removeSaleDraft(actor: AuthorizedActor, input: { id: string; documentId: string; cycle: number }) {
+  return withDatabase((db) => db.transaction(async (tx) => {
+    await assertAccessRole(tx, actor, "caja");
+    const { order, request } = await lockRequest(tx, input.id);
+    if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido fue anulado.");
+    checkCaja(request, actor, input.cycle);
+    if (!request.draftDocumentId) return request.updatedAt.toISOString();
+    if (request.draftDocumentId !== input.documentId) throw new CajaError("El borrador cambió. Actualiza la solicitud.");
+    const [updated] = await tx.update(cajaRequests).set({ draftDocumentId: null }).where(eq(cajaRequests.id, request.id)).returning();
+    // Immutable source stays private for audit; only remove its draft selection.
+    return updated.updatedAt.toISOString();
+  }));
 }

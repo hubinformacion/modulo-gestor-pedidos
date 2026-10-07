@@ -10,8 +10,8 @@ import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
 
 export class PickupEvidenceError extends Error {}
 function checkOrder(order: typeof orders.$inferSelect | undefined, actor: AuthorizedActor, version: string) {
-  if (!order || order.assignedTo !== actor.userId || order.deliveryType !== "recojo_campus" || order.orderStatus !== "DESPACHADO") throw new PickupEvidenceError("Solo el gestor asignado puede adjuntar evidencia al finalizar el recojo.");
-  if (order.updatedAt.toISOString() !== version) throw new PickupEvidenceError("El pedido cambió. Actualiza los datos antes de confirmar el recojo.");
+  if (!order || order.assignedTo !== actor.userId || order.orderStatus !== "DESPACHADO") throw new PickupEvidenceError("Solo el gestor asignado puede adjuntar evidencia al finalizar la entrega.");
+  if (order.updatedAt.toISOString() !== version) throw new PickupEvidenceError("El pedido cambió. Actualiza los datos antes de confirmar la entrega.");
 }
 function checkIntent(intent: typeof pickupEvidence.$inferSelect, actor: AuthorizedActor, orderId: string, hash: string) {
   if (intent.orderId !== orderId || intent.actorUserId !== actor.userId || intent.contentHash !== hash) throw new PickupEvidenceError("El archivo cambió durante el intento. Selecciónalo de nuevo.");
@@ -47,7 +47,7 @@ export async function preparePickupEvidence(actor: AuthorizedActor, orderId: str
     return created;
   }));
   if (!intent.driveViewUrl) {
-    const uploaded = await uploadFileToDrive({ id: intent.driveFileId, name: `${existing.number}-evidencia-recojo-${filename}`, mimeType: intent.mimeType, bytes });
+    const uploaded = await uploadFileToDrive({ id: intent.driveFileId, name: `${existing.number}-evidencia-entrega-${filename}`, mimeType: intent.mimeType, bytes });
     await withDatabase((db) => db.transaction(async (tx) => {
       await assertAuthorized(tx, actor);
       const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("share");

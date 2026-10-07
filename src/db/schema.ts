@@ -110,6 +110,10 @@ export const orders = pgTable("orders", {
   total: money("total").notNull(),
   billingRuc: text("billing_ruc"),
   billingBusinessName: text("billing_business_name"),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  cancellationSource: text("cancellation_source").$type<"comprador" | "gestor">(),
+  cancellationReason: text("cancellation_reason"),
+  stockRestoredAt: timestamp("stock_restored_at", { withTimezone: true }),
   orderStatus: orderStatus("order_status").default("PENDIENTE_PAGO").notNull(),
   // Required explicitly: creation must set the inapplicable imprint to NO_APLICA.
   paymentStatusUniversidad: paymentStatus("payment_status_universidad").notNull(),
@@ -174,6 +178,7 @@ export const orderItems = pgTable("order_items", {
   bookId: uuid("book_id").notNull().references(() => books.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
   bookTitle: text("book_title"),
+  bookCode: text("book_code"),
   unitPrice: money("unit_price").notNull(),
   quantity: integer("quantity").notNull(),
   subtotal: money("subtotal").notNull(),
@@ -260,9 +265,9 @@ export const orderNotifications = pgTable("order_notifications", {
 }, (table) => [
   index("order_notifications_order_idx").on(table.orderId, table.createdAt),
   index("order_notifications_retry_idx").on(table.status, table.lastAttemptAt),
-  check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA')`),
+  check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
   check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
-  check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA')`),
+  check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
 ]);
 
 export const orderActivity = pgTable("order_activity", {
@@ -329,7 +334,7 @@ export const cajaRequests = pgTable("caja_requests", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
-  status: text("status").$type<"PENDIENTE" | "FINALIZADA" | "DEVUELTA">().default("PENDIENTE").notNull(),
+  status: text("status").$type<"PENDIENTE" | "FINALIZADA" | "DEVUELTA" | "ANULADA">().default("PENDIENTE").notNull(),
   cycle: integer("cycle").default(1).notNull(),
   draftDocumentId: uuid("draft_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   finalizedDocumentId: uuid("finalized_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
@@ -346,7 +351,7 @@ export const cajaRequests = pgTable("caja_requests", {
 }, (table) => [
   uniqueIndex("caja_requests_order_imprint_unique").on(table.orderId, table.publisherImprint),
   index("caja_requests_inbox_idx").on(table.publisherImprint, table.status, table.createdAt),
-  check("caja_requests_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA') AND ${table.cycle} > 0`),
+  check("caja_requests_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA','ANULADA') AND ${table.cycle} > 0`),
   check("caja_requests_finalized", sql`${table.status} <> 'FINALIZADA' OR (${table.finalizedDocumentId} IS NOT NULL AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL)`),
 ]);
 export const saleDocuments = pgTable("sale_documents", {
@@ -366,7 +371,7 @@ export const cajaNotifications = pgTable("caja_notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
   cycle: integer("cycle").notNull(),
-  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA">().notNull(),
+  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA">().notNull(),
   reason: text("reason"),
   status: text("status").default("PENDIENTE").notNull(),
   attempts: integer("attempts").default(0).notNull(),
@@ -377,8 +382,8 @@ export const cajaNotifications = pgTable("caja_notifications", {
 }, (table) => [
   uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType),
   index("caja_notifications_retry_idx").on(table.status, table.lastAttemptAt),
-  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA')`),
-  check("caja_notifications_state", sql`${table.status} IN ('PENDIENTE','ENVIANDO','ENVIADO','ERROR')`),
+  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA')`),
+  check("caja_notifications_state", sql`${table.status} IN ('PENDIENTE','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
 ]);
 export const saleDocumentBatches = pgTable("sale_document_batches", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -388,3 +393,13 @@ export const saleDocumentBatches = pgTable("sale_document_batches", {
   correction: boolean("correction").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Individual caja permissions, including unresolved provider acknowledgements.
+export const driveFileReaderGrants = pgTable("drive_file_reader_grants", {
+  driveFileId: text("drive_file_id").notNull(),
+  email: text("email").notNull(),
+  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  permissionId: text("permission_id"),
+  managed: boolean("managed").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [primaryKey({ columns: [table.driveFileId, table.email] })]);

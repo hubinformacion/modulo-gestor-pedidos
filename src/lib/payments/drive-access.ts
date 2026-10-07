@@ -45,4 +45,6 @@ export async function synchronizeDriveReaders(): Promise<void> {
       await withDatabase((writer) => writer.insert(driveReaderGrants).values({ folderId, email, permissionId }).onConflictDoUpdate({ target: [driveReaderGrants.folderId, driveReaderGrants.email], set: { permissionId } }));
     }
   }));
+  const { synchronizeCajaFileReaders } = await import("@/lib/caja/drive-access");
+  await synchronizeCajaFileReaders();
 }

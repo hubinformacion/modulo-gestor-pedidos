@@ -3,7 +3,7 @@ import { beginSaleDelivery, readSaleBatch, salePdfBytes, StaleDocumentBatch } fr
 import { randomUUID } from "node:crypto";
 import { and, asc, desc, eq, isNull, lt, ne, or } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { orderEmails, orderNotifications } from "@/db/schema";
+import { orderEmails, orderNotifications, orders } from "@/db/schema";
 import { readSentMailHeaders, sendOrderConfirmationEmail, sendOrderUpdateEmail } from "@/lib/google";
 import { reportServerError, safeErrorDetails } from "@/lib/server-diagnostics";
 import { getTrackedOrder } from "./tracking";
@@ -58,6 +58,7 @@ export async function deliverOrderEmail(token: string): Promise<boolean> {
 async function deliverOrderPass(token: string, started: number): Promise<{ sent: boolean; again: boolean }> {
   const outcome = { sent: false, again: false };
   let threadReady = false;
+  let acceptedInitialId: string | null = null;
   const tracking = await getTrackedOrder(token);
   if (!tracking) return outcome;
   const leaseId = randomUUID();
@@ -71,11 +72,16 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
         const sent = await sendOrderConfirmationEmail(tracking);
         // Accepted by Gmail: do not resend if the later metadata lookup fails.
         await withDatabase((db) => db.update(orderEmails).set({ status: "ENVIADO", gmailMessageId: sent.id, gmailThreadId: sent.threadId, rfcMessageId: null, headersVerified: false, sentAt: new Date() }).where(eq(orderEmails.orderId, tracking.order.id)));
+        acceptedInitialId = sent.id;
         outcome.sent = true;
       } catch (error) {
-        await withDatabase((db) => db.update(orderEmails).set({ status: "ERROR" }).where(eq(orderEmails.orderId, tracking.order.id)));
+        await withDatabase((db) => db.update(orderEmails).set({ status: "ERROR" }).where(and(eq(orderEmails.orderId, tracking.order.id), ne(orderEmails.status, "ENVIADO"))));
         reportServerError("order.mail.initial", error); return outcome;
       }
+    }
+    if (acceptedInitialId && tracking.order.orderStatus === "CANCELADO") {
+      try { await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: acceptedInitialId! }).where(and(eq(orderNotifications.orderId, tracking.order.id), eq(orderNotifications.eventType, "CANCELADO"), eq(orderNotifications.status, "PENDIENTE")))); }
+      catch (error) { reportServerError("order.cancel.mail.binding", error); } // Never regress the accepted root.
     }
     if (!await synchronizeOrderThread(token)) return outcome;
     threadReady = true;
@@ -86,7 +92,7 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
       const current = await getTrackedOrder(token);
       if (!current) break;
       if (event.eventType === "DOCUMENTOS_VENTA") { if (!await beginSaleDelivery(event)) continue; }
-      else await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIANDO", attempts: event.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderNotifications.id, event.id)));
+      else if (!await beginOrderNotification(event)) continue;
       try {
         const attachments = event.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document, imprint }) => ({ filename: `${current.order.billingRuc ? "factura" : "boleta"}-${imprint}-${current.order.orderNumber}.pdf`, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
         const sent = await sendOrderUpdateEmail(current, event, attachments);
@@ -96,7 +102,7 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
         if (!await synchronizeOrderThread(token)) { threadReady = false; break; }
       } catch (error) {
         if (error instanceof StaleDocumentBatch) { await withDatabase((db) => db.update(orderNotifications).set({ status: "OMITIDO" }).where(eq(orderNotifications.id, event.id))); continue; }
-        await withDatabase((db) => db.update(orderNotifications).set({ status: "ERROR" }).where(eq(orderNotifications.id, event.id)));
+        await withDatabase((db) => db.update(orderNotifications).set({ status: "ERROR" }).where(and(eq(orderNotifications.id, event.id), ne(orderNotifications.status, "ENVIADO"))));
         threadReady = false;
         reportServerError("order.mail.update", error); break;
       }
@@ -114,4 +120,15 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
     }));
     outcome.again = pending && Date.now() - started < 60_000;
   }
+}
+
+async function beginOrderNotification(event: typeof orderNotifications.$inferSelect) {
+  return withDatabase((db) => db.transaction(async (tx) => {
+    const [order] = await tx.select({ status: orders.orderStatus }).from(orders).where(eq(orders.id, event.orderId)).for("update");
+    const [current] = await tx.select().from(orderNotifications).where(eq(orderNotifications.id, event.id)).for("update");
+    if (!current || ["ENVIADO", "OMITIDO"].includes(current.status)) return false;
+    if (order.status === "CANCELADO" && event.eventType !== "CANCELADO") { await tx.update(orderNotifications).set({ status: "OMITIDO" }).where(eq(orderNotifications.id, event.id)); return false; }
+    await tx.update(orderNotifications).set({ status: "ENVIANDO", attempts: current.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderNotifications.id, event.id));
+    return true;
+  }));
 }
