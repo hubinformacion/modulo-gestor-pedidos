@@ -152,4 +152,4 @@ En `/admin/cupones`, los gestores crean o generan un código, porcentaje de 1–
 
 Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código. Migración 0015 requerida.
 
-Para revisión, `feat/promociones-temporada` contiene campañas y `feat/cupones-descuento` se basa en ella y contiene ambas funcionalidades. La versión de producción no se actualiza hasta aprobación e integración de las ramas. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.
+Promociones y cupones están integrados. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.

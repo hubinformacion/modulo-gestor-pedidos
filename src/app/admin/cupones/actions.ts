@@ -1,7 +1,7 @@
 "use server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { coupons, couponRedemptions } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
@@ -46,7 +46,8 @@ export async function deleteCouponAction(input: unknown) {
         if (!current || current.updatedAt.toISOString() !== parsed.data.version) throw new CouponError("El cupón cambió. Actualiza la página.");
         const [used] = await tx.select({ id: couponRedemptions.orderId }).from(couponRedemptions).where(eq(couponRedemptions.couponId, current.id)).limit(1);
         if (used) throw new CouponError("El cupón tiene pedidos asociados. Desactívalo para conservar su historial.");
-        const [deleted] = await tx.delete(coupons).where(and(eq(coupons.id, parsed.data.id), eq(coupons.updatedAt, new Date(parsed.data.version)))).returning();
+        // The locked row was checked above. Dates exposed to JS omit PG microseconds.
+        const [deleted] = await tx.delete(coupons).where(eq(coupons.id, current.id)).returning();
         if (!deleted) throw new CouponError("El cupón cambió. Actualiza la página.");
       });
     });

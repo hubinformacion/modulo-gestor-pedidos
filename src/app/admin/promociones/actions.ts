@@ -1,7 +1,7 @@
 "use server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { asc, eq, inArray } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { books, promotions, promotionBooks } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
@@ -45,7 +45,10 @@ export async function deletePromotionAction(input: unknown) {
       const actor = await getAuthorizedSession(db, requestHeaders);
       await db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
-        const [deleted] = await tx.delete(promotions).where(and(eq(promotions.id, parsed.data.id), eq(promotions.updatedAt, new Date(parsed.data.version)))).returning();
+        const [current] = await tx.select().from(promotions).where(eq(promotions.id, parsed.data.id)).for("update");
+        if (!current || current.updatedAt.toISOString() !== parsed.data.version) throw new PromotionError("La campaña cambió. Actualiza la página.");
+        // Match by ID after the lock/version check; preserve PostgreSQL microseconds.
+        const [deleted] = await tx.delete(promotions).where(eq(promotions.id, current.id)).returning();
         if (!deleted) throw new PromotionError("La campaña cambió. Actualiza la página.");
       });
     });
