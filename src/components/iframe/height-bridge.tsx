@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { iframeHeightSchema, iframeInitSchema } from "@/lib/iframe/protocol";
+import { iframeHeightSchema, iframeInitSchema, iframeScrollSchema } from "@/lib/iframe/protocol";
 
 export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[] }) {
   // RSC refreshes produce new arrays. Keep the connection while their values
@@ -12,6 +12,7 @@ export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[
     if (!content) return;
     const allowed = new Set<string>([...JSON.parse(originsKey), window.location.origin]);
     let parentOrigin: string | null = null;
+    let supportsScroll = false;
     let lastHeight = 0;
     let frame = 0;
     let disposed = false;
@@ -30,9 +31,16 @@ export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[
     function initialize(event: MessageEvent) {
       if (event.source !== window.parent || !allowed.has(event.origin) || !iframeInitSchema.safeParse(event.data).success) return;
       parentOrigin = event.origin;
+      supportsScroll = Array.isArray(event.data?.capabilities) && event.data.capabilities.includes("scroll");
       root.dataset.fecEmbedded = "true";
       sendHeight(true); schedule();
     }
+    function scrollTo(event: Event) {
+      if (!parentOrigin || !supportsScroll || disposed || root.dataset.fecEmbedded !== "true") return;
+      const message = iframeScrollSchema.safeParse({ type: "fec:iframe:scroll", version: 1, top: (event as CustomEvent).detail?.top });
+      if (message.success) { sendHeight(true); window.parent.postMessage(message.data, parentOrigin); }
+    }
+    document.addEventListener("fec:scroll-to", scrollTo);
     const observer = new ResizeObserver(schedule);
     observer.observe(content);
     window.addEventListener("message", initialize);
@@ -46,6 +54,7 @@ export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[
     return () => {
       disposed = true; observer.disconnect(); cancelAnimationFrame(frame);
       window.removeEventListener("message", initialize); window.removeEventListener("resize", schedule);
+      document.removeEventListener("fec:scroll-to", scrollTo);
       document.removeEventListener("load", schedule, true); delete root.dataset.fecEmbedded;
     };
   }, [originsKey]);

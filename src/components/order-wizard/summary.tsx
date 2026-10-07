@@ -38,7 +38,7 @@ export function OrderSummary({ quote, onRemove, editable = true }: {
 
 export function AccountBreakdown({ quote }: { quote: OrderQuote }) {
   if (quote.orderType !== "mixto") return null;
-  return <section className="rounded-xl border border-border bg-white p-5" aria-labelledby="accounts-title">
+  return <section className="rounded-xl border border-primary/15 bg-secondary/50 p-5" aria-labelledby="accounts-title">
           <div className="space-y-4">
             <h2 id="accounts-title" className="text-sm font-semibold">Desglose por cuenta</h2>
             {quote.accounts.map((account) => <div key={account.imprint} className="space-y-2">

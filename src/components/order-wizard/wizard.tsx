@@ -1,4 +1,5 @@
 "use client";
+import { scrollWizardTo } from "@/lib/ui/wizard-scroll";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
@@ -37,6 +38,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
   const [errors, setErrors] = useState<FieldErrors>({});
   const [errorMessage, setErrorMessage] = useState("");
   const [consentAccepted, setConsentAccepted] = useState(false);
+  const wizardRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
   const quote = calculateQuote(catalog, cart, buyer.type, delivery);
@@ -46,10 +48,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
   function goTo(next: number) {
     if (next < step) { setConsentAccepted(false); }
     setStep(next); setErrors({}); setErrorMessage("");
-    requestAnimationFrame(() => {
-      headingRef.current?.focus({ preventScroll: true });
-      headingRef.current?.scrollIntoView({ behavior: "instant", block: "start" });
-    });
+    scrollWizardTo(wizardRef.current, headingRef.current);
   }
 
   function showErrors(issues: { path: PropertyKey[]; message: string }[]) {
@@ -114,7 +113,7 @@ export function OrderWizard({ catalog, campuses, submissionEnabled = false }: { 
   }
 
   return (
-    <div>
+    <div ref={wizardRef} className="scroll-mt-6">
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>

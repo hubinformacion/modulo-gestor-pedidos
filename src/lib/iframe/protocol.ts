@@ -4,3 +4,5 @@ export const iframeInitSchema = z.object({ type: z.literal("fec:iframe:init"), v
 export const iframeHeightSchema = z.object({ type: z.literal("fec:iframe:height"), version: z.literal(1), height: z.number().int().min(128).max(100000) });
 
 export const iframeReadySchema = z.object({ type: z.literal("fec:iframe:ready"), version: z.literal(1) });
+
+export const iframeScrollSchema = z.object({ type: z.literal("fec:iframe:scroll"), version: z.literal(1), top: z.number().int().min(0).max(100000) });

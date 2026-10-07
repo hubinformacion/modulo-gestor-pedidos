@@ -94,7 +94,7 @@ async function deliverOrderPass(token: string, started: number): Promise<{ sent:
       if (event.eventType === "DOCUMENTOS_VENTA") { if (!await beginSaleDelivery(event)) continue; }
       else if (!await beginOrderNotification(event)) continue;
       try {
-        const attachments = event.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document, imprint }) => ({ filename: `${current.order.billingRuc ? "factura" : "boleta"}-${imprint}-${current.order.orderNumber}.pdf`, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
+        const attachments = event.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
         const sent = await sendOrderUpdateEmail(current, event, attachments);
         await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id)));
         outcome.sent = true;

@@ -61,15 +61,8 @@
 .filepond--drop-label { color: var(--muted-foreground); }
 .filepond--label-action { color: var(--primary); text-decoration-color: var(--primary); }
 
-/* Receipt details are retained for staff; the purchaser sees only progress and acknowledgement. */
-.receipt-pond .filepond--file-info { display: none; }
+/* File details stay visible during upload; successful batches become an acknowledgement. */
 
 /* Once the parent accepts height messages, only WordPress owns page scrolling. */
 html[data-fec-embedded="true"], html[data-fec-embedded="true"] body { overflow-x: hidden; overflow-y: hidden; }
 html[data-fec-embedded="true"] .public-order-surface { max-width: none; padding-inline: 0; }
-
-.caja-document-pond .filepond--file-info-main {
-  cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}

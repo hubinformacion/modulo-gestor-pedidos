@@ -16,7 +16,7 @@
     function initialize() {
       if (!frame.isConnected || receivedHeight || attempts >= 10) return;
       attempts += 1;
-      frame.contentWindow.postMessage({ type: "fec:iframe:init", version: 1 }, origin);
+      frame.contentWindow.postMessage({ type: "fec:iframe:init", version: 1, capabilities: ["scroll"] }, origin);
       timer = window.setTimeout(initialize, 1000);
     }
     function reconnect() {
@@ -27,6 +27,14 @@
       var data = event.data;
       if (!data || data.version !== 1) return;
       if (data.type === "fec:iframe:ready") { reconnect(); return; }
+      if (data.type === "fec:iframe:scroll") {
+        if (!Number.isInteger(data.top) || data.top < 0 || data.top > 100000 || !receivedHeight) return;
+        var wrapper = frame.closest("[data-fec-embed]") || frame;
+        var configured = parseFloat(window.getComputedStyle(wrapper).getPropertyValue("--fec-scroll-offset"));
+        var offset = Number.isFinite(configured) && configured >= 0 && configured <= 500 ? configured : window.innerWidth <= 767 ? 128 : 112;
+        window.scrollTo({ top: Math.max(0, frame.getBoundingClientRect().top + window.scrollY + data.top - offset), behavior: "instant" });
+        return;
+      }
       if (data.type !== "fec:iframe:height" || !Number.isInteger(data.height) || data.height < 128 || data.height > 100000) return;
       receivedHeight = true;
       window.clearTimeout(timer);

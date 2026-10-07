@@ -35,7 +35,8 @@ function checkVersion(actual: Date, expected: string) {
 export async function uploadSaleDocument(actor: AuthorizedActor, id: string, uploadId: string, cycle: number, file: File) {
   const parsed = pdfSchema.safeParse(file);
   if (!parsed.success) throw new CajaError(parsed.error.issues[0].message);
-  const { bytes, hash, filename } = await validateReceipt(file).catch(() => { throw new CajaError("El archivo no es un PDF válido."); });
+  const { bytes, hash } = await validateReceipt(file).catch(() => { throw new CajaError("El archivo no es un PDF válido."); });
+  const filename = file.name;
   const previous = await withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
     const { request } = await lockRequest(tx, id);
@@ -50,7 +51,7 @@ export async function uploadSaleDocument(actor: AuthorizedActor, id: string, upl
     checkCaja(request, actor, cycle);
     const [stored] = await tx.select().from(saleDocuments).where(eq(saleDocuments.id, uploadId));
     if (stored) {
-      if (stored.requestId !== id || stored.cycle !== cycle || stored.actorEmail !== actor.email || stored.contentHash !== hash) throw new CajaError("El intento no corresponde a este PDF. Selecciónalo de nuevo.");
+      if (stored.requestId !== id || stored.cycle !== cycle || stored.actorEmail !== actor.email || stored.contentHash !== hash || stored.fileName !== filename) throw new CajaError("El intento no corresponde a este PDF. Selecciónalo de nuevo.");
       return { document: stored, number: order.orderNumber };
     }
     const [usage] = await tx.select({ total: count() }).from(saleDocuments).where(and(eq(saleDocuments.requestId, id), eq(saleDocuments.cycle, cycle)));
@@ -58,7 +59,7 @@ export async function uploadSaleDocument(actor: AuthorizedActor, id: string, upl
     const [document] = await tx.insert(saleDocuments).values({ id: uploadId, requestId: id, cycle, actorEmail: actor.email, driveFileId, contentHash: hash, fileName: filename, size: file.size }).returning();
     return { document, number: order.orderNumber };
   }));
-  const uploaded = intent.document.driveViewUrl ? { driveViewUrl: intent.document.driveViewUrl } : await uploadFileToDrive({ id: intent.document.driveFileId, name: `${intent.number}-${actor.publisherImprint}-venta-${filename}`, mimeType: "application/pdf", bytes });
+  const uploaded = intent.document.driveViewUrl ? { driveViewUrl: intent.document.driveViewUrl } : await uploadFileToDrive({ id: intent.document.driveFileId, name: filename, mimeType: "application/pdf", bytes });
   return withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
     const { request } = await lockRequest(tx, id);
@@ -82,7 +83,7 @@ export async function finalizeSaleDocument(actor: AuthorizedActor, input: { id: 
     if (!document?.uploadedAt || document.requestId !== request.id || document.cycle !== request.cycle || request.draftDocumentId !== document.id) throw new CajaError("Adjunta y revisa el PDF antes de finalizar.");
     await tx.update(cajaRequests).set({ status: "FINALIZADA", finalizedDocumentId: document.id, finalizedBy: actor.email, finalizedAt: new Date() }).where(eq(cajaRequests.id, request.id));
     await tx.insert(cajaNotifications).values({ requestId: request.id, cycle: request.cycle, eventType: "FINALIZADA" }).onConflictDoNothing();
-    await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "CAJA_FINALIZADA", detail: `Documento de venta de ${request.publisherImprint === "universidad" ? "Universidad" : "Instituto"} finalizado (revisión ${request.cycle}).` });
+    await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "CAJA_FINALIZADA", detail: `Documento de venta de ${request.publisherImprint === "universidad" ? "Universidad" : "Instituto"} finalizado.` });
     const requests = await tx.select().from(cajaRequests).where(eq(cajaRequests.orderId, order.id)).orderBy(asc(cajaRequests.publisherImprint));
     const required = order.orderType === "mixto" ? ["universidad", "instituto"] : [order.orderType === "solo_universidad" ? "universidad" : "instituto"];
     if (required.every((imprint) => requests.some((row) => row.publisherImprint === imprint && row.status === "FINALIZADA" && row.finalizedDocumentId))) {

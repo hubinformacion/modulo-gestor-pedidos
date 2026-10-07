@@ -1,4 +1,5 @@
 import { ensureCajaFileReader } from "@/lib/caja/drive-access";
+import { salePdfBytes } from "@/lib/caja/service";
 import { z } from "zod";
 import { and, eq } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
@@ -18,11 +19,16 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const [item] = await db.select().from(cajaRequests).where(and(eq(cajaRequests.id, parsed.data.id), eq(cajaRequests.publisherImprint, actor.publisherImprint!)));
       if (!item) return null;
       const [document] = await db.select().from(saleDocuments).where(and(eq(saleDocuments.id, parsed.data.fileId), eq(saleDocuments.requestId, item.id)));
-      if (document?.uploadedAt) return { driveId: document.driveFileId, url: document.driveViewUrl! };
+      if (document?.uploadedAt) return { driveId: document.driveFileId, url: document.driveViewUrl!, name: document.fileName, hash: document.contentHash };
       const [receipt] = await db.select().from(paymentReceipts).where(and(eq(paymentReceipts.id, parsed.data.fileId), eq(paymentReceipts.orderId, item.orderId), eq(paymentReceipts.publisherImprint, actor.publisherImprint!)));
-      return receipt ? { driveId: receipt.driveFileId, url: receipt.driveViewUrl } : null;
+      return receipt ? { driveId: receipt.driveFileId, url: receipt.driveViewUrl, name: receipt.fileName, hash: null } : null;
     });
     if (!file) return new Response(null, { status: 404, headers: responseHeaders });
+    const mode = new URL(request.url).searchParams;
+    if (file.hash && (mode.get("preview") === "1" || mode.get("download") === "1")) {
+      const bytes = await salePdfBytes(file.driveId, file.hash);
+      return new Response(new Uint8Array(bytes), { headers: { ...responseHeaders, "Content-Type": "application/pdf", "Content-Disposition": `${mode.get("download") === "1" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(file.name)}` } });
+    }
     await ensureCajaFileReader(actor, parsed.data.id, file.driveId);
     return new Response(null, { status: 302, headers: { ...responseHeaders, Location: file.url } });
   } catch (error) {

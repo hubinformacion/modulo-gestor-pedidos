@@ -1,0 +1,4 @@
+export function PdfPreview({ requestId, documentId, name }: { requestId: string; documentId: string; name: string }) {
+  const url = `/caja/${requestId}/archivos/${documentId}?preview=1`;
+  return <section className="mt-4 overflow-hidden rounded-lg border border-border"><div className="border-b border-border bg-muted/20 px-3 py-2"><p className="break-words text-xs font-medium">{name}</p></div><iframe key={documentId} title={`Vista previa de ${name}`} src={url} className="h-80 w-full border-0 bg-white" referrerPolicy="no-referrer" /><div className="border-t border-border px-3 py-2 text-[10px] text-muted-foreground">Si tu navegador no muestra el documento, <a href={url.replace("preview=1", "download=1")} download className="font-medium text-primary underline">descarga el PDF</a>.</div></section>;
+}

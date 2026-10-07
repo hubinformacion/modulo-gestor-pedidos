@@ -72,6 +72,10 @@ export async function readFileFromDrive(fileId: string): Promise<Readable> {
   }, "drive.download");
 }
 
+function attachmentName(filename: string) {
+  const fallback = filename.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
+  return `filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(filename).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)}`;
+}
 function base64Lines(value: Buffer) { return value.toString("base64").match(/.{1,76}/g)?.join("\r\n") ?? ""; }
 
 type Tracking = NonNullable<Awaited<ReturnType<typeof getTrackedOrder>>>;
@@ -124,7 +128,7 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
     `--${related}`, "Content-Type: image/png", "Content-Transfer-Encoding: base64", `Content-ID: <${artCid}>`, `Content-Disposition: inline; filename="${art}.png"`, "", base64Lines(illustration), `--${related}--`, ""];
   const pdfs = attachment ? [attachment, ...attachments] : attachments;
   const raw = pdfs.length ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
-    ...pdfs.flatMap((pdf) => [`--${boundary}`, `Content-Type: application/pdf; name="${pdf.filename}"`, "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; filename="${pdf.filename}"`, "", base64Lines(pdf.content)]), `--${boundary}--`, ""].join("\r\n")
+    ...pdfs.flatMap((pdf) => [`--${boundary}`, "Content-Type: application/pdf", "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; ${attachmentName(pdf.filename)}`, "", base64Lines(pdf.content)]), `--${boundary}--`, ""].join("\r\n")
     : [...headers, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody].join("\r\n");
   return retryOnce(async () => {
     const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.send({ userId: "me", requestBody: { raw: Buffer.from(raw).toString("base64url"), ...((audience?.threadId ?? (!audience && notificationId ? tracking.emailThreadId : null)) ? { threadId: audience?.threadId ?? tracking.emailThreadId! } : {}) } }, { timeout: 20_000, retry: false });
