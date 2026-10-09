@@ -1,5 +1,6 @@
 import { z } from "zod";
 const day = z.iso.date();
+export const dashboardTabSchema = z.enum(["pedidos", "atencion", "inventario"]).catch("pedidos");
 export function dashboardFiltersSchema(today: string) {
   return z.object({
     from: day.default(`${today.slice(0, 7)}-01`), to: day.default(today),

@@ -6,11 +6,11 @@ import { UsersRound, Package, ClipboardList, Tags, TicketPercent, ChartNoAxesCom
 import { cn } from "@/lib/utils";
 
 const items = [
-  { href: "/admin/dashboard", label: "Dashboard", Icon: ChartNoAxesCombined },
   { href: "/admin/pedidos", label: "Pedidos", Icon: ClipboardList },
+  { href: "/admin/dashboard", label: "Dashboard", Icon: ChartNoAxesCombined },
   { href: "/admin/inventario", label: "Inventario", Icon: Package },
   { href: "/admin/promociones", label: "Promociones", Icon: Tags },
-  { href: "/admin/cupones", label: "Cupones", Icon: TicketPercent, ChartNoAxesCombined },
+  { href: "/admin/cupones", label: "Cupones", Icon: TicketPercent },
   { href: "/admin/configuracion", label: "Configuración", Icon: UsersRound },
 ];
 

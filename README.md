@@ -179,7 +179,7 @@ Conserva migraciones, snapshots, journal, guías y la atribución de los datos d
 
 ## Dashboard y seguimiento del equipo
 
-Todos los gestores pueden consultar `/admin/dashboard`. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
+Todos los gestores pueden consultar `/admin/dashboard`, organizado en **Pedidos e importes**, **Atención** e **Inventario**. Las pestañas conservan los filtros y pueden compartirse mediante su URL; Inventario solo muestra el filtro de sello. En el menú, Pedidos aparece antes de Dashboard. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
 
 El importe solicitado excluye cancelados; el importe verificado suma únicamente los pagos aprobados por sello, incluso si el otro sello de un pedido mixto sigue pendiente. Los importes incluyen el envío correspondiente y los descuentos aplicados. No son un reporte de conciliación bancaria ni de devoluciones. Los tiempos muestran la mediana y su muestra, en horas/días calendario, incluyendo esperas del comprador. Primera asignación se obtiene del historial, despacho/entrega desde el registro y emisión desde la solicitud a caja.
 
