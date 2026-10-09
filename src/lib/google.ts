@@ -8,7 +8,7 @@ import { z } from "zod";
 import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
-import { MASTER_EMAIL } from "@/lib/access-policy";
+import { managerMailCopies } from "@/lib/orders/mail-recipients";
 import { customerTrackingUrl } from "@/lib/orders/customer-links";
 import { courierEstimate } from "@/lib/orders/courier";
 import { readMailArt, type MailArt } from "@/lib/orders/mail-art";
@@ -104,19 +104,19 @@ export async function readSentMailHeaders(messageId: string) {
 }
 
 export type PdfAttachment = { filename: string; content: Buffer };
-export type MailAudience = { to: string; cc: string[]; subject: string; threadId?: string | null; lastRfcMessageId?: string | null; references?: string[] };
-async function sendMime({ tracking, html, text, attachment, attachments = [], audience, notificationId, art, artCid }: { attachments?: PdfAttachment[]; audience?: MailAudience; art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
+export type MailAudience = { to: string; subject: string; threadId?: string | null; lastRfcMessageId?: string | null; references?: string[] };
+async function sendMime({ tracking, html, text, attachment, attachments = [], audience, notificationId, art, artCid, eventCreatedAt }: { eventCreatedAt?: Date; attachments?: PdfAttachment[]; audience?: MailAudience; art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const to = z.email().parse(audience?.to ?? tracking.order.customerEmail);
+  const cc = await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, to);
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);
   const headers = [
     `From: Fondo Editorial <${from}>`, `To: ${to}`,
-    ...(audience ? (audience.cc.length ? [`Cc: ${[...new Set(audience.cc.map((email) => z.email().parse(email)))].filter((email) => email !== to).join(", ")}`] : []) : (to.toLowerCase() === MASTER_EMAIL ? [] : [`Cc: ${MASTER_EMAIL}`])),
+    ...(cc.length ? [`Cc: ${cc.join(", ")}`] : []),
     `Subject: ${audience ? formatSubject(audience.subject) : notificationId && tracking.emailSubjectHeader ? formatSubject(tracking.emailSubjectHeader) : formatSubject(emailSubject(tracking.order.orderNumber))}`,
     `Date: ${new Date().toUTCString()}`,
-    ...(!audience && tracking.handlerEmail && ![to.toLowerCase(), MASTER_EMAIL, from.toLowerCase()].includes(tracking.handlerEmail.toLowerCase()) ? [`Bcc: ${z.email().parse(tracking.handlerEmail)}`] : []),
     `Message-ID: ${messageId}`, "MIME-Version: 1.0",
     ...(audience ? (audience.lastRfcMessageId ? [`In-Reply-To: ${audience.lastRfcMessageId}`, `References: ${[...new Set([...(audience.references ?? []), audience.lastRfcMessageId])].slice(-10).join("\r\n ")}`] : []) : notificationId ? [`In-Reply-To: ${tracking.emailLastRfcMessageId ?? originalMessageId(tracking)}`, `References: ${[...new Set([originalMessageId(tracking), ...tracking.emailReferences.slice(-8), tracking.emailLastRfcMessageId ?? originalMessageId(tracking)])].join("\r\n ")}`] : []),
   ];
@@ -176,10 +176,10 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const art: MailArt = notification.eventType === "CANCELADO" ? "rejected" : notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
   const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
-  return sendMime({ tracking, art, artCid, attachments, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
+  return sendMime({ tracking, art, artCid, attachments, eventCreatedAt: notification.createdAt, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
 }
 
-export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string, art: MailArt = "verified") {
+export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string, art: MailArt, eventCreatedAt: Date) {
   const artCid = `caja-${notificationId}@${new URL(getPublicOrigin()).hostname}`;
-  return sendMime({ tracking, audience, notificationId, html, text, art, artCid });
+  return sendMime({ tracking, audience, notificationId, html, text, art, artCid, eventCreatedAt });
 }

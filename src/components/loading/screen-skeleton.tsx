@@ -67,3 +67,7 @@ export function LoginSkeleton({ checking = false }: { checking?: boolean }) {
 export function DiscountsSkeleton({ coupons = false }: { coupons?: boolean }) {
   return <LoadingRegion label={coupons ? "Cargando cupones" : "Cargando promociones"}><Bones kind="heading" /><div className="mt-6 flex justify-end"><div className="w-40"><Bones kind="action" /></div></div><Table /></LoadingRegion>;
 }
+
+export function DashboardSkeleton() {
+  return <LoadingRegion label="Cargando indicadores"><Bones kind="heading" /><div className="mt-5 grid items-end gap-3 rounded-xl border border-border bg-muted/20 p-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.3fr_auto]">{Array.from({length: 4}, (_, i) => <Bones key={i} kind="field" />)}<div className="w-24"><Bones kind="action" /></div></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({length: 4}, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><div className="mt-6 grid gap-5 lg:grid-cols-2">{Array.from({length: 2}, (_, i) => <Card key={i}><Bones kind="preview" /></Card>)}</div><div className="mt-6"><Card lilac><Bones kind="lines" /></Card></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({length: 4}, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><Table /></LoadingRegion>;
+}

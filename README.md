@@ -48,6 +48,7 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/seguimiento/[token]` | Seguimiento público mediante enlace privado |
 | `/admin` | Redirige a Pedidos |
 | `/admin/pedidos` | Bandeja y atención de pedidos |
+| `/admin/dashboard` | Indicadores de pedidos, importes, atención y stock |
 | `/admin/inventario` | Publicaciones, stock y precios |
 | `/admin/promociones` | Campañas, fechas, públicos y títulos |
 | `/admin/cupones` | Códigos, vigencia y límites de uso |
@@ -175,3 +176,13 @@ El reinicio autorizado conserva configuración y migraciones, pero exige volver 
 - **Dependencias:** ejecutar `pnpm audit --prod` al actualizar el stack. `pnpm-workspace.yaml` contiene un override puntual para el esbuild transitivo del loader de Drizzle; conservarlo hasta que la dependencia de origen incorpore una versión corregida.
 
 Conserva migraciones, snapshots, journal, guías y la atribución de los datos de ubigeo. Mantén desarrollo/validación en una BD separada y acuerda respaldos/restauración de la BD y conservación de archivos Drive antes de operar con datos reales. Las comprobaciones locales de código no sustituyen la validación real de Google OAuth, Drive/Gmail y el bloque WordPress.
+
+## Dashboard y seguimiento del equipo
+
+Todos los gestores pueden consultar `/admin/dashboard`. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
+
+El importe solicitado excluye cancelados; el importe verificado suma únicamente los pagos aprobados por sello, incluso si el otro sello de un pedido mixto sigue pendiente. Los importes incluyen el envío correspondiente y los descuentos aplicados. No son un reporte de conciliación bancaria ni de devoluciones. Los tiempos muestran la mediana y su muestra, en horas/días calendario, incluyendo esperas del comprador. Primera asignación se obtiene del historial, despacho/entrega desde el registro y emisión desde la solicitud a caja.
+
+Gráficas shadcn/ui con Recharts y tablas complementarias muestran evolución y títulos más solicitados; tarjetas resumen estados, stock bajo/agotado y atención por responsable. El botón de actualizar consulta nuevamente, sin refresco periódico. Sin pedidos, aparecen valores cero o «Sin datos», nunca datos de ejemplo.
+
+Los correos al comprador y a caja incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. La recuperación técnica de avisos fallidos sigue automática, pero no incorpora gestores recién añadidos a esos avisos anteriores. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.

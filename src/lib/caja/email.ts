@@ -2,14 +2,13 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { and, asc, eq, gte, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { authorizedEmails, cajaNotifications, cajaRequests, orders, user } from "@/db/schema";
+import { authorizedEmails, cajaNotifications, cajaRequests, orders } from "@/db/schema";
 import { readSentMailHeaders, sendCajaEmail } from "@/lib/google";
 import { emailAction, emailShell, emailStateHeading, escapeHtml } from "@/lib/orders/email-template";
 import { getTrackedOrder } from "@/lib/orders/tracking";
 import { getPublicOrigin } from "@/lib/payments/config";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { imprintNames } from "@/lib/orders/types";
-import { MASTER_EMAIL } from "@/lib/access-policy";
 import { reportServerError } from "@/lib/server-diagnostics";
 
 async function runCajaPass(id: string) {
@@ -39,11 +38,10 @@ async function runCajaPass(id: string) {
       const [event] = await withReadDatabase((db) => db.select().from(cajaNotifications).where(and(eq(cajaNotifications.requestId, id), and(ne(cajaNotifications.status, "ENVIADO"), ne(cajaNotifications.status, "OMITIDO")))).orderBy(asc(cajaNotifications.createdAt), asc(cajaNotifications.id)).limit(1));
       if (!event) break;
       if (event.attempts >= 5 || (event.lastAttemptAt && Date.now() - event.lastAttemptAt.getTime() < (event.status === "ENVIANDO" ? 180_000 : 60_000))) break;
-      const { request, order, responsible, handler } = await withReadDatabase(async (db) => {
+      const { request, order, responsible } = await withReadDatabase(async (db) => {
         const [row] = await db.select({ request: cajaRequests, order: orders }).from(cajaRequests).innerJoin(orders, eq(orders.id, cajaRequests.orderId)).where(eq(cajaRequests.id, id));
         const [responsible] = await db.select({ email: authorizedEmails.email }).from(authorizedEmails).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.publisherImprint, row.request.publisherImprint)));
-        const [handler] = row.order.assignedTo ? await db.select({ email: user.email }).from(user).innerJoin(authorizedEmails, eq(user.email, authorizedEmails.email)).where(and(eq(user.id, row.order.assignedTo), eq(authorizedEmails.role, "gestor"))) : [];
-        return { ...row, responsible, handler };
+        return { ...row, responsible };
       });
       if (!responsible) break; // Durable request, no invented recipient.
       const tracking = await getTrackedOrder(order.trackingToken); if (!tracking) break;
@@ -65,7 +63,7 @@ async function runCajaPass(id: string) {
       }));
       if (!ready) continue;
       try {
-        const sent = await sendCajaEmail(tracking, { to: responsible.email, cc: [...new Set([MASTER_EMAIL, ...(handler ? [handler.email] : [])])], subject: request.subjectHeader ?? `Caja · Pedido ${order.orderNumber} · ${imprintNames[request.publisherImprint]}`, threadId: request.gmailThreadId, lastRfcMessageId: request.lastRfcMessageId, references: request.rfcReferences }, event.id, html, `${title}\n${body}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\nCaja: ${cashLink}\nFondo Editorial: ${adminLink}`, event.eventType === "SOLICITUD" ? "review" : event.eventType === "FINALIZADA" ? "verified" : "rejected");
+        const sent = await sendCajaEmail(tracking, { to: responsible.email, subject: request.subjectHeader ?? `Caja · Pedido ${order.orderNumber} · ${imprintNames[request.publisherImprint]}`, threadId: request.gmailThreadId, lastRfcMessageId: request.lastRfcMessageId, references: request.rfcReferences }, event.id, html, `${title}\n${body}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\nCaja: ${cashLink}\nFondo Editorial: ${adminLink}`, event.eventType === "SOLICITUD" ? "review" : event.eventType === "FINALIZADA" ? "verified" : "rejected", event.createdAt);
         await withDatabase((db) => db.update(cajaNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id, lastAttemptAt: null }).where(eq(cajaNotifications.id, event.id)));
         // The next iteration verifies this message before sending another.
       } catch (error) { await withDatabase((db) => db.update(cajaNotifications).set({ status: "ERROR" }).where(and(eq(cajaNotifications.id, event.id), ne(cajaNotifications.status, "ENVIADO")))); reportServerError("caja.mail.send", error); break; }
