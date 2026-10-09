@@ -104,11 +104,12 @@ export async function readSentMailHeaders(messageId: string) {
 }
 
 export type PdfAttachment = { filename: string; content: Buffer };
-export type MailAudience = { to: string; subject: string; threadId?: string | null; lastRfcMessageId?: string | null; references?: string[] };
+export type MailAudience = { to: string[]; subject: string; threadId?: string | null; lastRfcMessageId?: string | null; references?: string[] };
 async function sendMime({ tracking, html, text, attachment, attachments = [], audience, notificationId, art, artCid, eventCreatedAt }: { eventCreatedAt?: Date; attachments?: PdfAttachment[]; audience?: MailAudience; art: MailArt; artCid: string; tracking: Tracking; html: string; text: string; attachment?: { filename: string; content: Buffer }; notificationId?: string }) {
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
-  const to = z.email().parse(audience?.to ?? tracking.order.customerEmail);
-  const cc = await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, to);
+  const recipients = [...new Set(z.array(z.email()).min(1).parse(audience?.to ?? [tracking.order.customerEmail]).map((email) => email.toLowerCase()))];
+  const to = recipients.join(", ");
+  const cc = await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);

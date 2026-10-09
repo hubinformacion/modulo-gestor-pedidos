@@ -219,7 +219,7 @@ export const authorizedEmails = pgTable("authorized_emails", {
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("authorized_emails_caja_imprint_unique").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
+  index("authorized_emails_caja_imprint_idx").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
   check("authorized_emails_role", sql`(${table.role} = 'gestor' AND ${table.publisherImprint} IS NULL) OR (${table.role} = 'caja' AND ${table.publisherImprint} IS NOT NULL)`),
   check("authorized_emails_master_role", sql`${table.email} <> 'distribucionfe@continental.edu.pe' OR ${table.role} = 'gestor'`),
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
@@ -347,6 +347,10 @@ export const cajaRequests = pgTable("caja_requests", {
   draftDocumentId: uuid("draft_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   finalizedDocumentId: uuid("finalized_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   returnReason: text("return_reason"),
+  assignedTo: text("assigned_to").references(() => authUser.id, { onDelete: "restrict" }),
+  assignedName: text("assigned_name"),
+  assignedAt: timestamp("assigned_at", { withTimezone: true }),
+  assignmentToken: uuid("assignment_token"),
   finalizedBy: text("finalized_by"),
   finalizedAt: timestamp("finalized_at", { withTimezone: true }),
   gmailThreadId: text("gmail_thread_id"),
@@ -358,6 +362,8 @@ export const cajaRequests = pgTable("caja_requests", {
   ...timestamps(),
 }, (table) => [
   uniqueIndex("caja_requests_order_imprint_unique").on(table.orderId, table.publisherImprint),
+  check("caja_requests_assignment", sql`(${table.assignedTo} IS NULL AND ${table.assignedName} IS NULL AND ${table.assignedAt} IS NULL AND ${table.assignmentToken} IS NULL) OR (${table.assignedTo} IS NOT NULL AND ${table.assignedName} IS NOT NULL AND ${table.assignedAt} IS NOT NULL AND ${table.assignmentToken} IS NOT NULL)`),
+  index("caja_requests_assigned_idx").on(table.assignedTo, table.status),
   index("caja_requests_inbox_idx").on(table.publisherImprint, table.status, table.createdAt),
   check("caja_requests_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA','ANULADA') AND ${table.cycle} > 0`),
   check("caja_requests_finalized", sql`${table.status} <> 'FINALIZADA' OR (${table.finalizedDocumentId} IS NOT NULL AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL)`),

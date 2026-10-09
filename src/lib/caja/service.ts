@@ -1,5 +1,5 @@
 import "server-only";
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { and, asc, count, eq, gt, inArray } from "drizzle-orm";
 import { withDatabase, withReadDatabase, type Database } from "@/db";
 import { cajaNotifications, cajaRequests, orderActivity, orderEmails, orderNotifications, orders, saleDocumentBatches, saleDocuments } from "@/db/schema";
@@ -27,6 +27,7 @@ async function lockRequest(tx: Transaction, id: string) {
 }
 function checkCaja(request: typeof cajaRequests.$inferSelect, actor: AuthorizedActor, cycle: number) {
   if (actor.publisherImprint !== request.publisherImprint) throw new CajaError("No tienes acceso a esta solicitud.");
+  if (request.assignedTo !== actor.userId) throw new CajaError("Toma la atención de la solicitud para modificar su PDF.");
   if (request.cycle !== cycle || ["FINALIZADA", "ANULADA"].includes(request.status)) throw new CajaError("La solicitud cambió o ya fue finalizada. Actualiza la página.");
 }
 function checkVersion(actual: Date, expected: string) {
@@ -42,13 +43,14 @@ export async function uploadSaleDocument(actor: AuthorizedActor, id: string, upl
     const { request } = await lockRequest(tx, id);
     checkCaja(request, actor, cycle);
     const [document] = await tx.select().from(saleDocuments).where(eq(saleDocuments.id, uploadId));
-    return document;
+    return { document, token: request.assignmentToken };
   }));
-  const driveFileId = previous?.driveFileId ?? await reserveDriveFileId();
+  const driveFileId = previous.document?.driveFileId ?? await reserveDriveFileId();
   const intent = await withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
     const { order, request } = await lockRequest(tx, id);
     checkCaja(request, actor, cycle);
+    if (request.assignmentToken !== previous.token) throw new CajaError("La atención cambió durante la carga. Actualiza la solicitud.");
     const [stored] = await tx.select().from(saleDocuments).where(eq(saleDocuments.id, uploadId));
     if (stored) {
       if (stored.requestId !== id || stored.cycle !== cycle || stored.actorEmail !== actor.email || stored.contentHash !== hash || stored.fileName !== filename) throw new CajaError("El intento no corresponde a este PDF. Selecciónalo de nuevo.");
@@ -64,6 +66,7 @@ export async function uploadSaleDocument(actor: AuthorizedActor, id: string, upl
     await assertAccessRole(tx, actor, "caja");
     const { request } = await lockRequest(tx, id);
     checkCaja(request, actor, cycle);
+    if (request.assignmentToken !== previous.token) throw new CajaError("La atención cambió durante la carga. Actualiza la solicitud.");
     await tx.update(saleDocuments).set({ driveViewUrl: uploaded.driveViewUrl, uploadedAt: intent.document.uploadedAt ?? new Date() }).where(eq(saleDocuments.id, uploadId));
     // An already persisted retry must not replace a newer draft.
     if (intent.document.uploadedAt && request.draftDocumentId !== uploadId) throw new CajaError("Hay un PDF más reciente. Actualiza la solicitud.");
@@ -77,6 +80,7 @@ export async function finalizeSaleDocument(actor: AuthorizedActor, input: { id: 
     const { order, request } = await lockRequest(tx, input.id);
     if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido fue anulado. No admite emisión de documentos.");
     if (actor.publisherImprint !== request.publisherImprint) throw new CajaError("No tienes acceso a esta solicitud.");
+    if (request.assignedTo !== actor.userId) throw new CajaError("Solo el responsable de caja puede finalizar esta solicitud.");
     if (request.status === "FINALIZADA" && request.finalizedDocumentId === input.documentId) return { requestId: request.id, token: order.trackingToken };
     checkCaja(request, actor, request.cycle); checkVersion(request.updatedAt, input.version);
     const [document] = await tx.select().from(saleDocuments).where(eq(saleDocuments.id, input.documentId));
@@ -105,7 +109,7 @@ export async function returnSaleDocument(actor: AuthorizedActor, input: { id: st
     if (request.status !== "FINALIZADA") throw new CajaError("Esta solicitud no está finalizada.");
     const [sending] = await tx.select({ id: orderNotifications.id }).from(orderNotifications).innerJoin(orderEmails, eq(orderEmails.orderId, orderNotifications.orderId)).where(and(eq(orderNotifications.orderId, order.id), eq(orderNotifications.eventType, "DOCUMENTOS_VENTA"), eq(orderNotifications.status, "ENVIANDO"), gt(orderEmails.leaseUntil, new Date()))).limit(1);
     if (sending) throw new CajaError("Los documentos se están enviando al comprador. Espera un momento antes de solicitar la corrección.");
-    await tx.update(cajaRequests).set({ status: "DEVUELTA", cycle: request.cycle + 1, draftDocumentId: null, returnReason: input.reason }).where(eq(cajaRequests.id, request.id));
+    await tx.update(cajaRequests).set({ status: "DEVUELTA", assignedTo: null, assignedName: null, assignedAt: null, assignmentToken: null, cycle: request.cycle + 1, draftDocumentId: null, returnReason: input.reason }).where(eq(cajaRequests.id, request.id));
     await tx.insert(cajaNotifications).values({ requestId: request.id, cycle: request.cycle + 1, eventType: "DEVUELTA", reason: input.reason });
     await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "CAJA_DEVUELTA", detail: `Documento de ${request.publisherImprint === "universidad" ? "Universidad" : "Instituto"} devuelto a caja: ${input.reason}` });
     return { requestId: request.id, token: order.trackingToken };
@@ -157,5 +161,20 @@ export async function removeSaleDraft(actor: AuthorizedActor, input: { id: strin
     const [updated] = await tx.update(cajaRequests).set({ draftDocumentId: null }).where(eq(cajaRequests.id, request.id)).returning();
     // Immutable source stays private for audit; only remove its draft selection.
     return updated.updatedAt.toISOString();
+  }));
+}
+
+export async function changeCajaAssignment(actor: AuthorizedActor, input: { id: string; version: string; operation: "claim" | "release" }) {
+  return withDatabase((db) => db.transaction(async (tx) => {
+    await assertAccessRole(tx, actor, "caja");
+    const { order, request } = await lockRequest(tx, input.id);
+    if (request.publisherImprint !== actor.publisherImprint) throw new CajaError("No tienes acceso a esta solicitud.");
+    if (order.orderStatus === "CANCELADO" || ["FINALIZADA", "ANULADA"].includes(request.status)) throw new CajaError("La solicitud ya está cerrada.");
+    if (input.operation === "claim" && request.assignedTo === actor.userId) return;
+    checkVersion(request.updatedAt, input.version);
+    if (input.operation === "claim" && request.assignedTo) throw new CajaError("Otra persona ya tomó la solicitud. Actualiza la página.");
+    if (input.operation === "release" && request.assignedTo !== actor.userId) throw new CajaError("Solo el responsable puede liberar la solicitud.");
+    await tx.update(cajaRequests).set(input.operation === "claim" ? { assignedTo: actor.userId, assignedName: actor.name, assignedAt: new Date(), assignmentToken: randomUUID() } : { assignedTo: null, assignedName: null, assignedAt: null, assignmentToken: null }).where(eq(cajaRequests.id, request.id));
+    await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: input.operation === "claim" ? "CAJA_ASIGNADA" : "CAJA_LIBERADA", detail: input.operation === "claim" ? `${actor.name} tomó la emisión de ${request.publisherImprint === "universidad" ? "Universidad" : "Instituto"}.` : "La emisión está disponible para otra persona de caja." });
   }));
 }

@@ -1,6 +1,6 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
-import { and, asc, eq, gte, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, gte, isNull, lt, lte, ne, or, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { authorizedEmails, cajaNotifications, cajaRequests, orders } from "@/db/schema";
 import { readSentMailHeaders, sendCajaEmail } from "@/lib/google";
@@ -38,12 +38,16 @@ async function runCajaPass(id: string) {
       const [event] = await withReadDatabase((db) => db.select().from(cajaNotifications).where(and(eq(cajaNotifications.requestId, id), and(ne(cajaNotifications.status, "ENVIADO"), ne(cajaNotifications.status, "OMITIDO")))).orderBy(asc(cajaNotifications.createdAt), asc(cajaNotifications.id)).limit(1));
       if (!event) break;
       if (event.attempts >= 5 || (event.lastAttemptAt && Date.now() - event.lastAttemptAt.getTime() < (event.status === "ENVIANDO" ? 180_000 : 60_000))) break;
-      const { request, order, responsible } = await withReadDatabase(async (db) => {
+      const { request, order, responsibles, configured } = await withReadDatabase(async (db) => {
         const [row] = await db.select({ request: cajaRequests, order: orders }).from(cajaRequests).innerJoin(orders, eq(orders.id, cajaRequests.orderId)).where(eq(cajaRequests.id, id));
-        const [responsible] = await db.select({ email: authorizedEmails.email }).from(authorizedEmails).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.publisherImprint, row.request.publisherImprint)));
-        return { ...row, responsible };
+        const configured = await db.select({ email: authorizedEmails.email, addedAt: authorizedEmails.createdAt }).from(authorizedEmails).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.publisherImprint, row.request.publisherImprint)));
+        return { ...row, configured, responsibles: configured.filter((person) => person.addedAt <= event.createdAt) };
       });
-      if (!responsible) break; // Durable request, no invented recipient.
+      if (!configured.length) break; // No invented recipient or historical backfill.
+      if (!responsibles.length) {
+        await withDatabase((db) => db.update(cajaNotifications).set({ status: "OMITIDO" }).where(and(eq(cajaNotifications.id, event.id), ne(cajaNotifications.status, "ENVIADO"))));
+        continue; // An old failure must not be sent to newly added/reinstated users.
+      }
       const tracking = await getTrackedOrder(order.trackingToken); if (!tracking) break;
       if (order.orderStatus === "CANCELADO" && event.eventType !== "ANULADA") { await withDatabase((db) => db.update(cajaNotifications).set({ status: "OMITIDO" }).where(eq(cajaNotifications.id, event.id))); continue; }
       const title = event.eventType === "ANULADA" ? "Solicitud anulada" : event.eventType === "SOLICITUD" ? `Emisión de ${order.billingRuc ? "factura" : "boleta"}` : event.eventType === "DEVUELTA" ? "Corrección solicitada" : "Documento de venta finalizado";
@@ -63,7 +67,7 @@ async function runCajaPass(id: string) {
       }));
       if (!ready) continue;
       try {
-        const sent = await sendCajaEmail(tracking, { to: responsible.email, subject: request.subjectHeader ?? `Caja · Pedido ${order.orderNumber} · ${imprintNames[request.publisherImprint]}`, threadId: request.gmailThreadId, lastRfcMessageId: request.lastRfcMessageId, references: request.rfcReferences }, event.id, html, `${title}\n${body}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\nCaja: ${cashLink}\nFondo Editorial: ${adminLink}`, event.eventType === "SOLICITUD" ? "review" : event.eventType === "FINALIZADA" ? "verified" : "rejected", event.createdAt);
+        const sent = await sendCajaEmail(tracking, { to: responsibles.map((person) => person.email), subject: request.subjectHeader ?? `Caja · Pedido ${order.orderNumber} · ${imprintNames[request.publisherImprint]}`, threadId: request.gmailThreadId, lastRfcMessageId: request.lastRfcMessageId, references: request.rfcReferences }, event.id, html, `${title}\n${body}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}\nCaja: ${cashLink}\nFondo Editorial: ${adminLink}`, event.eventType === "SOLICITUD" ? "review" : event.eventType === "FINALIZADA" ? "verified" : "rejected", event.createdAt);
         await withDatabase((db) => db.update(cajaNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id, lastAttemptAt: null }).where(eq(cajaNotifications.id, event.id)));
         // The next iteration verifies this message before sending another.
       } catch (error) { await withDatabase((db) => db.update(cajaNotifications).set({ status: "ERROR" }).where(and(eq(cajaNotifications.id, event.id), ne(cajaNotifications.status, "ENVIADO")))); reportServerError("caja.mail.send", error); break; }
@@ -80,7 +84,7 @@ export async function deliverCajaEmail(id: string) {
 export async function recoverCajaMail(resetExhausted = false) {
   try {
     if (resetExhausted) await withDatabase((db) => db.update(cajaNotifications).set({ status: "PENDIENTE", attempts: 0, lastAttemptAt: null }).where(and(eq(cajaNotifications.status, "ERROR"), gte(cajaNotifications.attempts, 5), lt(cajaNotifications.lastAttemptAt, new Date(Date.now() - 3600_000)))));
-    const pending = await withReadDatabase((db) => db.selectDistinct({ id: cajaRequests.id }).from(cajaRequests).innerJoin(cajaNotifications, eq(cajaNotifications.requestId, cajaRequests.id)).innerJoin(authorizedEmails, and(eq(authorizedEmails.publisherImprint, cajaRequests.publisherImprint), eq(authorizedEmails.role, "caja"))).where(and(or(isNull(cajaRequests.leaseUntil), lt(cajaRequests.leaseUntil, new Date())), or(and(and(ne(cajaNotifications.status, "ENVIADO"), ne(cajaNotifications.status, "OMITIDO")), lt(cajaNotifications.attempts, 5)), and(eq(cajaNotifications.status, "ENVIADO"), isNull(cajaNotifications.rfcMessageId))), or(isNull(cajaNotifications.lastAttemptAt), lt(cajaNotifications.lastAttemptAt, new Date(Date.now() - 180_000))))).limit(10));
+    const pending = await withReadDatabase((db) => db.selectDistinct({ id: cajaRequests.id }).from(cajaRequests).innerJoin(cajaNotifications, eq(cajaNotifications.requestId, cajaRequests.id)).innerJoin(authorizedEmails, and(eq(authorizedEmails.publisherImprint, cajaRequests.publisherImprint), eq(authorizedEmails.role, "caja"), lte(authorizedEmails.createdAt, cajaNotifications.createdAt))).where(and(or(isNull(cajaRequests.leaseUntil), lt(cajaRequests.leaseUntil, new Date())), or(and(and(ne(cajaNotifications.status, "ENVIADO"), ne(cajaNotifications.status, "OMITIDO")), lt(cajaNotifications.attempts, 5)), and(eq(cajaNotifications.status, "ENVIADO"), isNull(cajaNotifications.rfcMessageId))), or(isNull(cajaNotifications.lastAttemptAt), lt(cajaNotifications.lastAttemptAt, new Date(Date.now() - 180_000))))).limit(10));
     const started = Date.now(); let processed = 0;
     for (const row of pending) { if (Date.now() - started > 50_000) break; await deliverCajaEmail(row.id); processed++; }
     return processed;

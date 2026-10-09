@@ -68,3 +68,17 @@ export async function removeSaleDraftAction(input: unknown) {
     return { success: true as const, version };
   } catch (error) { return failure(error); }
 }
+
+export async function assignCajaAction(input: unknown) {
+  const { cajaAssignmentSchema } = await import("@/lib/caja/validation");
+  const parsed = cajaAssignmentSchema.safeParse(input);
+  if (!parsed.success) return { success: false as const, message: "Actualiza la solicitud antes de continuar." };
+  try {
+    const { changeCajaAssignment } = await import("@/lib/caja/service");
+    const requestHeaders = await headers();
+    const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
+    await changeCajaAssignment(actor, parsed.data);
+    revalidatePath("/caja", "layout"); revalidatePath("/admin/pedidos", "layout");
+    return { success: true as const, message: parsed.data.operation === "claim" ? "Atención tomada." : "Solicitud liberada." };
+  } catch (error) { return failure(error); }
+}

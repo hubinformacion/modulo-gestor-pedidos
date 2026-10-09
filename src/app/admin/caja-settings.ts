@@ -2,7 +2,7 @@
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { authorizedEmails, session, user } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
@@ -10,7 +10,7 @@ import { AccessError, isMasterEmail } from "@/lib/access-policy";
 import { assertAuthorized } from "@/lib/transaction-access";
 import { cajaSettingsSchema } from "@/lib/caja/validation";
 import { CajaError } from "@/lib/caja/service";
-import { recoverCajaMail } from "@/lib/caja/email";
+import { releaseCajaAssignments } from "@/lib/caja/release-assignments";
 import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
 import { reportServerError } from "@/lib/server-diagnostics";
 export async function saveCajaResponsibleAction(input: unknown) {
@@ -24,28 +24,27 @@ export async function saveCajaResponsibleAction(input: unknown) {
       await db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`caja-responsible:${parsed.data.imprint}`}))`);
-        const [current] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.publisherImprint, parsed.data.imprint)).for("update");
-        if ((current?.email ?? "") !== parsed.data.previousEmail) throw new CajaError("La configuración cambió. Actualiza la página.");
-        if (current?.email === parsed.data.email) return;
-        if (parsed.data.email && (isMasterEmail(parsed.data.email) || parsed.data.email === process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase())) throw new CajaError("Usa una cuenta exclusiva de caja, distinta del maestro y del propietario Google.");
-        if (parsed.data.email) {
-          const [existing] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, parsed.data.email));
-          if (existing) throw new CajaError("Este correo ya tiene otro acceso. Usa una cuenta diferente o revoca su acceso anterior.");
+        const { email, imprint, operation } = parsed.data;
+        if (isMasterEmail(email) || email === process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase()) throw new CajaError("Usa una cuenta de caja distinta del maestro y del propietario Google.");
+        const [current] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, email)).for("update");
+        if (operation === "add") {
+          if (current) throw new CajaError("Este correo ya tiene acceso. Revócalo antes de cambiar su rol o sello.");
+          await tx.insert(authorizedEmails).values({ email, role: "caja", publisherImprint: imprint, addedBy: actor.email });
+        } else {
+          if (!current || current.role !== "caja" || current.publisherImprint !== imprint) throw new CajaError("El acceso cambió. Actualiza la página.");
+          await tx.delete(authorizedEmails).where(and(eq(authorizedEmails.email, email), eq(authorizedEmails.role, "caja"), eq(authorizedEmails.publisherImprint, imprint)));
+          const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, email));
+          await releaseCajaAssignments(tx, owners.map((owner) => owner.id), actor);
+          for (const owner of owners) await tx.delete(session).where(eq(session.userId, owner.id));
         }
-        if (current) {
-          await tx.delete(authorizedEmails).where(eq(authorizedEmails.email, current.email));
-          const [owner] = await tx.select({ id: user.id }).from(user).where(eq(user.email, current.email));
-          if (owner) await tx.delete(session).where(eq(session.userId, owner.id));
-        }
-        if (parsed.data.email) await tx.insert(authorizedEmails).values({ email: parsed.data.email, role: "caja", publisherImprint: parsed.data.imprint, addedBy: actor.email });
       });
     });
-    revalidatePath("/admin/configuracion");
+    revalidatePath("/admin/configuracion"); revalidatePath("/caja", "layout");
     after(async () => {
-      try { await synchronizeDriveReaders(); await recoverCajaMail(); }
+      try { await synchronizeDriveReaders(); }
       catch (error) { reportServerError("caja.config.recovery", error); }
     });
-    return { success: true, message: parsed.data.email ? "Responsable de caja actualizado." : "Acceso de caja revocado." };
+    return { success: true, message: parsed.data.operation === "add" ? "Responsable de caja añadido." : "Acceso revocado y solicitudes abiertas liberadas." };
   } catch (error) {
     if (!(error instanceof AccessError || error instanceof CajaError)) reportServerError("caja.config.failed", error);
     return { success: false, message: error instanceof AccessError || error instanceof CajaError ? error.message : "No se pudo actualizar el acceso de caja." };

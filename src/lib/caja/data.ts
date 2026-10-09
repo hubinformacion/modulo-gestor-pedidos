@@ -3,7 +3,7 @@ import { headers } from "next/headers";
 import { previousSaleDocuments } from "./document-history";
 import { ensureCajaFileReader } from "./drive-access";
 import { reportServerError } from "@/lib/server-diagnostics";
-import { and, asc, count, desc, eq, ilike, ne, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, ilike, isNull, ne, or, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { books, cajaRequests, orderItems, orders, paymentReceipts, saleDocumentBatches, saleDocuments } from "@/db/schema";
 import { getCajaSession } from "@/lib/access";
@@ -14,9 +14,9 @@ export async function cajaInbox(filters: z.infer<typeof cajaFiltersSchema>) {
   const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
   return withReadDatabase(async (db) => {
     const term = `%${filters.q.replace(/[\\%_]/g, "\\$&")}%`;
-    const where = and(eq(cajaRequests.publisherImprint, actor.publisherImprint!), filters.state === "pending" ? and(ne(cajaRequests.status, "FINALIZADA"), ne(cajaRequests.status, "ANULADA")) : filters.state === "finished" ? eq(cajaRequests.status, "FINALIZADA") : filters.state === "cancelled" ? eq(cajaRequests.status, "ANULADA") : undefined, filters.q ? or(ilike(orders.orderNumber, term), ilike(orders.customerName, term), ilike(orders.billingBusinessName, term)) : undefined);
+    const where = and(eq(cajaRequests.publisherImprint, actor.publisherImprint!), filters.owner === "mine" ? eq(cajaRequests.assignedTo, actor.userId) : filters.owner === "unassigned" ? and(isNull(cajaRequests.assignedTo), ne(cajaRequests.status, "FINALIZADA"), ne(cajaRequests.status, "ANULADA")) : undefined, filters.state === "pending" ? and(ne(cajaRequests.status, "FINALIZADA"), ne(cajaRequests.status, "ANULADA")) : filters.state === "finished" ? eq(cajaRequests.status, "FINALIZADA") : filters.state === "cancelled" ? eq(cajaRequests.status, "ANULADA") : undefined, filters.q ? or(ilike(orders.orderNumber, term), ilike(orders.customerName, term), ilike(orders.billingBusinessName, term)) : undefined);
     const [rows, totals] = await Promise.all([
-      db.select({ id: cajaRequests.id, number: orders.orderNumber, customer: orders.customerName, businessName: orders.billingBusinessName, invoice: sql<boolean>`${orders.billingRuc} IS NOT NULL`, amount: sql<string>`CASE WHEN ${cajaRequests.publisherImprint} = 'universidad' THEN ${orders.totalUniversidad} ELSE ${orders.totalInstituto} END`, status: cajaRequests.status, draftId: cajaRequests.draftDocumentId, createdAt: cajaRequests.createdAt }).from(cajaRequests).innerJoin(orders, eq(orders.id, cajaRequests.orderId)).where(where).orderBy(desc(cajaRequests.createdAt), desc(cajaRequests.id)).limit(20).offset((filters.page - 1) * 20),
+      db.select({ id: cajaRequests.id, number: orders.orderNumber, customer: orders.customerName, businessName: orders.billingBusinessName, invoice: sql<boolean>`${orders.billingRuc} IS NOT NULL`, amount: sql<string>`CASE WHEN ${cajaRequests.publisherImprint} = 'universidad' THEN ${orders.totalUniversidad} ELSE ${orders.totalInstituto} END`, status: cajaRequests.status, assignedName: cajaRequests.assignedName, draftId: cajaRequests.draftDocumentId, createdAt: cajaRequests.createdAt }).from(cajaRequests).innerJoin(orders, eq(orders.id, cajaRequests.orderId)).where(where).orderBy(desc(cajaRequests.createdAt), desc(cajaRequests.id)).limit(20).offset((filters.page - 1) * 20),
       db.select({ total: count() }).from(cajaRequests).innerJoin(orders, eq(orders.id, cajaRequests.orderId)).where(where),
     ]);
     return { rows, total: totals[0].total };
@@ -51,5 +51,5 @@ export async function cajaDetail(id: string) {
     catch (error) { reportServerError("caja.drive.access.pending", error); return { ...file, driveReady: false }; }
   };
   const [receipts, documents] = await Promise.all([Promise.all(detail.receipts.map(prepare)), Promise.all(detail.documents.map((file) => (file.id === detail.request.draftDocumentId || file.id === detail.request.finalizedDocumentId || historyIds.has(file.id)) ? prepare(file) : Promise.resolve({ ...file, driveReady: false })))]);
-  return { ...detail, receipts, documents, history: documents.filter((file) => historyIds.has(file.id)) };
+  return { ...detail, actorId: actor.userId, receipts, documents, history: documents.filter((file) => historyIds.has(file.id)) };
 }

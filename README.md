@@ -134,7 +134,7 @@ No hay consultas periódicas del navegador: las pantallas actualizan tras operac
 
 ## Emisión por caja
 
-Configura un correo Google por sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
+Configura los correos Google de cada sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
 
 Caja adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
@@ -186,3 +186,12 @@ El importe solicitado excluye cancelados; el importe verificado suma únicamente
 Gráficas shadcn/ui con Recharts y tablas complementarias muestran evolución y títulos más solicitados; tarjetas resumen estados, stock bajo/agotado y atención por responsable. El botón de actualizar consulta nuevamente, sin refresco periódico. Sin pedidos, aparecen valores cero o «Sin datos», nunca datos de ejemplo.
 
 Los correos al comprador y a caja incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. La recuperación técnica de avisos fallidos sigue automática, pero no incorpora gestores recién añadidos a esos avisos anteriores. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
+
+
+## Varios responsables de caja
+
+El maestro añade o revoca correos individuales por sello en Configuración → Responsables de caja. Cada cuenta utiliza Google y pertenece a un único sello. Todas las personas del mismo sello pueden consultar su bandeja; filtra por Todas, Por asignar o Mis solicitudes.
+
+En el detalle, pulsa **Tomar atención** antes de cargar el PDF. Solo la persona asignada puede cargar, retirar o finalizar el documento; el resto consulta datos, vista previa e historial. **Liberar solicitud** permite el relevo conservando el borrador. Revocar un acceso cierra sus sesiones y libera sus solicitudes abiertas; los registros cerrados conservan su responsable. Una devolución a caja abre un nuevo ciclo disponible para el equipo.
+
+El correo interno de cada evento se envía una sola vez a los responsables elegibles de ese sello, con los gestores en CC. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; la recuperación técnica de fallos continúa automática. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
