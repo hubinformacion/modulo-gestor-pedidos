@@ -120,7 +120,7 @@ Para sintaxis/configuración/debug de librerías, SDK, API, CLI o servicios clou
 
 ## Dashboard y copias a gestores
 
-- Feature conjunta en feat/dashboard-y-correos-gestores, pendiente de validación/merge; no publicar por iniciativa propia. No migración ni datos ficticios para comprobar indicadores.
+- Dashboard y CC a gestores integrados tras validación del usuario. No requieren migraciones. No crear datos ficticios para comprobar indicadores; futuras ampliaciones mayores en rama y con validación antes de publicar.
 - Todos los correos nuevos del comprador/caja incluyen CC desde authorized_emails.role=gestor, sin Bcc al responsable, deduplicando el destinatario principal. Consultar permisos vigentes por envío y exigir created_at <= fecha del evento: alta/reincorporación no recibe avisos anteriores durante recuperación. No reenviar ENVIADO ni generar backfill al gestionar accesos. Usuario confirmó conservar recuperación técnica automática ante fallos; no aprobación humana de avisos.
 - Navegación principal: Pedidos → Dashboard → Inventario → Promociones → Cupones → Configuración. Dashboard organizado por pestañas Pedidos e importes / Atención / Inventario; tab en URL validada con Zod, conservando filtros entre pestañas y al actualizar. Inventario solo muestra filtro de sello, preservando los otros sin aplicarlos al stock.
 - /admin/dashboard: filtros Zod por registro del pedido, período máximo 366 días en hora Perú, sello y email del responsable actual/conservado al cierre (incluye históricos). Primera asignación se calcula desde el primer ASIGNADO de actividad, no el último assigned_at; tiempos medianos en horas/días calendario con muestra explícita, sin datos = NULL.
