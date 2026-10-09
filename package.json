@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate --config src/db/drizzle.config.ts",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "db:orders:clear": "tsx src/db/clear-orders.ts",
     "iframe:snippet": "tsx src/iframe/generate-snippet.ts",
     "email:assets": "tsx src/assets/email/generate.ts"
   },

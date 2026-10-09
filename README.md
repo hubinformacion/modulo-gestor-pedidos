@@ -167,6 +167,32 @@ Promociones y cupones están integrados. Las migraciones conservan datos existen
 
 El reinicio autorizado conserva configuración y migraciones, pero exige volver a registrar catálogo y accesos. Los archivos de Drive y correos ya enviados no se borran al reiniciar la BD. No repitas un reinicio sobre datos operativos.
 
+### Vaciar únicamente pedidos al terminar las demos
+
+`src/db/clear-orders.ts` elimina **todos los pedidos** de la BD indicada por `DATABASE_URL`, incluidos entregados y cancelados. No distingue pruebas de pedidos reales. Úsalo únicamente al cerrar las demos antes de recibir pedidos operativos y conserva un respaldo recuperable. Lee `.env.local` y después `.env`, sin reemplazar variables ya definidas en el entorno; verifica que apunten a la BD deseada.
+
+Vista previa de solo lectura (no modifica la BD ni consulta Google):
+
+```bash
+pnpm db:orders:clear
+```
+
+Antes del borrado, detén temporalmente el acceso público y administrativo a la aplicación y la ejecución del cron; espera a que terminen solicitudes, cargas y trabajos en curso. `--maintenance` confirma que hiciste esto, **no pone Vercel ni WordPress en mantenimiento**. Un lease de correo activo bloquea el comando. Los locks y la comparación de datos detectan cambios durante la limpieza, pero no pueden detener un envío o una carga que ya esté en Google.
+
+Para ejecutar el borrado explícitamente:
+
+```bash
+pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDOS
+```
+
+Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entrega, historial/notas, colas y referencias de correo, solicitudes/historial de caja, PDF de venta y sus lotes, registros de permisos individuales de caja, usos de cupones, snapshots de guías y contadores anuales. Los enlaces de seguimiento y descargas antiguas dejan de resolver; el siguiente pedido comienza en `1-AÑO`. Las guías PDF fuente bajo `src/assets/pdfs` se conservan.
+
+Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/caja/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
+
+Los archivos físicos en Drive y los mensajes ya enviados en Gmail **se conservan**, también las copias recibidas por compradores/gestores. El script no envía correos ni borra archivos. Antes de eliminar los registros de permisos individuales, usa las credenciales Google del propietario para retirar únicamente lectores directos gestionados de caja; conserva owners, writers y permisos heredados o no gestionados. Si no hay permisos gestionados, no requiere credenciales Google. Si falla la reconciliación, no borra los pedidos. Si falla después, las revocaciones Google ya realizadas no se revierten: mantén el mantenimiento, resuelve el error y repite. Un fallo de confirmación de `COMMIT` requiere revisar primero la vista previa.
+
+La restitución de stock, liberación de usos y eliminación se ejecutan en una sola transacción. Se enumeran las tablas con `RESTRICT`, sin `CASCADE` abierto; nuevas dependencias ajenas al alcance bloquean la limpieza para revisar el script. Una vez verificado el resultado, vuelve a habilitar el acceso y cron. No ejecutes este comando como parte del build, despliegue o cron.
+
 ## Diagnóstico y continuidad
 
 - **Acceso:** comprobar autorización/rol en Configuración. Un 503 indica fallo temporal del servicio; no eliminar cookies ni cambiar permisos como solución.
