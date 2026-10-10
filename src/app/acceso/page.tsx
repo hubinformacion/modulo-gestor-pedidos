@@ -10,5 +10,5 @@ export default async function AccessPage() {
     if (error instanceof AccessError && error.code !== "UNAVAILABLE") redirect("/login");
     throw error;
   });
-  redirect(actor.role === "caja" ? "/caja" : "/admin/pedidos");
+  redirect(actor.role === "caja" ? "/tesoreria-recaudacion" : "/admin/pedidos");
 }

@@ -11,7 +11,7 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 - Stock y numeración anual transaccionales; importes y datos de compra conservados como snapshots.
 - Promociones por temporada y cupones con límites de uso, sin acumulación de descuentos.
 - Pagos independientes por sello y carga automática de comprobantes en Drive.
-- Caja por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
+- Tesorería Recaudación por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
 - Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
 - Inventario editable en tabla; configuración de autorizados, campus, ubicaciones y cuentas.
 - Correos de avance en un mismo hilo, guías PDF y recuperación automática de avisos.
@@ -52,11 +52,11 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/admin/inventario` | Publicaciones, stock y precios |
 | `/admin/promociones` | Campañas, fechas, públicos y títulos |
 | `/admin/cupones` | Códigos, vigencia y límites de uso |
-| `/caja` | Bandeja exclusiva de caja, por sello |
-| `/caja/[id]` | Emisión y finalización de boleta/factura |
+| `/tesoreria-recaudacion` | Bandeja de Tesorería Recaudación, según sellos autorizados |
+| `/tesoreria-recaudacion/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
 
-El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Los responsables de caja tienen acceso exclusivo a su sello en `/caja`, configurado desde la pestaña Responsables de caja. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Responsables de caja. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
 
 ## Producción en Vercel
 
@@ -132,11 +132,11 @@ No hay consultas periódicas del navegador: las pantallas actualizan tras operac
 
 [AGENTS.md](AGENTS.md) conserva el contexto técnico y las reglas de trabajo para próximas sesiones.
 
-## Emisión por caja
+## Emisión por Tesorería Recaudación
 
-Configura los correos Google de cada sello desde **Configuración → Responsables de caja**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
+Configura los buzones de servicio y los accesos personales desde **Configuración → Tesorería Recaudación**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
 
-Caja adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y caja lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
+Tesorería Recaudación adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y Tesorería Recaudación lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
 La funcionalidad requiere las migraciones 0012 y 0013. Para validar cambios futuros, utiliza una BD separada de producción. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
 
@@ -187,7 +187,7 @@ pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDO
 
 Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entrega, historial/notas, colas y referencias de correo, solicitudes/historial de caja, PDF de venta y sus lotes, registros de permisos individuales de caja, usos de cupones, snapshots de guías y contadores anuales. Los enlaces de seguimiento y descargas antiguas dejan de resolver; el siguiente pedido comienza en `1-AÑO`. Las guías PDF fuente bajo `src/assets/pdfs` se conservan.
 
-Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/caja/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
+Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/tesoreria-recaudacion/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
 
 Los archivos físicos en Drive y los mensajes ya enviados en Gmail **se conservan**, también las copias recibidas por compradores/gestores. El script no envía correos ni borra archivos. Antes de eliminar los registros de permisos individuales, usa las credenciales Google del propietario para retirar únicamente lectores directos gestionados de caja; conserva owners, writers y permisos heredados o no gestionados. Si no hay permisos gestionados, no requiere credenciales Google. Si falla la reconciliación, no borra los pedidos. Si falla después, las revocaciones Google ya realizadas no se revierten: mantén el mantenimiento, resuelve el error y repite. Un fallo de confirmación de `COMMIT` requiere revisar primero la vista previa.
 
@@ -211,13 +211,23 @@ El importe solicitado excluye cancelados; el importe verificado suma únicamente
 
 Gráficas shadcn/ui con Recharts y tablas complementarias muestran evolución y títulos más solicitados; tarjetas resumen estados, stock bajo/agotado y atención por responsable. El botón de actualizar consulta nuevamente, sin refresco periódico. Sin pedidos, aparecen valores cero o «Sin datos», nunca datos de ejemplo.
 
-Los correos al comprador y a caja incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. La recuperación técnica de avisos fallidos sigue automática, pero no incorpora gestores recién añadidos a esos avisos anteriores. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
+Los correos al comprador incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Los avisos de Tesorería Recaudación se dirigen exclusivamente al buzón de servicio del sello, sin CC. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. La recuperación técnica de avisos fallidos sigue automática, pero no incorpora gestores recién añadidos a esos avisos anteriores. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
 
 
-## Varios responsables de caja
+## Equipo de Tesorería Recaudación
 
-El maestro añade o revoca correos individuales por sello en Configuración → Responsables de caja. Cada cuenta utiliza Google y pertenece a un único sello. Todas las personas del mismo sello pueden consultar su bandeja; filtra por Todas, Por asignar o Mis solicitudes.
+El maestro añade o revoca cuentas personales y configura buzones de servicio por sello en Configuración → Tesorería Recaudación. Cada cuenta utiliza Google y puede habilitarse para Universidad, Instituto o ambos sellos. Los buzones de servicio tienen acceso de consulta y no pueden atender solicitudes. Todas las personas del mismo sello pueden consultar su bandeja; filtra por Todas, Por asignar o Mis solicitudes.
 
 En el detalle, pulsa **Tomar atención** antes de cargar el PDF. Solo la persona asignada puede cargar, retirar o finalizar el documento; el resto consulta datos, vista previa e historial. **Liberar solicitud** permite el relevo conservando el borrador. Revocar un acceso cierra sus sesiones y libera sus solicitudes abiertas; los registros cerrados conservan su responsable. Una devolución a caja abre un nuevo ciclo disponible para el equipo.
 
-El correo interno de cada evento se envía una sola vez a los responsables elegibles de ese sello, con los gestores en CC. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; la recuperación técnica de fallos continúa automática. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
+El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; la recuperación técnica de fallos continúa automática. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
+
+## Revisión en Tesorería Recaudación
+
+En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. El detalle se organiza en **Solicitud**, **Revisión** y **Emisión**, con celular y dirección fiscal visibles. Para facturas, el comprador indica en Entrega si usa la dirección de envío o una dirección fiscal distinta; recojo exige una dirección fiscal propia.
+
+El responsable registra observaciones formales de datos, importes o comprobantes. Fondo Editorial las recibe en Pagos del pedido: el gestor asignado coordina la subsanación, puede adjuntar documentos adicionales y registrar datos corregidos de emisión y una respuesta. Los originales e importes verificados se conservan. No se podrá finalizar la emisión con observaciones abiertas; la distribución/entrega no se bloquea por ese trámite.
+
+Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
+
+Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos. La migración 0017 se aplica fuera del build y conserva configuración y roles existentes.

@@ -8,7 +8,7 @@ const sections = [
   { value: "correos", label: "Correos autorizados", Icon: UsersRound },
   { value: "campus", label: "Campus y bibliotecas", Icon: MapPin },
   { value: "cuentas", label: "Cuentas bancarias", Icon: Landmark },
-  { value: "caja", label: "Responsables de caja", Icon: UsersRound },
+  { value: "caja", label: "Tesorería Recaudación", Icon: UsersRound },
   { value: "integraciones", label: "Integraciones", Icon: Plug },
 ] as const;
 

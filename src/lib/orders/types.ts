@@ -37,6 +37,8 @@ export type BuyerDraft = {
   wantsInvoice: boolean;
   billingRuc: string;
   billingBusinessName: string;
+  billingAddressMode: "shipping" | "custom";
+  billingAddress: string;
 };
 
 export type DeliveryDraft = {
@@ -60,7 +62,7 @@ export const imprintNames: Record<Imprint, string> = {
 
 export const initialBuyer: BuyerDraft = {
   type: "publico_general", campus: "", name: "", email: "", phone: "", document: "",
-  wantsInvoice: false, billingRuc: "", billingBusinessName: "",
+  wantsInvoice: false, billingRuc: "", billingBusinessName: "", billingAddressMode: "shipping", billingAddress: "",
 };
 
 export const initialDelivery: DeliveryDraft = {

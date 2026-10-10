@@ -165,7 +165,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
           <div key={step} className="enter-page">
             {step === 0 ? <CatalogStep at={pricingAt} catalog={currentCatalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
-            {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
+            {step === 2 ? <DeliveryStep onBuyerChange={(value) => { setBuyer(value); resetValidation(); }} delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); resetValidation(); }} /> : null}
             {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} quote={quote} onEdit={(value) => { setConsentAccepted(false); goTo(value); }} /> : null}
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-6">

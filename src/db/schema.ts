@@ -114,6 +114,7 @@ export const orders = pgTable("orders", {
   couponPercent: integer("coupon_percent"),
   billingRuc: text("billing_ruc"),
   billingBusinessName: text("billing_business_name"),
+  billingAddress: text("billing_address"),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   cancellationSource: text("cancellation_source").$type<"comprador" | "gestor">(),
   cancellationReason: text("cancellation_reason"),
@@ -215,12 +216,15 @@ export const paymentReceipts = pgTable("payment_receipts", {
 export const authorizedEmails = pgTable("authorized_emails", {
   email: text("email").primaryKey(),
   role: text("role").$type<"gestor" | "caja">().default("gestor").notNull(),
+  publisherImprints: jsonb("publisher_imprints").$type<("universidad" | "instituto")[]>().default([]).notNull(),
+  treasuryService: boolean("treasury_service").default(false).notNull(),
   publisherImprint: publisherImprint("publisher_imprint"),
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("authorized_emails_caja_imprint_idx").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
   check("authorized_emails_role", sql`(${table.role} = 'gestor' AND ${table.publisherImprint} IS NULL) OR (${table.role} = 'caja' AND ${table.publisherImprint} IS NOT NULL)`),
+  check("authorized_emails_scope", sql`jsonb_typeof(${table.publisherImprints}) = 'array' AND ${table.publisherImprints} <@ '["universidad","instituto"]'::jsonb AND (${table.role} = 'caja' OR (${table.publisherImprints} = '[]'::jsonb AND ${table.treasuryService} = false))`),
   check("authorized_emails_master_role", sql`${table.email} <> 'distribucionfe@continental.edu.pe' OR ${table.role} = 'gestor'`),
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
 ]);
@@ -463,3 +467,36 @@ export const couponRedemptions = pgTable("coupon_redemptions", {
   releasedAt: timestamp("released_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("coupon_redemptions_coupon_idx").on(table.couponId)]);
+
+export const treasuryMailboxes = pgTable("treasury_mailboxes", {
+  publisherImprint: publisherImprint("publisher_imprint").primaryKey(),
+  email: text("email").notNull(),
+  ...timestamps(),
+}, (table) => [check("treasury_mailboxes_email", sql`${table.email} = lower(btrim(${table.email}))`)]);
+export const treasuryNotes = pgTable("treasury_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }),
+  actorName: text("actor_name").notNull(), content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_notes_request_idx").on(table.requestId, table.createdAt)]);
+export const treasuryActivity = pgTable("treasury_activity", {
+  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }), actorName: text("actor_name").notNull(),
+  event: text("event").notNull(), detail: text("detail").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_activity_request_idx").on(table.requestId, table.createdAt)]);
+export const treasuryObservations = pgTable("treasury_observations", {
+  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  category: text("category").$type<"datos" | "importes" | "comprobantes">().notNull(),
+  content: text("content").notNull(), actorName: text("actor_name").notNull(), correction: jsonb("correction").$type<Record<string, string>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }), resolvedBy: text("resolved_by"), response: text("response"),
+}, (table) => [index("treasury_observations_request_idx").on(table.requestId, table.resolvedAt)]);
+export const treasurySupportingFiles = pgTable("treasury_supporting_files", {
+  id: uuid("id").primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  driveFileId: text("drive_file_id").notNull().unique(), driveViewUrl: text("drive_view_url"),
+  fileName: text("file_name").notNull(), mimeType: text("mime_type").notNull(), contentHash: text("content_hash").notNull(), size: integer("size").notNull(),
+  actorId: text("actor_id").notNull().references(() => authUser.id, { onDelete: "restrict" }),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_supporting_request_idx").on(table.requestId), check("treasury_supporting_size", sql`${table.size} BETWEEN 1 AND 3145728`)]);

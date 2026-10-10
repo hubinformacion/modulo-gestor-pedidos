@@ -240,7 +240,7 @@ export async function annulOrderAction(input: unknown): Promise<ActionResult> {
     scheduleOrderMail(outcome.token);
     const { deliverCajaEmail } = await import("@/lib/caja/email");
     after(async () => { for (const id of outcome.requestIds) await deliverCajaEmail(id); });
-    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath("/caja", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
+    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true, message: "Pedido anulado y stock restituido." };
   } catch (error) {
     if (!(error instanceof CancellationError || error instanceof AccessError)) reportServerError("order.annul.failed", error);

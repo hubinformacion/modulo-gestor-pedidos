@@ -2,7 +2,8 @@ import "server-only";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
 import { drive } from "googleapis/build/src/apis/drive/index.js";
 import { withDatabase } from "@/db";
-import { authorizedEmails, cajaRequests, driveFileReaderGrants, paymentReceipts, saleDocuments } from "@/db/schema";
+import { authorizedEmails, cajaRequests, driveFileReaderGrants, paymentReceipts, saleDocuments, treasurySupportingFiles } from "@/db/schema";
+import { treasuryScopes } from "@/lib/treasury/scope";
 import { assertAccessRole } from "@/lib/transaction-access";
 import { AccessError, type AuthorizedActor } from "@/lib/access-policy";
 import { ownerAuth } from "@/lib/google";
@@ -16,7 +17,9 @@ async function reconcileFile(fileId: string, email: string) {
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`caja-file:${fileId}`}))`);
     const [grant] = await tx.select().from(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, email)));
     if (!grant) return;
-    const [allowed] = await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).innerJoin(cajaRequests, eq(cajaRequests.publisherImprint, authorizedEmails.publisherImprint)).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.email, email), eq(cajaRequests.id, grant.requestId)));
+    const [member] = await tx.select().from(authorizedEmails).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.email, email)));
+    const [scope] = await tx.select({ imprint: cajaRequests.publisherImprint }).from(cajaRequests).where(eq(cajaRequests.id, grant.requestId));
+    const allowed = member && scope && treasuryScopes(member).includes(scope.imprint);
     const permissions = []; let pageToken: string | undefined;
     do {
       const response = await api.permissions.list({ fileId, supportsAllDrives: true, pageToken, fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails)" }, { timeout: 15_000, retry: false });
@@ -44,11 +47,12 @@ async function retryFile(fileId: string, email: string) { try { await reconcileF
 export async function ensureCajaFileReader(actor: AuthorizedActor, requestId: string, fileId: string) {
   await withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
-    const [request] = await tx.select().from(cajaRequests).where(and(eq(cajaRequests.id, requestId), eq(cajaRequests.publisherImprint, actor.publisherImprint!)));
-    if (!request) throw new AccessError("FORBIDDEN");
+    const [request] = await tx.select().from(cajaRequests).where(eq(cajaRequests.id, requestId));
+    if (!request || !actor.publisherImprints.includes(request.publisherImprint)) throw new AccessError("FORBIDDEN");
     const [document] = await tx.select({ id: saleDocuments.id }).from(saleDocuments).where(and(eq(saleDocuments.requestId, requestId), eq(saleDocuments.driveFileId, fileId), sql`${saleDocuments.uploadedAt} IS NOT NULL`));
-    const [receipt] = document ? [] : await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(and(eq(paymentReceipts.orderId, request.orderId), eq(paymentReceipts.publisherImprint, request.publisherImprint), eq(paymentReceipts.driveFileId, fileId)));
-    if (!document && !receipt) throw new AccessError("FORBIDDEN");
+    const [supporting] = await tx.select({ id: treasurySupportingFiles.id }).from(treasurySupportingFiles).where(and(eq(treasurySupportingFiles.requestId, requestId), eq(treasurySupportingFiles.driveFileId, fileId), sql`${treasurySupportingFiles.uploadedAt} IS NOT NULL`));
+    const [receipt] = document || supporting ? [] : await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(and(eq(paymentReceipts.orderId, request.orderId), eq(paymentReceipts.publisherImprint, request.publisherImprint), eq(paymentReceipts.driveFileId, fileId)));
+    if (!document && !receipt && !supporting) throw new AccessError("FORBIDDEN");
     await tx.insert(driveFileReaderGrants).values({ driveFileId: fileId, email: actor.email, requestId }).onConflictDoNothing();
   }));
   await retryFile(fileId, actor.email);
@@ -59,7 +63,7 @@ export async function synchronizeCajaFileReaders() {
   // File opening rechecks its grant; idle jobs must stay bounded on free Neon.
   const rows = await withDatabase((db) => db.select({ fileId: driveFileReaderGrants.driveFileId, email: driveFileReaderGrants.email }).from(driveFileReaderGrants)
     .leftJoin(cajaRequests, eq(cajaRequests.id, driveFileReaderGrants.requestId))
-    .leftJoin(authorizedEmails, and(eq(authorizedEmails.email, driveFileReaderGrants.email), eq(authorizedEmails.role, "caja"), eq(authorizedEmails.publisherImprint, cajaRequests.publisherImprint)))
+    .leftJoin(authorizedEmails, and(eq(authorizedEmails.email, driveFileReaderGrants.email), eq(authorizedEmails.role, "caja"), sql`(CASE WHEN jsonb_array_length(${authorizedEmails.publisherImprints}) > 0 THEN ${authorizedEmails.publisherImprints} ELSE jsonb_build_array(${authorizedEmails.publisherImprint}) END) ? ${cajaRequests.publisherImprint}::text`))
     .where(or(isNull(driveFileReaderGrants.permissionId), isNull(authorizedEmails.email)))
     .orderBy(sql`CASE WHEN ${authorizedEmails.email} IS NULL THEN 0 ELSE 1 END`).limit(25));
   const started = Date.now();

@@ -50,7 +50,7 @@ export async function removeAuthorizedEmail(db: Database, actor: AuthorizedActor
   }
   return db.transaction(async (tx) => {
     await assertCurrentMaster(tx, actor);
-    const deleted = await tx.delete(authorizedEmails).where(eq(authorizedEmails.email, email.data))
+    const deleted = await tx.delete(authorizedEmails).where(and(eq(authorizedEmails.email, email.data), eq(authorizedEmails.role, "gestor")))
       .returning({ email: authorizedEmails.email });
     if (!deleted.length) return { success: false, message: "El correo ya no está autorizado." };
     const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, email.data));

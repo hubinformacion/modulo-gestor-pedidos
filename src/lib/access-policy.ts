@@ -33,6 +33,8 @@ export type AuthorizedActor = {
   name: string;
   role: "gestor" | "caja";
   publisherImprint: "universidad" | "instituto" | null;
+  publisherImprints: ("universidad" | "instituto")[];
+  treasuryService: boolean;
 };
 
 export type AccessActionResult = {

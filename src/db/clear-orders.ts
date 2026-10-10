@@ -8,6 +8,7 @@ const tables = [
   "orders", "order_items", "payment_receipts", "payment_uploads",
   "pickup_evidence", "order_activity", "order_emails", "order_notifications",
   "caja_requests", "caja_notifications", "sale_documents",
+  "treasury_notes", "treasury_activity", "treasury_observations", "treasury_supporting_files",
   "sale_document_batches", "drive_file_reader_grants", "coupon_redemptions",
   "order_counters", "payment_guides",
 ] as const;

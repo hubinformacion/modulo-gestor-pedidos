@@ -23,7 +23,7 @@ export async function uploadSaleAction(input: unknown) {
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const document = await uploadSaleDocument(actor, parsed.data.id, parsed.data.uploadId, parsed.data.cycle, file.data);
     // No refresh during FilePond processing and no email before Finalizar.
-    let href = `/caja/${parsed.data.id}/archivos/${document.documentId}`;
+    let href = `/tesoreria-recaudacion/${parsed.data.id}/archivos/${document.documentId}`;
     try {
       const { ensureCajaFileReader } = await import("@/lib/caja/drive-access");
       await ensureCajaFileReader(actor, parsed.data.id, document.driveFileId); href = document.driveViewUrl;
@@ -39,7 +39,7 @@ export async function finalizeSaleAction(input: unknown) {
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const outcome = await finalizeSaleDocument(actor, parsed.data);
     after(async () => { try { await Promise.allSettled([deliverCajaEmail(outcome.requestId), deliverOrderEmail(outcome.token)]); } catch (error) { reportServerError("caja.mail.pending", error); } });
-    revalidatePath("/caja", "layout"); revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
+    revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
     return { success: true as const, message: "Solicitud finalizada. Avisaremos al gestor y enviaremos los documentos al comprador cuando estén completos." };
   } catch (error) { return failure(error); }
 }
@@ -51,8 +51,8 @@ export async function returnSaleAction(input: unknown) {
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const outcome = await returnSaleDocument(actor, parsed.data);
     after(async () => { try { await deliverCajaEmail(outcome.requestId); } catch (error) { reportServerError("caja.return.mail", error); } });
-    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/caja", "layout");
-    return { success: true as const, message: "Solicitud devuelta a caja." };
+    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/tesoreria-recaudacion", "layout");
+    return { success: true as const, message: "Solicitud devuelta a Tesorería Recaudación." };
   } catch (error) { return failure(error); }
 }
 
@@ -78,7 +78,7 @@ export async function assignCajaAction(input: unknown) {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     await changeCajaAssignment(actor, parsed.data);
-    revalidatePath("/caja", "layout"); revalidatePath("/admin/pedidos", "layout");
+    revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath("/admin/pedidos", "layout");
     return { success: true as const, message: parsed.data.operation === "claim" ? "Atención tomada." : "Solicitud liberada." };
   } catch (error) { return failure(error); }
 }

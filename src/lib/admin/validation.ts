@@ -22,6 +22,7 @@ export type BookForm = z.infer<typeof bookSchema>;
 export type BookRow = BookForm & { id: string; version: string };
 export const emptyBook: BookForm = { inventoryCode: "", title: "", author: "", publisherImprint: "universidad", standardPrice: "", communityPrice: "", stock: 0, status: "INACTIVO" };
 export const filterSchema = z.object({
+  sort: z.enum(["number", "customer", "manager", "delivery", "status", "amount", "date"]).catch("date"), dir: z.enum(["asc", "desc"]).catch("desc"),
   q: z.string().trim().max(120).catch(""),
   status: z.enum(["", "PENDIENTE_PAGO", "EN_PREPARACION", "DESPACHADO", "ENTREGADO", "CANCELADO"]).catch(""),
   owner: z.enum(["all", "mine", "unassigned"]).catch("all"),

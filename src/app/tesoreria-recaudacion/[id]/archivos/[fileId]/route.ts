@@ -1,9 +1,9 @@
 import { ensureCajaFileReader } from "@/lib/caja/drive-access";
 import { salePdfBytes } from "@/lib/caja/service";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { cajaRequests, paymentReceipts, saleDocuments } from "@/db/schema";
+import { cajaRequests, paymentReceipts, saleDocuments, treasurySupportingFiles } from "@/db/schema";
 import { getCajaSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
 import { reportServerError } from "@/lib/server-diagnostics";
@@ -16,11 +16,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!parsed.success) return new Response(null, { status: 404, headers: responseHeaders });
     const actor = await withDatabase((db) => getCajaSession(db, request.headers));
     const file = await withReadDatabase(async (db) => {
-      const [item] = await db.select().from(cajaRequests).where(and(eq(cajaRequests.id, parsed.data.id), eq(cajaRequests.publisherImprint, actor.publisherImprint!)));
+      const [item] = await db.select().from(cajaRequests).where(and(eq(cajaRequests.id, parsed.data.id), inArray(cajaRequests.publisherImprint, actor.publisherImprints)));
       if (!item) return null;
       const [document] = await db.select().from(saleDocuments).where(and(eq(saleDocuments.id, parsed.data.fileId), eq(saleDocuments.requestId, item.id)));
       if (document?.uploadedAt) return { driveId: document.driveFileId, url: document.driveViewUrl!, name: document.fileName, hash: document.contentHash };
-      const [receipt] = await db.select().from(paymentReceipts).where(and(eq(paymentReceipts.id, parsed.data.fileId), eq(paymentReceipts.orderId, item.orderId), eq(paymentReceipts.publisherImprint, actor.publisherImprint!)));
+      const [receipt] = await db.select().from(paymentReceipts).where(and(eq(paymentReceipts.id, parsed.data.fileId), eq(paymentReceipts.orderId, item.orderId), eq(paymentReceipts.publisherImprint, item.publisherImprint)));
+      const [support] = receipt ? [] : await db.select().from(treasurySupportingFiles).where(and(eq(treasurySupportingFiles.id, parsed.data.fileId), eq(treasurySupportingFiles.requestId, item.id)));
+      if (support?.uploadedAt && support.driveViewUrl) return { driveId: support.driveFileId, url: support.driveViewUrl, name: support.fileName, hash: null };
       return receipt ? { driveId: receipt.driveFileId, url: receipt.driveViewUrl, name: receipt.fileName, hash: null } : null;
     });
     if (!file) return new Response(null, { status: 404, headers: responseHeaders });

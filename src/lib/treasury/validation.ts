@@ -1,0 +1,10 @@
+import { z } from "zod";
+import { authorizedEmailSchema } from "@/lib/access-policy";
+import { phoneSchema } from "@/lib/orders/validation";
+export const imprintSchema = z.enum(["universidad", "instituto"]);
+export const teamSchema = z.object({ email: authorizedEmailSchema, imprints: z.array(imprintSchema).min(1, "Selecciona al menos un sello.").max(2), operation: z.enum(["save", "remove"]) });
+export const mailboxSchema = z.object({ imprint: imprintSchema, email: z.union([z.literal(""), authorizedEmailSchema]), previousEmail: z.union([z.literal(""), authorizedEmailSchema]) });
+export const noteSchema = z.object({ id: z.uuid(), content: z.string().trim().min(3, "Escribe al menos 3 caracteres.").max(2000) });
+export const observationSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), category: z.enum(["datos", "importes", "comprobantes"]), content: z.string().trim().min(5, "Escribe al menos 5 caracteres.").max(2000) });
+export const correctionSchema = z.object({ name: z.string().trim().min(3).max(160), document: z.string().trim().min(6).max(20), phone: phoneSchema, billingRuc: z.string().trim().regex(/^$|^\d{11}$/, "El RUC debe tener 11 dígitos."), billingBusinessName: z.string().trim().max(200), billingAddress: z.string().trim().max(500) }).refine((value) => !value.billingRuc || (value.billingBusinessName.length >= 2 && value.billingAddress.length >= 5), "Completa la razón social y dirección fiscal.");
+export const resolveSchema = z.object({ id: z.uuid(), observationId: z.uuid(), response: z.string().trim().min(5, "Escribe al menos 5 caracteres.").max(2000), correction: correctionSchema.optional() });

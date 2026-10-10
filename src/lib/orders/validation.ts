@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Campus, CatalogBook } from "./types";
 import { departments, districtsFor, provincesFor } from "./geography";
+import { resolveLocation } from "./geography";
 import { resolveRecipient } from "./recipient";
 
 export const phoneSchema = z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/, "Ingresa un teléfono válido.")
@@ -36,6 +37,8 @@ export function createBuyerSchema(campuses: Campus[]) {
     wantsInvoice: z.boolean(),
     billingRuc: z.string().trim().max(11, "El RUC debe tener 11 dígitos."),
     billingBusinessName: z.string().trim().max(200),
+    billingAddressMode: z.enum(["shipping", "custom"]).default("shipping"),
+    billingAddress: z.string().trim().max(500).default(""),
   }).superRefine((buyer, ctx) => {
     if (buyer.type === "comunidad_continental") {
       if (!campuses.some((campus) => campus.id === buyer.campus)) ctx.addIssue({ code: "custom", path: ["campus"], message: "Selecciona tu sede." });
@@ -98,9 +101,14 @@ export function createDeliverySchema(campuses: Campus[]) {
 
 export function createOrderDraftSchema(catalog: CatalogBook[], campuses: Campus[]) {
   return z.object({ cart: createCartSchema(catalog), buyer: createBuyerSchema(campuses), delivery: createDeliverySchema(campuses) })
+    .superRefine((draft, ctx) => {
+      if (draft.buyer.wantsInvoice && ((draft.buyer.billingAddressMode === "custom" && draft.buyer.billingAddress.length < 5) || (draft.delivery.type === "recojo_campus" && (draft.buyer.billingAddressMode !== "custom" || draft.buyer.billingAddress.length < 5)))) ctx.addIssue({ code: "custom", path: ["delivery", "billingAddress"], message: "Ingresa la dirección fiscal completa para emitir la factura." });
+    })
     .transform((draft) => {
+      const location = resolveLocation(draft.delivery.district);
+      const billingAddress = draft.buyer.wantsInvoice ? draft.buyer.billingAddressMode === "shipping" ? [draft.delivery.address, location?.district.name, location?.province.name, location?.department.name].filter(Boolean).join(", ") : draft.buyer.billingAddress : "";
       const recipient = resolveRecipient(draft.delivery, draft.buyer);
-      return { ...draft, delivery: { ...draft.delivery, recipient: recipient.name, recipientDocument: recipient.document, recipientPhone: recipient.phone } };
+      return { ...draft, buyer: { ...draft.buyer, billingAddress }, delivery: { ...draft.delivery, recipient: recipient.name, recipientDocument: recipient.document, recipientPhone: recipient.phone } };
     });
 }
 

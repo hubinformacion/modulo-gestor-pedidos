@@ -5,15 +5,16 @@ import { courierEstimate } from "@/lib/orders/courier";
 import { resolveRecipient } from "@/lib/orders/recipient";
 import type { BuyerDraft, Campus, DeliveryDraft } from "@/lib/orders/types";
 
-export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
+export function DeliveryStep({ delivery, campuses, errors, onChange, buyer, onBuyerChange }: {
   delivery: DeliveryDraft; campuses: Campus[]; errors: FieldErrors;
-  onChange: (value: DeliveryDraft) => void; buyer: BuyerDraft;
+  onChange: (value: DeliveryDraft) => void; buyer: BuyerDraft; onBuyerChange: (value: BuyerDraft) => void;
 }) {
   const pickupCampuses = campuses.filter((campus) => campus.libraryAddress.trim());
   const campus = pickupCampuses.find((option) => option.id === delivery.campus);
   const recipient = resolveRecipient(delivery, buyer);
   function set<K extends keyof DeliveryDraft>(key: K, value: DeliveryDraft[K]) { onChange({ ...delivery, [key]: value }); }
   function changeType(type: DeliveryDraft["type"]) {
+    if (type === "recojo_campus" && buyer.wantsInvoice) onBuyerChange({ ...buyer, billingAddressMode: "custom" });
     onChange({ ...delivery, type, campus: "", department: "", province: "", district: "", address: "", reference: "" });
   }
   return (
@@ -54,6 +55,7 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
           <Field id="delivery-reference" placeholder="Ej. Frente al parque, puerta azul" label="Referencia (opcional)" value={delivery.reference} onChange={(event) => set("reference", event.target.value)} error={errors.reference} maxLength={300} />
         </>
       )}
+      {buyer.wantsInvoice ? <section className="rounded-xl border border-primary/15 bg-secondary/20 p-5"><h3 className="text-sm font-semibold">Dirección fiscal para la factura</h3>{delivery.type === "delivery" ? <div className="mt-3 grid gap-3 sm:grid-cols-2"><RadioCard name="billing-address-mode" value="shipping" checked={buyer.billingAddressMode === "shipping"} onChange={() => onBuyerChange({ ...buyer, billingAddressMode: "shipping" })} title="Usar dirección de envío" description={delivery.address || "La dirección que indiques para la entrega."} /><RadioCard name="billing-address-mode" value="custom" checked={buyer.billingAddressMode === "custom"} onChange={() => onBuyerChange({ ...buyer, billingAddressMode: "custom" })} title="Otra dirección fiscal" description="Indica la dirección para facturar." /></div> : null}{delivery.type === "recojo_campus" || buyer.billingAddressMode === "custom" ? <div className="mt-4"><Field id="billing-address" label="Dirección fiscal completa" placeholder="Ej. Av. San Carlos 123, Huancayo, Junín" value={buyer.billingAddress} onChange={(event) => onBuyerChange({ ...buyer, billingAddressMode: "custom", billingAddress: event.target.value })} error={errors.billingAddress} maxLength={500} required /></div> : null}</section> : null}
       {delivery.type === "delivery" ? <p className="rounded-lg bg-secondary/30 p-4 text-xs leading-6 text-muted-foreground">{courierEstimate(null)}</p> : null}
       <fieldset className="border-t border-border pt-6">
         <legend className="sr-only">Persona que {delivery.type === "recojo_campus" ? "recoge" : "recibe"}</legend>

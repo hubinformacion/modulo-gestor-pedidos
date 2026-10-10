@@ -76,7 +76,7 @@ export async function createOrder(input: unknown) {
       subtotalUniversidad: centsToDecimal(university?.subtotal ?? 0), subtotalInstituto: centsToDecimal(institute?.subtotal ?? 0),
       shippingCost: centsToDecimal(quote.shippingCost), shippingUniversidad: centsToDecimal(university?.shipping ?? 0), shippingInstituto: centsToDecimal(institute?.shipping ?? 0),
       totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total), discountTotal: centsToDecimal(quote.discountTotal), ...(quote.couponApplied && coupon ? { couponId: coupon.id, couponCode: coupon.code, couponPercent: coupon.percent } : {}),
-      billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null,
+      billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null, billingAddress: buyer.billingAddress || null,
       paymentStatusUniversidad: university ? "PENDIENTE" : "NO_APLICA", paymentStatusInstituto: institute ? "PENDIENTE" : "NO_APLICA",
     }).returning({ id: orders.id });
     await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, baseUnitPrice: centsToDecimal(line.baseUnitPrice), discountPercent: line.discountPercent, promotionId: line.promotionId, promotionName: line.promotionName, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));

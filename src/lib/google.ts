@@ -109,7 +109,7 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const recipients = [...new Set(z.array(z.email()).min(1).parse(audience?.to ?? [tracking.order.customerEmail]).map((email) => email.toLowerCase()))];
   const to = recipients.join(", ");
-  const cc = await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
+  const cc = audience ? [] : await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);

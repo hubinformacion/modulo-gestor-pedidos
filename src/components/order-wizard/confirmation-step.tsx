@@ -31,7 +31,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
           <Detail label="Correo" value={buyer.email} /><Detail label="Teléfono" value={buyer.phone} />
           <Detail label="Tipo de comprador" value={buyer.type === "comunidad_continental" ? "Comunidad Continental" : "Público general"} />
           {buyer.type === "comunidad_continental" ? <Detail label="Sede" value={campuses.find((option) => option.id === buyer.campus)?.name ?? ""} /> : null}
-          {buyer.wantsInvoice ? <><Detail label="RUC" value={buyer.billingRuc} /><Detail label="Razón social" value={buyer.billingBusinessName} /></> : null}
+          {buyer.wantsInvoice ? <><Detail label="RUC" value={buyer.billingRuc} /><Detail label="Razón social" value={buyer.billingBusinessName} /><div className="sm:col-span-2"><Detail label="Dirección fiscal" value={buyer.billingAddressMode === "shipping" ? [delivery.address, location?.district.name, location?.province.name, location?.department.name].filter(Boolean).join(", ") : buyer.billingAddress} /></div></> : null}
         </dl>
       </section>
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-delivery">

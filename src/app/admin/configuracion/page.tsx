@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import { treasuryScopes } from "@/lib/treasury/scope";
 import { CajaSettings } from "@/components/caja/settings";
 import { asc } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { authorizedEmails, bankAccounts, campuses } from "@/db/schema";
+import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes } from "@/db/schema";
 import { requirePageAccess, getAuthorizedSession } from "@/lib/access";
 import { isMasterEmail } from "@/lib/access-policy";
 import { headers } from "next/headers";
@@ -23,11 +24,12 @@ export default async function AuthorizedEmailsPage() {
   const requestHeaders = await headers();
   // Recheck at the data source, including when a layout is reused by Next.js.
   await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-  const [rows, campusRows, bankRows] = await withReadDatabase(async (db) => {
+  const [rows, campusRows, bankRows, mailboxRows] = await withReadDatabase(async (db) => {
     return Promise.all([
       db.select().from(authorizedEmails).orderBy(asc(authorizedEmails.createdAt), asc(authorizedEmails.email)),
       db.select().from(campuses).orderBy(asc(campuses.name)),
       db.select().from(bankAccounts).orderBy(asc(bankAccounts.publisherImprint), asc(bankAccounts.bank)),
+      db.select().from(treasuryMailboxes),
     ]);
   });
   const paymentSetup = await getPaymentSetupStatus();
@@ -38,7 +40,7 @@ export default async function AuthorizedEmailsPage() {
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "gestor").map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
-      </section>} caja={<section><h2 className="text-lg font-semibold tracking-tight">Responsables de caja</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Añade responsables por sello. Comparten sus solicitudes de boletas y facturas y cada persona toma la atención antes de emitir. Ingresa desde /caja con Google.</p><CajaSettings canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "caja" && row.publisherImprint).map((row) => ({ email: row.email, imprint: row.publisherImprint! }))} /></section>} campuses={<section aria-labelledby="campuses-title">
+      </section>} caja={<section><h2 className="text-lg font-semibold tracking-tight">Tesorería Recaudación</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Configura los buzones de servicio y los accesos personales a uno o ambos sellos. Ingresa desde /tesoreria-recaudacion con Google.</p><CajaSettings canManage={isMasterEmail(actor.email)} mailboxes={mailboxRows.map((row) => ({ imprint: row.publisherImprint, email: row.email }))} rows={rows.filter((row) => row.role === "caja").map((row) => ({ email: row.email, imprints: treasuryScopes(row), service: row.treasuryService }))} /></section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
         <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
