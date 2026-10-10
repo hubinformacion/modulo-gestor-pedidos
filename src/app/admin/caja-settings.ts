@@ -21,7 +21,7 @@ function refreshed() {
   after(async () => { try { await synchronizeDriveReaders(); } catch (error) { reportServerError("treasury.access.sync", error); } });
 }
 export async function saveTreasuryTeamAction(input: unknown) {
-  const parsed = teamSchema.safeParse(input); if (!parsed.success) return { success: false, message: "Selecciona un correo y al menos un sello." };
+  const parsed = teamSchema.safeParse(input); if (!parsed.success) return { success: false, message: "Selecciona un correo y al menos una unidad de negocio." };
   try {
     const h = await headers();
     await withDatabase(async (db) => {

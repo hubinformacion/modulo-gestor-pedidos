@@ -2,7 +2,7 @@ import { z } from "zod";
 import { authorizedEmailSchema } from "@/lib/access-policy";
 import { phoneSchema } from "@/lib/orders/validation";
 export const imprintSchema = z.enum(["universidad", "instituto"]);
-export const teamSchema = z.object({ email: authorizedEmailSchema, imprints: z.array(imprintSchema).min(1, "Selecciona al menos un sello.").max(2), operation: z.enum(["save", "remove"]) });
+export const teamSchema = z.object({ email: authorizedEmailSchema, imprints: z.array(imprintSchema).min(1, "Selecciona al menos una unidad de negocio.").max(2), operation: z.enum(["save", "remove"]) });
 export const mailboxSchema = z.object({ imprint: imprintSchema, email: z.union([z.literal(""), authorizedEmailSchema]), previousEmail: z.union([z.literal(""), authorizedEmailSchema]) });
 export const noteSchema = z.object({ id: z.uuid(), content: z.string().trim().min(3, "Escribe al menos 3 caracteres.").max(2000) });
 export const observationSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), category: z.enum(["datos", "importes", "comprobantes"]), content: z.string().trim().min(5, "Escribe al menos 5 caracteres.").max(2000) });
