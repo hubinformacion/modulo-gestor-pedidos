@@ -11,14 +11,15 @@ import { assertAuthorized } from "@/lib/transaction-access";
 import { releaseCajaAssignments } from "@/lib/caja/release-assignments";
 import { treasuryScopes } from "@/lib/treasury/scope";
 import { teamSchema, mailboxSchema } from "@/lib/treasury/validation";
-import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
+import { synchronizeCajaFileReaders } from "@/lib/caja/drive-access";
+import { DatabaseOperationError } from "@/db/errors";
 import { reportServerError } from "@/lib/server-diagnostics";
 class SettingsError extends Error {}
 function rejectReserved(email: string) { if (isMasterEmail(email) || email === process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase()) throw new SettingsError("Usa una cuenta distinta del maestro de Fondo Editorial y del propietario Google."); }
-function fail(error: unknown) { if (!(error instanceof SettingsError || error instanceof AccessError)) reportServerError("treasury.settings", error); return { success: false, message: error instanceof SettingsError || error instanceof AccessError ? error.message : "No pudimos guardar los accesos." }; }
+function fail(error: unknown) { if (!(error instanceof SettingsError || error instanceof AccessError)) reportServerError("treasury.settings", error); return { success: false, message: error instanceof SettingsError || error instanceof AccessError ? error.message : error instanceof DatabaseOperationError ? "Se interrumpió la conexión con la base de datos. Actualiza la configuración para comprobar si el cambio quedó guardado antes de reintentar." : "No pudimos guardar los accesos." }; }
 function refreshed() {
   revalidatePath("/admin/configuracion"); revalidatePath("/tesoreria-recaudacion", "layout");
-  after(async () => { try { await synchronizeDriveReaders(); } catch (error) { reportServerError("treasury.access.sync", error); } });
+  after(async () => { try { await synchronizeCajaFileReaders(); } catch (error) { reportServerError("treasury.access.sync", error); } });
 }
 export async function saveTreasuryTeamAction(input: unknown) {
   const parsed = teamSchema.safeParse(input); if (!parsed.success) return { success: false, message: "Selecciona un correo y al menos una unidad de negocio." };
@@ -27,6 +28,9 @@ export async function saveTreasuryTeamAction(input: unknown) {
     await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, h); if (!isMasterEmail(actor.email)) throw new AccessError("FORBIDDEN");
       await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout = '20s'`);
+        await tx.execute(sql`SET LOCAL idle_in_transaction_session_timeout = '30s'`);
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('treasury-access'))`); await assertAuthorized(tx, actor);
         const { email, operation } = parsed.data; const imprints = [...new Set(parsed.data.imprints)].sort(); rejectReserved(email);
         const [current] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, email)).for("update");
@@ -52,11 +56,16 @@ export async function saveTreasuryMailboxAction(input: unknown) {
     await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, h); if (!isMasterEmail(actor.email)) throw new AccessError("FORBIDDEN");
       await db.transaction(async (tx) => {
+        await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+        await tx.execute(sql`SET LOCAL statement_timeout = '20s'`);
+        await tx.execute(sql`SET LOCAL idle_in_transaction_session_timeout = '30s'`);
         await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('treasury-access'))`); await assertAuthorized(tx, actor);
         const { email, imprint, previousEmail } = parsed.data;
         const [current] = await tx.select().from(treasuryMailboxes).where(eq(treasuryMailboxes.publisherImprint, imprint)).for("update");
+        // A manual repeat after an ambiguous COMMIT acknowledges the already
+        // committed value without resetting its date or replaying side effects.
+        if ((current?.email ?? "") === email) return;
         if ((current?.email ?? "") !== previousEmail) throw new SettingsError("El buzón cambió. Actualiza la página.");
-        if (email === previousEmail) return;
         if (email) {
           rejectReserved(email);
           const [member] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, email)).for("update");

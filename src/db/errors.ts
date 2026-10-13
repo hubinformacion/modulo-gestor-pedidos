@@ -9,15 +9,16 @@ function records(error: unknown) {
   }
   return values;
 }
+function queryTimeout(error: unknown) { return records(error).some((value) => value.message === "Query read timeout"); }
 function socketEvent(error: unknown) {
   return records(error).some((value) => value.type === "error" && value.constructor?.name === "ErrorEvent");
 }
 export function isDatabaseFailure(error: unknown) {
-  return socketEvent(error) || records(error).some((value) => (typeof value.query === "string" && Array.isArray(value.params)) || value.name === "NeonDbError" || (typeof value.code === "string" && /^[0-9A-Z]{5}$/.test(value.code)));
+  return socketEvent(error) || queryTimeout(error) || records(error).some((value) => (typeof value.query === "string" && Array.isArray(value.params)) || value.name === "NeonDbError" || (typeof value.code === "string" && /^[0-9A-Z]{5}$/.test(value.code)));
 }
 export function transientDatabaseFailure(error: unknown) {
   const { code, status } = safeErrorDetails(error);
-  return socketEvent(error) || Boolean(code && (/^08/.test(code) || ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "53300", "57P01", "57P02", "57P03"].includes(code))) || Boolean(status && [429, 500, 502, 503, 504].includes(status)) || records(error).some((value) => ["AbortError", "TimeoutError", "TypeError"].includes(String(value.name)));
+  return socketEvent(error) || queryTimeout(error) || Boolean(code && (/^08/.test(code) || ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "53300", "57P01", "57P02", "57P03"].includes(code))) || Boolean(status && [429, 500, 502, 503, 504].includes(status)) || records(error).some((value) => ["AbortError", "TimeoutError", "TypeError"].includes(String(value.name)));
 }
 export class DatabaseOperationError extends Error {
   readonly code?: string;
@@ -27,7 +28,7 @@ export class DatabaseOperationError extends Error {
     super("No pudimos completar la consulta a la base de datos. Intenta nuevamente.");
     this.name = "DatabaseOperationError";
     const details = safeErrorDetails(error);
-    this.code = details.code ?? (socketEvent(error) ? "DB_WEBSOCKET_ERROR" : undefined);
+    this.code = details.code ?? (socketEvent(error) ? "DB_WEBSOCKET_ERROR" : queryTimeout(error) ? "DB_QUERY_TIMEOUT" : undefined);
     this.status = details.status;
     this.stage = stage;
     // Deliberately no raw cause: React serializes Error.cause, while ErrorEvent,

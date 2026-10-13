@@ -1,5 +1,5 @@
 import "server-only";
-import { neon, Pool } from "@neondatabase/serverless";
+import { neon, Pool, type PoolClient } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
 import { getDatabaseUrl } from "@/lib/env";
@@ -7,7 +7,7 @@ import { reportServerError } from "@/lib/server-diagnostics";
 import { DatabaseOperationError, isDatabaseFailure, transientDatabaseFailure } from "./errors";
 import * as schema from "./schema";
 
-function createDatabase(pool: Pool) { return drizzle({ client: pool, schema }); }
+function createDatabase(client: PoolClient) { return drizzle({ client, schema }); }
 export type Database = ReturnType<typeof createDatabase>;
 function createReadDatabase(signal: AbortSignal) {
   return drizzleHttp({ client: neon(getDatabaseUrl(), { fetchOptions: { signal, cache: "no-store" } }), schema });
@@ -34,16 +34,43 @@ export async function withReadDatabase<T>(work: (db: ReadDatabase) => Promise<T>
 // Interactive transactions/auth keep a Pool scoped to their request. Pure page
 // reads use HTTP so parallel queries do not compete for WebSocket connections.
 export async function withDatabase<T>(work: (db: Database) => Promise<T>): Promise<T> {
-  const pool = new Pool({ connectionString: getDatabaseUrl(), connectionTimeoutMillis: 10_000, max: 3 });
+  const pool = new Pool({ connectionString: getDatabaseUrl(), connectionTimeoutMillis: 10_000, query_timeout: 25_000, max: 1 });
+  let ownedClient: PoolClient | undefined;
+  // Pool.error covers idle clients only. Listen before checkout so an active
+  // WebSocket failure between queries cannot become an uncaught exception.
+  pool.on("connect", (client: PoolClient) => {
+    client.on("error", (error: unknown) => {
+      if (ownedClient === client) reportServerError("db.client.connection", new DatabaseOperationError(error, "db.websocket.active"));
+    });
+  });
   pool.on("error", (error: unknown) => reportServerError("db.pool.connection", new DatabaseOperationError(error, "db.websocket")));
-  try { return await work(createDatabase(pool)); }
+  try {
+    // Own the checkout instead of delegating it to Drizzle: its Pool transaction
+    // implementation starts BEGIN before the finally that releases the client.
+    ownedClient = await pool.connect();
+    return await work(createDatabase(ownedClient));
+  }
   catch (error) {
     if (!isDatabaseFailure(error)) throw error; // Preserve business/auth errors.
     const safe = new DatabaseOperationError(error, "db.transaction");
     reportServerError("db.operation.failed", safe);
     throw safe;
   } finally {
-    try { await pool.end(); }
-    catch (error) { reportServerError("db.pool.close", new DatabaseOperationError(error, "db.cleanup")); }
+    // Destroy only our checkout after work settles. Client.query does not
+    // auto-release like Pool.query, so parallel reads cannot release it twice.
+    if (ownedClient) {
+      try { ownedClient.release(true); }
+      catch (error) { reportServerError("db.client.release", new DatabaseOperationError(error, "db.cleanup")); }
+    }
+    let closeTimer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      await Promise.race([
+        pool.end(),
+        new Promise<void>((_resolve, reject) => {
+          closeTimer = setTimeout(() => reject(Object.assign(new Error("DB_POOL_CLOSE_TIMEOUT"), { code: "DB_POOL_CLOSE_TIMEOUT" })), 3_000);
+        }),
+      ]);
+    } catch (error) { reportServerError("db.pool.close", new DatabaseOperationError(error, "db.cleanup")); }
+    finally { if (closeTimer) clearTimeout(closeTimer); }
   }
 }
