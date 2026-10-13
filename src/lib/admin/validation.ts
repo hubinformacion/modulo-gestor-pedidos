@@ -3,7 +3,7 @@ import { z } from "zod";
 export const orderLabels = { PENDIENTE_PAGO: "Pendiente de pago", EN_PREPARACION: "En distribución", DESPACHADO: "Despachado", ENTREGADO: "Entregado", CANCELADO: "Cancelado" } as const;
 export const paymentLabels = { NO_APLICA: "No aplica", PENDIENTE: "Sin comprobante", EN_REVISION: "En revisión", VERIFICADO: "Verificado", RECHAZADO: "Rechazado" } as const;
 export const assignmentSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), operation: z.enum(["claim", "release"]) });
-export type ActionResult = { success: boolean; message: string };
+export type ActionResult = { success: boolean; message: string; mailWarning?: string };
 const version = z.iso.datetime();
 export const reviewSchema = z.object({ id: z.uuid(), imprint: z.enum(["universidad", "instituto"]), receiptId: z.uuid(), version, decision: z.enum(["VERIFICADO", "RECHAZADO"]), reason: z.string().trim().max(500).default("") }).refine((value) => value.decision !== "RECHAZADO" || value.reason.length >= 5, "Explica el motivo del rechazo (al menos 5 caracteres).");
 export const dispatchSchema = z.object({ id: z.uuid(), version, evidenceId: z.uuid().nullable().optional().default(null), status: z.enum(["DESPACHADO", "ENTREGADO"]), courier: z.string().trim().max(150), trackingCode: z.string().trim().max(120).default(""), trackingUrl: z.union([z.literal(""), z.url().max(2000).refine((value) => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; }, "Usa un enlace HTTPS válido.")]).transform((value) => value ? new URL(value).toString() : "").default("") });

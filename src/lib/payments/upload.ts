@@ -24,7 +24,7 @@ export async function uploadReceipt(metadata: z.infer<typeof receiptMetadataSche
     const [receipt] = await db.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, metadata.uploadId));
     return { order, intent, receipt };
   });
-  if (current.receipt) return { id: current.receipt.id, notify: false };
+  if (current.receipt) return { id: current.receipt.id, notificationId: null as string | null };
   ensureWritable(current.order, metadata.imprint);
   const driveId = current.intent?.driveFileId ?? await reserveDriveFileId();
   const intent = await withDatabase((db) => db.transaction(async (tx) => {
@@ -50,7 +50,7 @@ async function finalizeReceipt(intent: typeof paymentUploads.$inferSelect, uploa
     const [order] = await tx.select().from(orders).where(eq(orders.id, intent.orderId)).for("update");
     if (!order) throw new OrderInputError("No encontramos el pedido.");
     const [existing] = await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(eq(paymentReceipts.uploadId, intent.id));
-    if (existing) return { id: existing.id, notify: false };
+    if (existing) return { id: existing.id, notificationId: null as string | null };
     ensureWritable(order, intent.publisherImprint);
     const [receipt] = await tx.insert(paymentReceipts).values({ orderId: order.id, uploadId: intent.id, publisherImprint: intent.publisherImprint, ...uploaded, fileName: intent.fileName }).returning({ id: paymentReceipts.id });
     const status = intent.publisherImprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
@@ -60,8 +60,8 @@ async function finalizeReceipt(intent: typeof paymentUploads.$inferSelect, uploa
     const instituto = intent.publisherImprint === "instituto" ? "EN_REVISION" : order.paymentStatusInstituto;
     const allReceived = [universidad, instituto].every((value) => ["NO_APLICA", "EN_REVISION", "VERIFICADO"].includes(value));
     const notify = status !== "EN_REVISION" && allReceived;
-    if (notify) await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { orderStatus: "PENDIENTE_PAGO", ...(order.orderType === "mixto" ? { scope: "pedido" } : {}) } });
-    return { id: receipt.id, notify };
+    const [notification] = notify ? await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "COMPROBANTE_RECIBIDO", publisherImprint: intent.publisherImprint, receiptId: receipt.id, payload: { orderStatus: "PENDIENTE_PAGO", ...(order.orderType === "mixto" ? { scope: "pedido" } : {}) } }).returning({ id: orderNotifications.id }) : [];
+    return { id: receipt.id, notificationId: notification?.id ?? null };
   }));
 }
 

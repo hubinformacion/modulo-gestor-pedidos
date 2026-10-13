@@ -1,6 +1,6 @@
 "use client";
 import { sileo, type SileoOptions } from "sileo";
-export type ActionOutcome = { success: boolean; message?: string };
+export type ActionOutcome = { success: boolean; message?: string; mailWarning?: string };
 type Copy = { title: string; description: string };
 type ActionCopy<T> = {
   loading: Copy;
@@ -24,6 +24,10 @@ export async function notifyAction<T extends ActionOutcome>(operation: () => Pro
     error: (error: unknown) => ({ title: copy.error.title, description: error instanceof ActionRejected ? error.message : copy.error.description, duration: 8000 }),
     ...(copy.action ? { action: copy.action } : {}),
   });
-  try { return await notification; }
+  try {
+    const result = await notification;
+    if (result.mailWarning) sileo.warning({ title: "Cambio guardado sin aviso por correo", description: result.mailWarning, duration: 10000 });
+    return result;
+  }
   catch (error) { if (rejected) return rejected; throw error; }
 }

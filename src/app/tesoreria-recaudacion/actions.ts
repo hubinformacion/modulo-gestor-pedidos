@@ -1,6 +1,5 @@
 "use server";
 import { headers } from "next/headers";
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { withDatabase } from "@/db";
@@ -38,9 +37,9 @@ export async function finalizeSaleAction(input: unknown) {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const outcome = await finalizeSaleDocument(actor, parsed.data);
-    after(async () => { try { await Promise.allSettled([deliverCajaEmail(outcome.requestId), deliverOrderEmail(outcome.token)]); } catch (error) { reportServerError("caja.mail.pending", error); } });
+    const mailResults = await Promise.all([outcome.cajaNotificationId ? deliverCajaEmail(outcome.requestId, outcome.cajaNotificationId) : true, outcome.orderNotificationId ? deliverOrderEmail(outcome.token, outcome.orderNotificationId) : true]);
     revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true as const, message: "Solicitud finalizada. Avisaremos al gestor y enviaremos los documentos al comprador cuando estén completos." };
+    return { success: true as const, ...(!mailResults.every(Boolean) ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Solicitud finalizada. Los documentos están disponibles en la plataforma." };
   } catch (error) { return failure(error); }
 }
 export async function returnSaleAction(input: unknown) {
@@ -50,9 +49,9 @@ export async function returnSaleAction(input: unknown) {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const outcome = await returnSaleDocument(actor, parsed.data);
-    after(async () => { try { await deliverCajaEmail(outcome.requestId); } catch (error) { reportServerError("caja.return.mail", error); } });
+    const mailed = await deliverCajaEmail(outcome.requestId, outcome.cajaNotificationId);
     revalidatePath("/admin/pedidos", "layout"); revalidatePath("/tesoreria-recaudacion", "layout");
-    return { success: true as const, message: "Solicitud devuelta a Tesorería Recaudación." };
+    return { success: true as const, ...(!mailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Solicitud devuelta a Tesorería Recaudación." };
   } catch (error) { return failure(error); }
 }
 

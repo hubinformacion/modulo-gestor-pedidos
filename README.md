@@ -14,7 +14,7 @@ Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Cont
 - Tesorería Recaudación por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
 - Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
 - Inventario editable en tabla; configuración de autorizados, campus, ubicaciones y cuentas.
-- Correos de avance en un mismo hilo, guías PDF y recuperación automática de avisos.
+- Correos inmediatos de avance en un mismo hilo y guías PDF, sin cola de envíos diferidos.
 - Seguimiento por Pago/Distribución/Entrega, consultable después del cierre, con descarga de boletas/facturas.
 - Evidencia opcional de entrega o recojo mediante FilePond.
 - Seguimiento dentro de WordPress, altura adaptable, ilustraciones estáticas y tema claro.
@@ -72,7 +72,10 @@ Importa `main`, utiliza Node.js 24 y configura las variables de `.env.example` e
 
 Configura también `DATABASE_URL`, `BETTER_AUTH_SECRET`, las credenciales de Google, el correo/carpeta propietario y `CRON_SECRET`. No publiques `.env.local` ni pongas secretos en WordPress. Guarda las variables y vuelve a desplegar para aplicar cambios; la CSP se construye con los orígenes configurados.
 
-`CRON_SECRET` protege `/api/internal/jobs`. Usa una cadena aleatoria de al menos 32 caracteres, sin prefijo `Bearer`; Vercel añade ese encabezado automáticamente. El cron diario está programado a las 12:00 UTC, 07:00 de Perú, para recuperar avisos y sincronizar permisos de Drive. Las operaciones normales envían correos inmediatamente, sin esperar al cron ni requerir aprobación manual.
+`CRON_SECRET` protege `/api/internal/jobs`. Usa una cadena aleatoria de al menos 32 caracteres, sin prefijo `Bearer`; Vercel añade ese encabezado automáticamente. El cron diario está programado a las 12:00 UTC, 07:00 de Perú, exclusivamente para sincronizar permisos privados de Drive. Las operaciones normales intentan enviar el aviso nuevo durante la misma solicitud, después de guardar el cambio. El cron nunca envía correos.
+
+La migración `0018_handy_lizard.sql` elimina la programación de avisos históricos pendientes, conservando el historial y los mensajes aceptados por Gmail. Para desplegar este cambio, desactiva el cron de la versión anterior y pausa operaciones/cargas; espera a que terminen los envíos en curso. Aplica `pnpm db:migrate`, publica la versión nueva y reactiva el cron (ahora solo permisos Drive). La migración rechaza leases activos; no ejecutar la versión anterior después de migrar. No hace envíos ni borra pedidos. No basta con actualizar variables de entorno.
+
 
 Las migraciones se aplican explícitamente contra la BD destino, **fuera del build**. Conserva todo `src/db/migrations`, incluidos sus snapshots y journal. No regeneres ni edites migraciones ya aplicadas.
 
@@ -128,13 +131,13 @@ Las guías viven en `src/assets/pdfs`, fuera de `public`:
 
 Mantén su contenido alineado con las cuentas vigentes y los dos depósitos de un pedido mixto. Los pedidos anteriores conservan su guía y datos de pago originales. Las ilustraciones de correo son SVG/PNG transparentes; modifica [generate.ts](src/assets/email/generate.ts) y regenera con `pnpm email:assets`.
 
-No hay consultas periódicas del navegador: las pantallas actualizan tras operaciones, al volver a la pestaña o mediante el icono de actualizar. Un fallo temporal de BD no cierra la sesión; la cola conserva los avisos para recuperación. Revisa consumo de Neon, logs Vercel y vencimiento/revocación del token propietario ante incidentes.
+No hay consultas periódicas del navegador: las pantallas actualizan tras operaciones, al volver a la pestaña o mediante el icono de actualizar. Un fallo temporal de BD no cierra la sesión. Los avisos de correo fallidos se registran sin recuperación ni reenvío posterior; consultar pantallas no provoca envíos. Revisa consumo de Neon, logs Vercel y vencimiento/revocación del token propietario ante incidentes.
 
 [AGENTS.md](AGENTS.md) conserva el contexto técnico y las reglas de trabajo para próximas sesiones.
 
 ## Emisión por Tesorería Recaudación
 
-Configura los buzones de servicio y los accesos personales desde **Configuración → Tesorería Recaudación**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin responsable configurado se conservan pendientes. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
+Configura los buzones de servicio y los accesos personales desde **Configuración → Tesorería Recaudación**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin buzón configurado permanecen en bandeja, pero su correo se omite y no se enviará al configurar el buzón después. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
 
 Tesorería Recaudación adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y Tesorería Recaudación lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
@@ -185,7 +188,7 @@ Para ejecutar el borrado explícitamente:
 pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDOS
 ```
 
-Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entrega, historial/notas, colas y referencias de correo, solicitudes/historial de caja, PDF de venta y sus lotes, registros de permisos individuales de caja, usos de cupones, snapshots de guías y contadores anuales. Los enlaces de seguimiento y descargas antiguas dejan de resolver; el siguiente pedido comienza en `1-AÑO`. Las guías PDF fuente bajo `src/assets/pdfs` se conservan.
+Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entrega, historial/notas, auditoría y referencias de correo, solicitudes/historial de caja, PDF de venta y sus lotes, registros de permisos individuales de caja, usos de cupones, snapshots de guías y contadores anuales. Los enlaces de seguimiento y descargas antiguas dejan de resolver; el siguiente pedido comienza en `1-AÑO`. Las guías PDF fuente bajo `src/assets/pdfs` se conservan.
 
 Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/tesoreria-recaudacion/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
 
@@ -197,7 +200,7 @@ La restitución de stock, liberación de usos y eliminación se ejecutan en una 
 
 - **Acceso:** comprobar autorización/rol en Configuración. Un 503 indica fallo temporal del servicio; no eliminar cookies ni cambiar permisos como solución.
 - **Archivos:** revisar credenciales del propietario, carpeta Drive y permisos. El usuario conserva la selección ante errores; reintentar el mismo archivo evita duplicados.
-- **Correos:** revisar errores `order.mail`, `caja.mail` y `jobs` en Vercel y autorización del token propietario. La cola reintenta automáticamente; no reenviar manualmente registros ENVIADO.
+- **Correos:** revisar errores `order.mail`, `caja.mail` y `jobs` en Vercel y autorización del token propietario. No hay cola ni reintentos de Gmail send: un timeout puede haber entregado el mensaje aunque no haya confirmación. El cambio del pedido se conserva y las acciones del gestor muestran advertencia si el envío no pudo confirmarse. Corregir credenciales no reenvía avisos antiguos; no reenviar manualmente registros ENVIADO ni repetir estados para provocar correos.
 - **Precios:** actualizar el resumen si cambió una campaña o cupón; el stock y los usos se confirman únicamente al crear el pedido.
 - **Dependencias:** ejecutar `pnpm audit --prod` al actualizar el stack. `pnpm-workspace.yaml` contiene un override puntual para el esbuild transitivo del loader de Drizzle; conservarlo hasta que la dependencia de origen incorpore una versión corregida.
 
@@ -211,7 +214,7 @@ El importe solicitado excluye cancelados; el importe verificado suma únicamente
 
 Gráficas shadcn/ui con Recharts y tablas complementarias muestran evolución y títulos más solicitados; tarjetas resumen estados, stock bajo/agotado y atención por responsable. El botón de actualizar consulta nuevamente, sin refresco periódico. Sin pedidos, aparecen valores cero o «Sin datos», nunca datos de ejemplo.
 
-Los correos al comprador incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Los avisos de Tesorería Recaudación se dirigen exclusivamente al buzón de servicio del sello, sin CC. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. La recuperación técnica de avisos fallidos sigue automática, pero no incorpora gestores recién añadidos a esos avisos anteriores. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
+Los correos al comprador incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Los avisos de Tesorería Recaudación se dirigen exclusivamente al buzón de servicio del sello, sin CC. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. Los avisos fallidos no se recuperan ni se reenvían después. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
 
 
 ## Equipo de Tesorería Recaudación
@@ -220,7 +223,7 @@ El maestro añade o revoca cuentas personales y configura buzones de servicio po
 
 En el detalle, pulsa **Tomar atención** antes de cargar el PDF. Solo la persona asignada puede cargar, retirar o finalizar el documento; el resto consulta datos, vista previa e historial. **Liberar solicitud** permite el relevo conservando el borrador. Revocar un acceso cierra sus sesiones y libera sus solicitudes abiertas; los registros cerrados conservan su responsable. Una devolución a caja abre un nuevo ciclo disponible para el equipo.
 
-El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; la recuperación técnica de fallos continúa automática. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
+El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; los fallos de envío quedan registrados sin recuperación posterior. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
 
 ## Revisión en Tesorería Recaudación
 

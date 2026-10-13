@@ -11,8 +11,6 @@ import { ImprintBadge } from "@/components/order-wizard/imprint-badge";
 import { cajaLabels } from "@/lib/caja/validation";
 import { ReturnSaleControls } from "./return-controls";
 import { ReceiptText } from "lucide-react";
-import { after } from "next/server";
-import { deliverCajaEmail } from "@/lib/caja/email";
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 export async function AdminSaleDocuments({ orderId, canReturn, invoice }: { orderId: string; canReturn: boolean; invoice: boolean }) {
   const requestHeaders = await headers(); await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
@@ -25,7 +23,6 @@ export async function AdminSaleDocuments({ orderId, canReturn, invoice }: { orde
     const supporting = requests.length ? await db.select().from(treasurySupportingFiles).where(sql`${treasurySupportingFiles.requestId} IN (SELECT id FROM ${cajaRequests} WHERE order_id = ${orderId}) AND ${treasurySupportingFiles.uploadedAt} IS NOT NULL`) : [];
     return { requests, documents, batches, observations, supporting, order };
   });
-  after(async () => { for (const request of requests) await deliverCajaEmail(request.id); });
   return <section className="rounded-xl border border-border p-4 sm:p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-sm font-semibold"><ReceiptText className="size-4 text-primary" />Boletas y facturas</h2><BillingBadge invoice={invoice} /></div><p className="mt-2 text-xs leading-6 text-muted-foreground">Emisión por Tesorería Recaudación, independiente de la entrega del pedido.</p>{!requests.length ? <p className="mt-4 text-xs text-muted-foreground">Las solicitudes se generan al verificar cada pago.</p> : <div className={`mt-4 grid gap-3 ${requests.length > 1 ? "xl:grid-cols-2" : ""}`}>{requests.map((request) => {
     const issues = observations.filter((o) => o.requestId === request.id);
     const correction = issues.filter((o) => o.resolvedAt && o.correction).sort((a, b) => a.resolvedAt!.getTime() - b.resolvedAt!.getTime()).reduce((data, o) => ({ ...data, ...o.correction }), { name: order.customerName, document: order.customerDocument, phone: order.customerPhone, billingRuc: order.billingRuc ?? "", billingBusinessName: order.billingBusinessName ?? "", billingAddress: order.billingAddress ?? "" });

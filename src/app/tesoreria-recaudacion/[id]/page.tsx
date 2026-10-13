@@ -1,11 +1,9 @@
 import { SortableTable } from "@/components/sortable-table";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { after } from "next/server";
 import { z } from "zod";
 import { MessageSquareText, History } from "lucide-react";
 import { cajaDetail } from "@/lib/caja/data";
-import { deliverCajaEmail } from "@/lib/caja/email";
 import { cajaLabels } from "@/lib/caja/validation";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { BillingBadge } from "@/components/caja/billing-badge";
@@ -21,7 +19,6 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
   const parsed = z.uuid().safeParse((await params).id); if (!parsed.success) notFound();
   const detail = await cajaDetail(parsed.data); if (!detail) notFound();
   const { request, order, items, receipts, documents, history, actorId, service, notes, activity, observations, supporting } = detail;
-  after(async () => { await deliverCajaEmail(request.id); });
   const closed = ["FINALIZADA", "ANULADA"].includes(request.status); const mine = request.assignedTo === actorId && !service;
   const version = request.updatedAt.toISOString(); const openObservations = observations.filter((o) => !o.resolvedAt);
   const fileLink = (file: { id: string; driveReady: boolean; driveViewUrl: string | null }) => file.driveReady ? file.driveViewUrl! : `/tesoreria-recaudacion/${request.id}/archivos/${file.id}`;

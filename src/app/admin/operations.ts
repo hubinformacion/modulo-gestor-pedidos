@@ -1,11 +1,10 @@
 "use server";
 
 import { createCajaRequest } from "@/lib/caja/service";
-import { recoverCajaMail } from "@/lib/caja/email";
+import { deliverCajaEmail } from "@/lib/caja/email";
 import { z } from "zod";
 import { preparePickupEvidence, PickupEvidenceError } from "@/lib/delivery/evidence";
 import { resolveOrderLocation } from "@/lib/orders/location";
-import { after } from "next/server";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
@@ -53,18 +52,17 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
         const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
         const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
         await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(data.imprint === "universidad" ? { rejectionUniversidad: data.decision === "RECHAZADO" ? data.reason : null } : { rejectionInstituto: data.decision === "RECHAZADO" ? data.reason : null }) }).where(eq(orders.id, order.id));
-        if (data.decision === "VERIFICADO") await createCajaRequest(tx, order.id, data.imprint);
+        const cajaEvent = data.decision === "VERIFICADO" ? await createCajaRequest(tx, order.id, data.imprint) : null;
         const notify = data.decision === "RECHAZADO" || complete;
-        if (notify) await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(complete && order.orderType === "mixto" ? { scope: "pedido" } : {}) } });
+        const [notification] = notify ? await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(complete && order.orderType === "mixto" ? { scope: "pedido" } : {}) } }).returning({ id: orderNotifications.id }) : [];
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", detail: data.decision === "VERIFICADO" ? `Pago de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} verificado.${complete ? " Iniciamos la distribución." : ""}` : `Comprobante de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} rechazado: ${data.reason}` });
-        return { token: order.trackingToken, notify };
+        return { token: order.trackingToken, notificationId: notification?.id ?? null, cajaEvent };
       });
     });
-    if (parsed.data.decision === "VERIFICADO") after(async () => { await recoverCajaMail(); });
-    if (outcome.notify) after(async () => { try { await deliverOrderEmail(outcome.token); } catch { /* Preserve the event for retry. */ } });
+    const mailResults = await Promise.all([outcome.cajaEvent ? deliverCajaEmail(outcome.cajaEvent.requestId, outcome.cajaEvent.notificationId) : true, outcome.notificationId ? deliverOrderEmail(outcome.token, outcome.notificationId) : true]);
     revalidatePath("/admin/pedidos", "layout");
     revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true, message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
+    return { success: true, ...(!mailResults.every(Boolean) ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
   } catch (error) { return failure(error); }
 }
 
@@ -95,7 +93,7 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-    const token = await withDatabase(async (db) => {
+    const outcome = await withDatabase(async (db) => {
       return db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
         const data = parsed.data;
@@ -116,14 +114,15 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
         const destination = resolveOrderLocation(order, campus ?? null);
         await tx.update(orders).set({ orderStatus: data.status, deliveryLibraryLocation: destination.deliveryLibraryLocation, deliveryMapUrl: destination.deliveryMapUrl, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
           ...(data.status === "DESPACHADO" ? { shippingTrackingCode: order.deliveryType === "delivery" ? data.trackingCode || null : null, shippingTrackingUrl: order.deliveryType === "delivery" ? data.trackingUrl || null : null, dispatchedAt: new Date() } : { deliveredAt: new Date() }) }).where(eq(orders.id, order.id));
-        await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, deliveryZone: order.deliveryZone ?? "", courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: destination.deliveryAddress, libraryLocation: destination.deliveryLibraryLocation ?? "", mapUrl: destination.deliveryMapUrl } });
+        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, deliveryZone: order.deliveryZone ?? "", courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: destination.deliveryAddress, libraryLocation: destination.deliveryLibraryLocation ?? "", mapUrl: destination.deliveryMapUrl } }).returning({ id: orderNotifications.id });
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.status, detail: data.status === "ENTREGADO" ? "Entrega registrada. Gracias por tu pedido." : order.deliveryType === "recojo_campus" ? "Publicaciones listas para recoger en biblioteca." : `Pedido enviado por ${data.courier}${data.trackingCode ? ` · Guía ${data.trackingCode}` : ""}.` });
-        return order.trackingToken;
+        return { token: order.trackingToken, notificationId: notification.id };
       });
     });
-    scheduleOrderMail(token);
+    const mailed = await deliverOrderEmail(outcome.token, outcome.notificationId);
+    const token = outcome.token;
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${token}`);
-    return { success: true, message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
+    return { success: true, ...(!mailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
   } catch (error) {
     if (!(error instanceof AccessError) && !(error instanceof OperationError) && !(error instanceof PickupEvidenceError)) reportServerError("dispatch.failed", error);
     return failure(error);
@@ -176,7 +175,6 @@ export async function deleteBookAction(input: unknown): Promise<ActionResult> {
   } catch (error) { return failure(error); }
 }
 
-function scheduleOrderMail(token: string) { after(async () => { try { await deliverOrderEmail(token); } catch (error) { reportServerError("order.mail.pending", error); } }); }
 
 export async function assignOrderAction(input: unknown): Promise<ActionResult> {
   const parsed = assignmentSchema.safeParse(input);
@@ -237,11 +235,9 @@ export async function annulOrderAction(input: unknown): Promise<ActionResult> {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const outcome = await cancelPurchase(parsed.data, actor);
-    scheduleOrderMail(outcome.token);
-    const { deliverCajaEmail } = await import("@/lib/caja/email");
-    after(async () => { for (const id of outcome.requestIds) await deliverCajaEmail(id); });
+    const mailResults = await Promise.all([outcome.notificationId ? deliverOrderEmail(outcome.token, outcome.notificationId) : true, ...outcome.cajaEvents.map((event) => deliverCajaEmail(event.requestId, event.notificationId))]);
     revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true, message: "Pedido anulado y stock restituido." };
+    return { success: true, ...(!mailResults.every(Boolean) ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Pedido anulado y stock restituido." };
   } catch (error) {
     if (!(error instanceof CancellationError || error instanceof AccessError)) reportServerError("order.annul.failed", error);
     return { success: false, message: error instanceof CancellationError || error instanceof AccessError ? error.message : "No pudimos anular el pedido. Reintenta." };

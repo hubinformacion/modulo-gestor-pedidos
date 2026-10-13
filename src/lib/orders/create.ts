@@ -31,7 +31,7 @@ export async function createOrder(input: unknown) {
     const [existing] = await tx.select({ trackingToken: orders.trackingToken, draftHash: orders.draftHash }).from(orders).where(eq(orders.requestId, data.requestId));
     if (existing) {
       if (existing.draftHash !== draftHash) throw new OrderInputError("Este intento ya corresponde a otro pedido. Recarga para iniciar uno nuevo.");
-      return existing.trackingToken;
+      return { trackingToken: existing.trackingToken, created: false };
     }
     const accounts = bankAccountsFromRows(await tx.select().from(bankAccounts).where(eq(bankAccounts.status, "ACTIVO")).orderBy(asc(bankAccounts.id)).for("share"));
     if (!accounts || !ready) throw new OrderInputError("El registro de pedidos no está disponible temporalmente. Conserva tus datos e inténtalo más tarde.");
@@ -87,6 +87,6 @@ export async function createOrder(input: unknown) {
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });
-    return token;
+    return { trackingToken: token, created: true };
   }));
 }

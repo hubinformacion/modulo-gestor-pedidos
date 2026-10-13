@@ -242,10 +242,10 @@ export const paymentUploads = pgTable("payment_uploads", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("payment_uploads_order_idx").on(table.orderId)]);
 
-// A committed order remains recoverable even if Gmail is temporarily unavailable.
+// Delivery audit and Gmail thread metadata; no deferred delivery worker.
 export const orderEmails = pgTable("order_emails", {
   orderId: uuid("order_id").primaryKey().references(() => orders.id, { onDelete: "restrict" }),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -259,7 +259,7 @@ export const orderEmails = pgTable("order_emails", {
   leaseId: uuid("lease_id"),
   leaseUntil: timestamp("lease_until", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-}, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
+}, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('NO_ENVIADO', 'PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
 
 export const orderNotifications = pgTable("order_notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -268,7 +268,7 @@ export const orderNotifications = pgTable("order_notifications", {
   payload: jsonb("payload").$type<Record<string, string>>().default({}).notNull(),
   publisherImprint: publisherImprint("publisher_imprint"),
   receiptId: uuid("receipt_id").references((): AnyPgColumn => paymentReceipts.id, { onDelete: "restrict" }),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -278,7 +278,7 @@ export const orderNotifications = pgTable("order_notifications", {
   index("order_notifications_order_idx").on(table.orderId, table.createdAt),
   index("order_notifications_retry_idx").on(table.status, table.lastAttemptAt),
   check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
-  check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
+  check("order_notifications_valid_status", sql`${table.status} IN ('NO_ENVIADO', 'PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
   check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
 ]);
 
@@ -391,7 +391,7 @@ export const cajaNotifications = pgTable("caja_notifications", {
   cycle: integer("cycle").notNull(),
   eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA">().notNull(),
   reason: text("reason"),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -401,7 +401,7 @@ export const cajaNotifications = pgTable("caja_notifications", {
   uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType),
   index("caja_notifications_retry_idx").on(table.status, table.lastAttemptAt),
   check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA')`),
-  check("caja_notifications_state", sql`${table.status} IN ('PENDIENTE','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
+  check("caja_notifications_state", sql`${table.status} IN ('NO_ENVIADO','PENDIENTE','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
 ]);
 export const saleDocumentBatches = pgTable("sale_document_batches", {
   id: uuid("id").defaultRandom().primaryKey(),

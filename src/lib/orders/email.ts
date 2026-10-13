@@ -1,7 +1,7 @@
 import "server-only";
-import { beginSaleDelivery, readSaleBatch, salePdfBytes, StaleDocumentBatch } from "@/lib/caja/service";
+import { readSaleBatch, salePdfBytes, StaleDocumentBatch } from "@/lib/caja/service";
 import { randomUUID } from "node:crypto";
-import { and, asc, desc, eq, isNull, lt, ne, or } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { orderEmails, orderNotifications, orders } from "@/db/schema";
 import { readSentMailHeaders, sendOrderConfirmationEmail, sendOrderUpdateEmail } from "@/lib/google";
@@ -12,7 +12,7 @@ import { getTrackedOrder } from "./tracking";
 // This helper only reads metadata; it never sends a message.
 export async function synchronizeOrderThread(token: string): Promise<boolean> {
   const tracking = await getTrackedOrder(token);
-  if (!tracking || tracking.emailStatus !== "ENVIADO" || !tracking.emailMessageId) return false;
+  if (!tracking || !tracking.emailMessageId) return false;
   try {
     if (!tracking.emailHeadersVerified) {
       const headers = await readSentMailHeaders(tracking.emailMessageId);
@@ -40,95 +40,61 @@ export async function synchronizeOrderThread(token: string): Promise<boolean> {
   }
 }
 
-// One lease per order serializes the initial message and all updates. Provider
-// calls hold no business row locks, and state changes commit before delivery.
-export async function deliverOrderEmail(token: string): Promise<boolean> {
-  const started = Date.now();
-  let sent = false;
-  // Drain a handoff after releasing the lease. A concurrent status change can
-  // commit just after the previous pass observed an empty queue.
-  for (let pass = 0; pass < 3 && Date.now() - started < 60_000; pass++) {
-    const outcome = await deliverOrderPass(token, started);
-    sent ||= outcome.sent;
-    if (!outcome.again) break;
-  }
-  return sent;
-}
-
-async function deliverOrderPass(token: string, started: number): Promise<{ sent: boolean; again: boolean }> {
-  const outcome = { sent: false, again: false };
-  let threadReady = false;
-  let acceptedInitialId: string | null = null;
-  const tracking = await getTrackedOrder(token);
-  if (!tracking) return outcome;
+// Only the ID created by the current mutation is accepted. No queue scans,
+// handoffs, page recovery or retries of previous events.
+export async function deliverOrderEmail(token: string, notificationId: string | null): Promise<boolean> {
   const leaseId = randomUUID();
-  const [leased] = await withDatabase((db) => db.update(orderEmails).set({ leaseId, leaseUntil: new Date(Date.now() + 300_000) }).where(and(eq(orderEmails.orderId, tracking.order.id), or(isNull(orderEmails.leaseUntil), lt(orderEmails.leaseUntil, new Date())))).returning());
-  if (!leased) return outcome;
+  let orderId: string | undefined;
+  let accepted = false;
   try {
-    if (leased.status !== "ENVIADO") {
-      if (leased.attempts >= 5 || (leased.lastAttemptAt && Date.now() - leased.lastAttemptAt.getTime() < (leased.status === "ENVIANDO" ? 180_000 : 60_000))) return outcome;
-      await withDatabase((db) => db.update(orderEmails).set({ status: "ENVIANDO", attempts: leased.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderEmails.orderId, tracking.order.id)));
-      try {
-        const sent = await sendOrderConfirmationEmail(tracking);
-        // Accepted by Gmail: do not resend if the later metadata lookup fails.
-        await withDatabase((db) => db.update(orderEmails).set({ status: "ENVIADO", gmailMessageId: sent.id, gmailThreadId: sent.threadId, rfcMessageId: null, headersVerified: false, sentAt: new Date() }).where(eq(orderEmails.orderId, tracking.order.id)));
-        acceptedInitialId = sent.id;
-        outcome.sent = true;
-      } catch (error) {
-        await withDatabase((db) => db.update(orderEmails).set({ status: "ERROR" }).where(and(eq(orderEmails.orderId, tracking.order.id), ne(orderEmails.status, "ENVIADO"))));
-        reportServerError("order.mail.initial", error); return outcome;
-      }
-    }
-    if (acceptedInitialId && tracking.order.orderStatus === "CANCELADO") {
-      try { await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: acceptedInitialId! }).where(and(eq(orderNotifications.orderId, tracking.order.id), eq(orderNotifications.eventType, "CANCELADO"), eq(orderNotifications.status, "PENDIENTE")))); }
-      catch (error) { reportServerError("order.cancel.mail.binding", error); } // Never regress the accepted root.
-    }
-    if (!await synchronizeOrderThread(token)) return outcome;
-    threadReady = true;
-    for (let index = 0; index < 20 && Date.now() - started < 60_000; index++) {
-      const [event] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), ne(orderNotifications.eventType, "ASIGNADO"), and(ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.status, "OMITIDO")))).orderBy(asc(orderNotifications.createdAt), asc(orderNotifications.id)).limit(1));
-      if (!event) break;
-      if (event.attempts >= 5 || (event.lastAttemptAt && Date.now() - event.lastAttemptAt.getTime() < (event.status === "ENVIANDO" ? 180_000 : 60_000))) break;
-      const current = await getTrackedOrder(token);
-      if (!current) break;
-      if (event.eventType === "DOCUMENTOS_VENTA") { if (!await beginSaleDelivery(event)) continue; }
-      else if (!await beginOrderNotification(event)) continue;
-      try {
-        const attachments = event.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
-        const sent = await sendOrderUpdateEmail(current, event, attachments);
-        await withDatabase((db) => db.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id)));
-        outcome.sent = true;
-        if (sent.threadId !== current.emailThreadId) { threadReady = false; await withDatabase((db) => db.update(orderEmails).set({ headersVerified: false, threadIssue: "GMAIL_THREAD_MISMATCH" }).where(eq(orderEmails.orderId, tracking.order.id))); break; }
-        if (!await synchronizeOrderThread(token)) { threadReady = false; break; }
-      } catch (error) {
-        if (error instanceof StaleDocumentBatch) { await withDatabase((db) => db.update(orderNotifications).set({ status: "OMITIDO" }).where(eq(orderNotifications.id, event.id))); continue; }
-        await withDatabase((db) => db.update(orderNotifications).set({ status: "ERROR" }).where(and(eq(orderNotifications.id, event.id), ne(orderNotifications.status, "ENVIADO"))));
-        threadReady = false;
-        reportServerError("order.mail.update", error); break;
-      }
-    }
-    return outcome;
-  } finally {
-    const pending = await withDatabase((db) => db.transaction(async (tx) => {
-      const released = await tx.update(orderEmails).set({ leaseId: null, leaseUntil: null }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.leaseId, leaseId))).returning({ id: orderEmails.orderId });
-      if (!released.length || !threadReady) return false;
-      const [next] = await tx.select({ id: orderNotifications.id }).from(orderNotifications).where(and(
-        eq(orderNotifications.orderId, tracking.order.id), and(ne(orderNotifications.status, "ENVIADO"), ne(orderNotifications.status, "OMITIDO")), ne(orderNotifications.eventType, "ASIGNADO"), lt(orderNotifications.attempts, 5),
-        or(isNull(orderNotifications.lastAttemptAt), and(ne(orderNotifications.status, "ENVIANDO"), lt(orderNotifications.lastAttemptAt, new Date(Date.now() - 60_000))), and(eq(orderNotifications.status, "ENVIANDO"), lt(orderNotifications.lastAttemptAt, new Date(Date.now() - 180_000)))),
-      )).limit(1);
-      return Boolean(next);
+    const tracking = await getTrackedOrder(token);
+    if (!tracking) return false;
+    orderId = tracking.order.id;
+    const claim = await withDatabase((db) => db.transaction(async (tx) => {
+      const [order] = await tx.select().from(orders).where(eq(orders.id, orderId!)).for("update");
+      const [mail] = await tx.select().from(orderEmails).where(eq(orderEmails.orderId, order.id)).for("update");
+      if (!mail) return null;
+      const [event] = notificationId ? await tx.select().from(orderNotifications).where(and(eq(orderNotifications.id, notificationId), eq(orderNotifications.orderId, order.id))).for("update") : [];
+      if (notificationId && (!event || event.status !== "NO_ENVIADO" || event.attempts !== 0 || event.eventType === "ASIGNADO")) return null;
+      if (!notificationId && (mail.status !== "NO_ENVIADO" || mail.attempts !== 0)) return null;
+      const busy = mail.leaseUntil && mail.leaseUntil > new Date();
+      const obsolete = order.orderStatus === "CANCELADO" && (!event || event.eventType !== "CANCELADO");
+      const state = { status: obsolete ? "OMITIDO" : busy ? "ERROR" : "ENVIANDO", attempts: 1, lastAttemptAt: new Date() };
+      if (event) await tx.update(orderNotifications).set(state).where(eq(orderNotifications.id, event.id));
+      else await tx.update(orderEmails).set({ ...state, status: obsolete ? "NO_ENVIADO" : state.status }).where(eq(orderEmails.orderId, order.id));
+      if (busy || obsolete) return null;
+      await tx.update(orderEmails).set({ leaseId, leaseUntil: new Date(Date.now() + 300_000) }).where(eq(orderEmails.orderId, order.id));
+      return { event };
     }));
-    outcome.again = pending && Date.now() - started < 60_000;
-  }
-}
-
-async function beginOrderNotification(event: typeof orderNotifications.$inferSelect) {
-  return withDatabase((db) => db.transaction(async (tx) => {
-    const [order] = await tx.select({ status: orders.orderStatus }).from(orders).where(eq(orders.id, event.orderId)).for("update");
-    const [current] = await tx.select().from(orderNotifications).where(eq(orderNotifications.id, event.id)).for("update");
-    if (!current || ["ENVIADO", "OMITIDO"].includes(current.status)) return false;
-    if (order.status === "CANCELADO" && event.eventType !== "CANCELADO") { await tx.update(orderNotifications).set({ status: "OMITIDO" }).where(eq(orderNotifications.id, event.id)); return false; }
-    await tx.update(orderNotifications).set({ status: "ENVIANDO", attempts: current.attempts + 1, lastAttemptAt: new Date() }).where(eq(orderNotifications.id, event.id));
+    if (!claim) return false;
+    if (claim.event && tracking.emailMessageId && !await synchronizeOrderThread(token)) throw new Error("GMAIL_THREAD_UNAVAILABLE");
+    const current = await getTrackedOrder(token);
+    if (!current) throw new Error("ORDER_UNAVAILABLE");
+    const event = claim.event;
+    const attachments = event?.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
+    const sent = event ? await sendOrderUpdateEmail(current, event, attachments) : await sendOrderConfirmationEmail(current);
+    accepted = true; // Never submit again after Gmail accepted the message.
+    await withDatabase((db) => db.transaction(async (tx) => {
+      if (event) await tx.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id));
+      if (!event || !current.emailMessageId) await tx.update(orderEmails).set({ ...(!event ? { status: "ENVIADO", sentAt: new Date() } : {}), gmailMessageId: sent.id, gmailThreadId: sent.threadId, headersVerified: false }).where(eq(orderEmails.orderId, current.order.id));
+    }));
+    await synchronizeOrderThread(token); // Metadata only; failure never resends.
     return true;
-  }));
+  } catch (error) {
+    if (orderId && !accepted) {
+      try {
+        await withDatabase(async (db) => {
+          if (notificationId) await db.update(orderNotifications).set({ status: error instanceof StaleDocumentBatch ? "OMITIDO" : "ERROR" }).where(and(eq(orderNotifications.id, notificationId), eq(orderNotifications.orderId, orderId!), eq(orderNotifications.status, "ENVIANDO")));
+          else await db.update(orderEmails).set({ status: "ERROR" }).where(and(eq(orderEmails.orderId, orderId!), eq(orderEmails.status, "ENVIANDO")));
+        });
+      } catch (persistError) { reportServerError("order.mail.audit", persistError); }
+    }
+    reportServerError("order.mail.immediate", error);
+    return accepted;
+  } finally {
+    if (orderId) {
+      try { await withDatabase((db) => db.update(orderEmails).set({ leaseId: null, leaseUntil: null }).where(and(eq(orderEmails.orderId, orderId!), eq(orderEmails.leaseId, leaseId)))); }
+      catch (error) { reportServerError("order.mail.release", error); }
+    }
+  }
 }

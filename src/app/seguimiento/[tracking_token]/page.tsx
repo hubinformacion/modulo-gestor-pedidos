@@ -2,10 +2,6 @@ import { CancelOrderControls } from "@/components/cancel-order-controls";
 import { canBuyerCancel } from "@/lib/orders/cancellation-validation";
 import { customerSaleDocuments } from "@/lib/orders/sale-documents";
 import { DeliveryComplete } from "@/components/tracking/delivery-complete";
-import { after } from "next/server";
-import { needsOrderMailRecovery } from "@/lib/orders/mail-recovery";
-import { deliverOrderEmail } from "@/lib/orders/email";
-import { reportServerError } from "@/lib/server-diagnostics";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { headers } from "next/headers";
@@ -36,10 +32,6 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
   const publicLink = customerTrackingUrl(tracking_token);
   if ((await headers()).get("sec-fetch-dest") === "document" && new URL(publicLink).origin !== getPublicOrigin()) redirect(publicLink);
   const { order, items, activity } = tracking;
-  after(async () => {
-    try { if (await needsOrderMailRecovery(order.id)) await deliverOrderEmail(order.trackingToken); }
-    catch (error) { reportServerError("order.mail.recovery", error); }
-  });
   const [banks, saleDocuments] = await Promise.all([getOrderBankAccounts(order.paymentAccounts), customerSaleDocuments(order.id)]);
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");

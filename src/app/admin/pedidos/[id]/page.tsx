@@ -1,9 +1,5 @@
 import { CancelOrderControls } from "@/components/cancel-order-controls";
 import { AdminSaleDocuments } from "@/components/caja/admin-documents";
-import { after } from "next/server";
-import { needsOrderMailRecovery } from "@/lib/orders/mail-recovery";
-import { deliverOrderEmail } from "@/lib/orders/email";
-import { reportServerError } from "@/lib/server-diagnostics";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,10 +25,6 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const detail = await orderDetail(parsed.data);
   if (!detail) notFound();
   const { order, items, receipts, activity, notes, evidence } = detail;
-  after(async () => {
-    try { if (await needsOrderMailRecovery(order.id)) await deliverOrderEmail(order.trackingToken); }
-    catch (error) { reportServerError("order.mail.recovery", error); }
-  });
   const version = order.updatedAt.toISOString();
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const mine = order.assignedTo === actor.userId;
