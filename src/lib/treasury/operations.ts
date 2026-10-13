@@ -22,9 +22,9 @@ export async function addObservation(actor: AuthorizedActor, input: z.infer<type
     if (!actor.publisherImprints.includes(request.publisherImprint) || request.assignedTo !== actor.userId) throw new CajaError("Toma la atención para registrar observaciones.");
     if (["FINALIZADA", "ANULADA"].includes(request.status) || order.orderStatus === "CANCELADO") throw new CajaError("La solicitud está cerrada.");
     if (request.updatedAt.toISOString() !== input.version) throw new CajaError("La solicitud cambió. Actualiza la página.");
-    await tx.insert(treasuryObservations).values({ requestId: request.id, category: input.category, content: input.content, actorName: actor.name });
+    await tx.insert(treasuryObservations).values({ requestId: request.id, content: input.content, actorName: actor.name });
     await tx.update(cajaRequests).set({ draftDocumentId: null, assignmentToken: request.assignedTo ? randomUUID() : null, updatedAt: new Date() }).where(eq(cajaRequests.id, request.id));
-    await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "OBSERVACION", detail: `Registró una observación de ${input.category} para Fondo Editorial.` });
+    await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "OBSERVACION", detail: "Registró una observación para Fondo Editorial." });
   }));
 }
 export async function resolveObservation(actor: AuthorizedActor, input: z.infer<typeof resolveSchema>) {
@@ -36,6 +36,6 @@ export async function resolveObservation(actor: AuthorizedActor, input: z.infer<
     if (!observation) throw new CajaError("La observación ya fue resuelta o no corresponde a la solicitud.");
     await tx.update(treasuryObservations).set({ resolvedAt: new Date(), resolvedBy: actor.name, response: input.response, correction: input.correction ?? null }).where(eq(treasuryObservations.id, observation.id));
     await tx.update(cajaRequests).set({ draftDocumentId: null, assignmentToken: request.assignedTo ? randomUUID() : null, updatedAt: new Date() }).where(eq(cajaRequests.id, request.id));
-    await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "SUBSANACION", detail: `Fondo Editorial resolvió la observación de ${observation.category}.` });
+    await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "SUBSANACION", detail: "Fondo Editorial resolvió la observación." });
   }));
 }

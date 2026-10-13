@@ -226,9 +226,11 @@ El correo interno de cada evento se envía una sola vez al buzón de servicio de
 
 ## Revisión en Tesorería Recaudación
 
-En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. El detalle se organiza en **Solicitud**, **Revisión** y **Emisión**, con celular y dirección fiscal visibles. Para facturas, el comprador indica en Entrega si usa la dirección de envío o una dirección fiscal distinta; recojo exige una dirección fiscal propia.
+La migración incremental `0001_hot_red_shift.sql` añade el número propio de solicitud y elimina el tipo de observación; se aplica con `pnpm db:migrate` sin reiniciar datos. La base inicial permanece conservada.
 
-El responsable registra observaciones formales de datos, importes o comprobantes. Fondo Editorial las recibe en Pagos del pedido: el gestor asignado coordina la subsanación, puede adjuntar documentos adicionales y registrar datos corregidos de emisión y una respuesta. Los originales e importes verificados se conservan. No se podrá finalizar la emisión con observaciones abiertas; la distribución/entrega no se bloquea por ese trámite.
+En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. La bandeja muestra un número propio de solicitud, unidad de negocio, comprobante, estado y responsable; comprador e importe se consultan en el detalle. Este usa una única vista con los datos a la izquierda y el PDF a la derecha, sin wizard. Puedes consultar antes de tomar atención; modificar o finalizar requiere estar asignado. Para facturas, el comprador completa en Confirmación la solicitud, RUC, razón social y dirección fiscal, eligiendo dirección de envío u otra; recojo exige una dirección fiscal propia.
+
+El responsable describe la observación en texto libre, sin escoger un tipo. Fondo Editorial las recibe en Pagos del pedido: el gestor asignado coordina la subsanación, puede adjuntar documentos adicionales y registrar datos corregidos de emisión y una respuesta. La respuesta puede actualizar datos fiscales o adjuntar documentos; los originales e importes verificados se conservan. No se podrá finalizar la emisión con observaciones abiertas; la distribución/entrega no se bloquea por ese trámite.
 
 Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
 

@@ -27,7 +27,7 @@ export async function reviewPricingAction(input: unknown) {
     const { getActiveCampuses } = await import("@/lib/campuses/catalog");
     const { createOrderDraftSchema } = await import("@/lib/orders/validation");
     const [catalog, campuses] = await Promise.all([getPublicCatalog(), getActiveCampuses()]);
-    const draft = createOrderDraftSchema(catalog, campuses).safeParse(parsed.data);
+    const draft = createOrderDraftSchema(catalog, campuses, false).safeParse(parsed.data);
     if (!draft.success) return { success: false as const, message: draft.error.issues[0].message };
     const { pricingClock } = await import("@/lib/discounts/catalog");
     const at = await pricingClock();

@@ -1,16 +1,15 @@
 import { courierEstimate } from "@/lib/orders/courier";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatMoney } from "@/lib/orders/money";
 import { type BuyerDraft, type Campus, type DeliveryDraft } from "@/lib/orders/types";
-import type { OrderQuote } from "@/lib/orders/pricing";
-import { ImprintBadge } from "./imprint-badge";
+import { InvoiceFields } from "./invoice-fields";
+import type { FieldErrors } from "./fields";
 import { CampusLocation } from "./campus-location";
 import { resolveLocation } from "@/lib/orders/geography";
 import { resolveRecipient } from "@/lib/orders/recipient";
 
-export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
-  buyer: BuyerDraft; delivery: DeliveryDraft; campuses: Campus[]; quote: OrderQuote;
+export function ConfirmationStep({ buyer, delivery, campuses, errors, onBuyerChange, onEdit }: {
+  buyer: BuyerDraft; delivery: DeliveryDraft; campuses: Campus[]; errors: FieldErrors; onBuyerChange: (buyer: BuyerDraft) => void;
   onEdit: (step: number) => void;
 }) {
   const campus = campuses.find((option) => option.id === delivery.campus);
@@ -18,12 +17,6 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
   const recipient = resolveRecipient(delivery, buyer);
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-publications">
-        <div className="mb-4 flex items-center justify-between gap-3"><h3 id="confirm-publications" className="text-sm font-semibold">Publicaciones</h3><EditButton onClick={() => onEdit(0)} label="Editar publicaciones" /></div>
-        <ul className="divide-y divide-border">
-          {quote.lines.map((line) => <li key={line.book.id} className="flex justify-between gap-3 py-3 first:pt-0 last:pb-0"><div className="min-w-0"><p className="text-sm leading-6">{line.quantity} × {line.book.title}</p><p className="mt-1 text-xs text-muted-foreground"><ImprintBadge imprint={line.book.publisherImprint} /> · {formatMoney(line.unitPrice)} c/u</p></div><p className="shrink-0 text-sm font-medium tabular-nums">{formatMoney(line.subtotal)}</p></li>)}
-        </ul>
-      </section>
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-buyer">
         <div className="mb-4 flex items-center justify-between gap-3"><h3 id="confirm-buyer" className="text-sm font-semibold">Comprador</h3><EditButton onClick={() => onEdit(1)} label="Editar comprador" /></div>
         <dl className="grid gap-x-5 gap-y-4 text-sm sm:grid-cols-2">
@@ -31,7 +24,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
           <Detail label="Correo" value={buyer.email} /><Detail label="Teléfono" value={buyer.phone} />
           <Detail label="Tipo de comprador" value={buyer.type === "comunidad_continental" ? "Comunidad Continental" : "Público general"} />
           {buyer.type === "comunidad_continental" ? <Detail label="Sede" value={campuses.find((option) => option.id === buyer.campus)?.name ?? ""} /> : null}
-          {buyer.wantsInvoice ? <><Detail label="RUC" value={buyer.billingRuc} /><Detail label="Razón social" value={buyer.billingBusinessName} /><div className="sm:col-span-2"><Detail label="Dirección fiscal" value={buyer.billingAddressMode === "shipping" ? [delivery.address, location?.district.name, location?.province.name, location?.department.name].filter(Boolean).join(", ") : buyer.billingAddress} /></div></> : null}
+
         </dl>
       </section>
       <section className="rounded-xl border border-border p-5" aria-labelledby="confirm-delivery">
@@ -50,7 +43,7 @@ export function ConfirmationStep({ buyer, delivery, campuses, quote, onEdit }: {
         {delivery.type === "delivery" ? <p className="mt-4 text-xs leading-6 text-muted-foreground">{courierEstimate(location?.zone)}</p> : null}
         {delivery.type === "recojo_campus" && campus ? <div className="mt-5"><CampusLocation campus={campus} /></div> : null}
       </section>
-
+      <InvoiceFields buyer={buyer} delivery={delivery} errors={errors} onChange={onBuyerChange} />
     </div>
   );
 }

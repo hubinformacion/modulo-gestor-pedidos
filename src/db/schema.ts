@@ -342,6 +342,7 @@ export const pickupEvidence = pgTable("pickup_evidence", {
 // Caja is independent of delivery. One request per applicable imprint, with
 // immutable upload revisions and separate internal Gmail conversations.
 export const cajaRequests = pgTable("caja_requests", {
+  requestNumber: integer("request_number").generatedAlwaysAsIdentity().notNull().unique(),
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
@@ -486,7 +487,6 @@ export const treasuryActivity = pgTable("treasury_activity", {
 }, (table) => [index("treasury_activity_request_idx").on(table.requestId, table.createdAt)]);
 export const treasuryObservations = pgTable("treasury_observations", {
   id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  category: text("category").$type<"datos" | "importes" | "comprobantes">().notNull(),
   content: text("content").notNull(), actorName: text("actor_name").notNull(), correction: jsonb("correction").$type<Record<string, string>>(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   resolvedAt: timestamp("resolved_at", { withTimezone: true }), resolvedBy: text("resolved_by"), response: text("response"),
