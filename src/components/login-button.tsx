@@ -26,9 +26,9 @@ export function LoginButton({ configured }: { configured: boolean }) {
       });
       if (result.error) throw new Error("SIGN_IN_FAILED");
     } catch {
-      const message = "No se pudo iniciar sesión. Intenta nuevamente.";
+      const message = "No pudimos iniciar la conexión con Google. Comprueba tu conexión y vuelve a intentarlo.";
       setError(message);
-      sileo.error({ title: "Inicio de sesión no disponible", description: message });
+      sileo.error({ title: "Inicio de sesión no disponible", description: message, duration: 8000 });
       setPending(false);
     }
   }

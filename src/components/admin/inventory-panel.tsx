@@ -5,6 +5,7 @@ import { useState, useTransition, type FormEvent } from "react";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
 import { Check, Pencil, Plus, Trash2, X } from "lucide-react";
 import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { saveBookAction, deleteBookAction } from "@/app/admin/operations";
 import { bookSchema, deleteBookSchema, emptyBook, type ActionResult, type BookForm, type BookRow } from "@/lib/admin/validation";
 import { formatMoney, toCents } from "@/lib/orders/money";
@@ -30,7 +31,7 @@ export function InventoryPanel({ rows }: { rows: BookRow[] }) {
   const visible = rows.filter((row) => (!imprint || row.publisherImprint === imprint) && (!status || row.status === status) && `${row.title} ${row.author} ${row.inventoryCode}`.toLocaleLowerCase("es").includes(normalized));
   function set<K extends keyof BookForm>(key: K, value: BookForm[K]) { setForm((current) => ({ ...current, [key]: value })); setErrors((current) => ({ ...current, [key]: "" })); setMessage(null); }
   function reset() { setEditing(null); setForm(emptyBook); setErrors({}); setConfirm(null); }
-  function report(result: ActionResult) { setMessage(result.success ? null : result); if (result.success) sileo.success({ title: result.message }); else sileo.error({ title: "No se pudo guardar", description: result.message }); }
+  function report(result: ActionResult) { setMessage(result.success ? null : result);  }
   function edit(row: BookRow) {
     setEditing({ id: row.id, version: row.version }); setForm({ inventoryCode: row.inventoryCode, title: row.title, author: row.author, publisherImprint: row.publisherImprint, standardPrice: row.standardPrice, communityPrice: row.communityPrice, stock: row.stock, status: row.status }); setErrors({}); setMessage(null); setConfirm(null);
   }
@@ -38,14 +39,14 @@ export function InventoryPanel({ rows }: { rows: BookRow[] }) {
     event.preventDefault();
     if (!editing && !creating) return;
     const parsed = bookSchema.safeParse(form);
-    if (!parsed.success) { const next: Record<string, string> = {}; for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message; setErrors(next); setMessage({ success: false, message: parsed.error.issues[0]?.message ?? "Revisa los campos indicados." }); return; }
+    if (!parsed.success) { const next: Record<string, string> = {}; for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message; sileo.warning({ title: "Revisa la publicación", description: "Corrige los campos señalados antes de guardar." }); setErrors(next); setMessage({ success: false, message: parsed.error.issues[0]?.message ?? "Revisa los campos indicados." }); return; }
     setErrors({}); setMessage(null);
-    startTransition(async () => { try { const result = await saveBookAction({ book: parsed.data, ...editing }); if (result.success) { reset(); setCreating(false); } report(result); } catch { report({ success: false, message: "No se pudo guardar. Actualiza la página e intenta nuevamente." }); } });
+    startTransition(async () => { try { const result = await notifyAction(() => saveBookAction({ book: parsed.data, ...editing }), { loading: { title: "Guardando publicación", description: "Actualizamos sus datos, precios y existencias." }, success: { title: editing ? "Publicación actualizada" : "Publicación añadida", description: "Los datos, precios y stock quedaron guardados en el inventario." }, error: { title: "No se pudo guardar la publicación", description: "Conserva los cambios de la fila y vuelve a intentarlo." } }); if (result.success) { reset(); setCreating(false); } report(result); } catch { report({ success: false, message: "No se pudo guardar. Actualiza la página e intenta nuevamente." }); } });
   }
   function remove(row: BookRow) {
     const parsed = deleteBookSchema.safeParse({ id: row.id, version: row.version });
     if (!parsed.success) { report({ success: false, message: "Actualiza la publicación antes de eliminarla." }); return; }
-    startTransition(async () => { try { const result = await deleteBookAction(parsed.data); if (result.success) { setConfirm(null); if (editing?.id === row.id) reset(); } report(result); } catch { report({ success: false, message: "No se pudo eliminar. Actualiza la página." }); } });
+    startTransition(async () => { try { const result = await notifyAction(() => deleteBookAction(parsed.data), { loading: { title: "Eliminando publicación", description: "Comprobamos sus referencias antes de retirarla." }, success: { title: "Publicación eliminada", description: "El título se retiró del inventario." }, error: { title: "No se pudo eliminar la publicación", description: "Actualiza el inventario y revisa si tiene pedidos o campañas asociados." } }); if (result.success) { setConfirm(null); if (editing?.id === row.id) reset(); } report(result); } catch { report({ success: false, message: "No se pudo eliminar. Actualiza la página." }); } });
   }
   function inlineField(key: "title" | "author" | "inventoryCode" | "standardPrice" | "communityPrice", label: string, placeholder: string) {
     return <div><Input autoFocus={key === "title"} aria-label={label} placeholder={placeholder} value={form[key]} onChange={(event) => set(key, event.target.value)} aria-invalid={Boolean(errors[key])} aria-describedby={errors[key] ? `edit-${key}-error` : undefined} disabled={pending} className="h-9 text-xs" maxLength={key === "title" ? 300 : key === "author" ? 200 : key === "inventoryCode" ? 80 : 13} inputMode={key.endsWith("Price") ? "decimal" : "text"} />{errors[key] ? <p id={`edit-${key}-error`} className="mt-1 text-[11px] text-destructive">{errors[key]}</p> : null}</div>;

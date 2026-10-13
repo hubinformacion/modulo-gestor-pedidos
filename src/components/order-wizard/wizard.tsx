@@ -6,6 +6,7 @@ import { ArrowLeft, ArrowRight, Check } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createOrderAction, reviewPricingAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { Button } from "@/components/ui/button";
 import { calculateQuote, quoteStamp } from "@/lib/orders/pricing";
 import { initialBuyer, initialDelivery, type BuyerDraft, type CouponOffer, type Campus, type CartSelection, type CatalogBook, type DeliveryDraft } from "@/lib/orders/types";
@@ -67,10 +68,11 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
       const priced = calculateQuote(result.catalog, cart, buyer.type, delivery, result.at, result.coupon);
       setCouponInput(result.coupon.code);
       setCouponMessage(priced.couponApplied ? `Cupón ${result.coupon.code} aplicado.` : "El precio actual ofrece igual o mayor ahorro. El cupón no se utilizará.");
+      if (!priced.couponApplied) sileo.info({ title: "Se conserva el mayor ahorro", description: "El precio actual ofrece igual o mayor descuento. El cupón no se aplicará ni consumirá un uso en este pedido." });
     });
   }
 
-  function showErrors(issues: { path: PropertyKey[]; message: string }[]) {
+  function showErrors(issues: { path: PropertyKey[]; message: string }[], showToast = true) {
     const fieldErrors: FieldErrors = {};
     for (const issue of issues) {
       const key = String(issue.path[0] ?? "form");
@@ -78,7 +80,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
     }
     setErrors(fieldErrors);
     setErrorMessage(issues[0]?.message ?? "Revisa los datos para continuar.");
-    sileo.error({ title: "Revisa este paso", description: issues[0]?.message });
+    if (showToast) sileo.warning({ title: "Revisa este paso", description: issues[0]?.message ?? "Corrige los campos señalados para continuar." });
     requestAnimationFrame(() => errorRef.current?.focus());
   }
 
@@ -128,10 +130,10 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
       const payload = { requestId: requestId.current, couponCode: quote.couponApplied?.code ?? "", expectedQuote: quoteStamp(quote), cart, buyer, delivery, consent: { accepted: consentAccepted } };
       startTransition(async () => {
         try {
-          const created = await createOrderAction(payload);
-          if (!created.success) { showErrors([{ path: ["form"], message: created.message }]); return; }
+          const created = await notifyAction(() => createOrderAction(payload), { loading: { title: "Enviando pedido", description: "Confirmamos los datos, precios y existencias de tus publicaciones." }, success: { title: "Pedido registrado", description: "Conserva el enlace de seguimiento para adjuntar tus comprobantes y consultar los avances." }, error: { title: "No se pudo confirmar el pedido", description: "Reintenta sin cambiar los datos. El mismo intento evita duplicar el pedido." } });
+          if (!created.success) { showErrors([{ path: ["form"], message: created.message }], false); return; }
           router.push(`/seguimiento/${created.trackingToken}`);
-        } catch { showErrors([{ path: ["form"], message: "No pudimos confirmar la respuesta. Reintenta sin cambiar tus datos para evitar duplicados." }]); }
+        } catch { showErrors([{ path: ["form"], message: "No pudimos confirmar la respuesta. Reintenta sin cambiar tus datos para evitar duplicados." }], false); }
         finally { sending.current = false; }
       });
     }

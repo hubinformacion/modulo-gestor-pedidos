@@ -1,6 +1,6 @@
 "use client";
 import { useState, useTransition } from "react";
-import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { addInternalNoteAction } from "@/app/admin/operations";
 import { internalNoteSchema } from "@/lib/admin/validation";
 import { Button } from "@/components/ui/button";
@@ -15,8 +15,8 @@ export function InternalNoteComposer({ id }: { id: string }) {
     if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
     startTransition(async () => {
       try {
-        const result = await addInternalNoteAction(parsed.data);
-        if (result.success) { setContent(""); setError(""); sileo.success({ title: result.message }); }
+        const result = await notifyAction(() => addInternalNoteAction(parsed.data), { loading: { title: "Guardando nota", description: "Añadimos el comentario al historial interno." }, success: { title: "Nota guardada", description: "El equipo de Fondo Editorial puede consultar el comentario con su autor y fecha." }, error: { title: "No se pudo guardar la nota", description: "Tu comentario permanece en el formulario para reintentar." } });
+        if (result.success) { setContent(""); setError(""); }
         else setError(result.message);
       } catch { setError("No se pudo guardar. Tu comentario permanece aquí."); }
     });

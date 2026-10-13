@@ -2,6 +2,7 @@
 
 import { useState, useTransition, type FormEvent } from "react";
 import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { Button } from "@/components/ui/button";
 import { Field, SelectField } from "@/components/order-wizard/fields";
 import { ImprintBadge } from "@/components/order-wizard/imprint-badge";
@@ -16,7 +17,7 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
   const [message, setMessage] = useState<BankResult | null>(null);
   const [pending, startTransition] = useTransition();
   function set<K extends keyof BankForm>(key: K, value: BankForm[K]) { setForm((current) => ({ ...current, [key]: value })); setErrors((current) => ({ ...current, [key]: "" })); setMessage(null); }
-  function report(result: BankResult) { setMessage(result); setErrors(result.fieldErrors ?? {}); (result.success ? sileo.success : sileo.error)({ title: result.message }); }
+  function report(result: BankResult) { setMessage(result); setErrors(result.fieldErrors ?? {});  }
   function cancel() { setEditing(null); setForm(emptyBank); setErrors({}); setMessage(null); }
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,10 +25,10 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
     if (!parsed.success) {
       const fields: Record<string, string> = {};
       parsed.error.issues.forEach((issue) => { fields[String(issue.path[0])] ??= issue.message; });
-      report({ success: false, message: "Revisa los datos de la cuenta.", fieldErrors: fields }); return;
+      sileo.warning({ title: "Revisa la cuenta", description: "Corrige los campos señalados antes de guardar los datos bancarios." }); report({ success: false, message: "Revisa los datos de la cuenta.", fieldErrors: fields }); return;
     }
     startTransition(async () => {
-      try { const result = editing ? await updateBankAction({ ...parsed.data, id: editing }) : await createBankAction(parsed.data); if (result.success) { setEditing(null); setForm(emptyBank); } report(result); }
+      try { const result = await notifyAction(() => editing ? updateBankAction({ ...parsed.data, id: editing }) : createBankAction(parsed.data), { loading: { title: "Guardando cuenta", description: "Validamos los datos bancarios para los depósitos." }, success: { title: editing ? "Cuenta actualizada" : "Cuenta añadida", description: "La configuración bancaria quedó guardada. Los pedidos anteriores conservan sus cuentas originales." }, error: { title: "No se pudo guardar la cuenta", description: "Revisa los datos bancarios y vuelve a intentarlo." } }); if (result.success) { setEditing(null); setForm(emptyBank); } report(result); }
       catch { report({ success: false, message: "No se pudo guardar. Reintenta." }); }
     });
   }
@@ -40,7 +41,7 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
         {row.cci.length !== 20 || !row.holder ? <p className="mt-2 text-xs text-destructive">Completa titular y CCI válido antes de activar.</p> : null}
         <div className="mt-3 flex gap-2"><Button variant="outline" disabled={pending} onClick={() => { setEditing(row.id); setForm({ publisherImprint: row.publisherImprint, bank: row.bank, holder: row.holder, account: row.account, cci: row.cci, currency: row.currency, status: row.status }); setErrors({}); setMessage(null); document.getElementById("bank-form")?.scrollIntoView({ block: "start", behavior: "instant" }); }}>Editar</Button><Button variant="ghost" disabled={pending} onClick={() => setConfirmDelete(row.id)}>Eliminar</Button></div>
         {confirmDelete === row.id ? <div className="mt-3 rounded-lg border border-destructive/20 p-3"><p className="text-xs leading-6">¿Eliminar esta cuenta? Los pedidos anteriores conservan sus datos.</p><div className="mt-2 flex gap-2"><Button variant="destructive" disabled={pending} onClick={() => startTransition(async () => {
-          try { const result = await deleteBankAction(row.id); if (result.success) { setConfirmDelete(null); if (editing === row.id) cancel(); } report(result); }
+          try { const result = await notifyAction(() => deleteBankAction(row.id), { loading: { title: "Eliminando cuenta", description: "Retiramos la cuenta de las opciones de pago futuras." }, success: { title: "Cuenta eliminada", description: "Los pedidos anteriores conservan los datos de pago que recibieron." }, error: { title: "No se pudo eliminar la cuenta", description: "Actualiza la configuración e inténtalo nuevamente." } }); if (result.success) { setConfirmDelete(null); if (editing === row.id) cancel(); } report(result); }
           catch { report({ success: false, message: "No se pudo eliminar la cuenta." }); }
         })}>Confirmar</Button><Button variant="outline" disabled={pending} onClick={() => setConfirmDelete(null)}>Cancelar</Button></div></div> : null}
       </div>) : <p className="p-5 text-sm text-muted-foreground">Añade las cuentas de ambos sellos.</p>}

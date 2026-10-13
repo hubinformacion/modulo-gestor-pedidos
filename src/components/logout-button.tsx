@@ -19,7 +19,7 @@ export function LogoutButton() {
       router.replace("/login");
       router.refresh();
     } catch {
-      sileo.error({ title: "No se pudo cerrar sesión", description: "Intenta nuevamente." });
+      sileo.error({ title: "No se pudo cerrar sesión", description: "Vuelve a intentar cerrar sesión. Si el error persiste, actualiza esta página.", duration: 8000 });
       setPending(false);
     }
   }

@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from "react";
 import { Mail, Plus, ShieldCheck, Trash2 } from "lucide-react";
 import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { addEmailAction, removeEmailAction } from "@/app/admin/actions";
@@ -19,22 +20,21 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
 
   function report(result: AccessActionResult) {
     setMessage(result);
-    if (result.success) sileo.success({ title: result.message });
-    else sileo.error({ title: "No se pudo actualizar el acceso", description: result.message });
+
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const parsed = authorizedEmailSchema.safeParse(email);
     if (!parsed.success) {
-      setEmailError(parsed.error.issues[0]?.message ?? "Ingresa un correo válido.");
+      setEmailError(parsed.error.issues[0]?.message ?? "Ingresa un correo válido."); sileo.warning({ title: "Revisa el correo", description: "Ingresa una dirección válida para autorizar el acceso." });
       return;
     }
     setEmailError(null);
     setMessage(null);
     startTransition(async () => {
       try {
-        const result = await addEmailAction(parsed.data);
+        const result = await notifyAction(() => addEmailAction(parsed.data), { loading: { title: "Autorizando correo", description: "Actualizamos la autorización en el sistema." }, success: { title: "Correo autorizado", description: "La cuenta podrá ingresar como gestor con Google." }, error: { title: "No se pudo cambiar el acceso", description: "Actualiza la lista de correos y reintenta." } });
         report(result);
         if (result.success) setEmail("");
       } catch {
@@ -49,7 +49,7 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
     setMessage(null);
     startTransition(async () => {
       try {
-        const result = await removeEmailAction(parsed.data);
+        const result = await notifyAction(() => removeEmailAction(parsed.data), { loading: { title: "Revocando acceso", description: "Actualizamos la autorización en el sistema." }, success: { title: "Acceso revocado", description: "Se cerraron sus sesiones y sus pedidos abiertos quedaron disponibles para el equipo." }, error: { title: "No se pudo cambiar el acceso", description: "Actualiza la lista de correos y reintenta." } });
         report(result);
         setConfirmEmail(null);
       } catch {

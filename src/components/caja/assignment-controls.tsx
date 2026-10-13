@@ -1,7 +1,7 @@
 "use client";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
-import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { assignCajaAction } from "@/app/tesoreria-recaudacion/actions";
 import { cajaAssignmentSchema } from "@/lib/caja/validation";
 export function CajaAssignmentControls({ id, version, mine, assigned, assignedName }: { id: string; version: string; mine: boolean; assigned: boolean; assignedName: string | null }) {
@@ -12,6 +12,6 @@ export function CajaAssignmentControls({ id, version, mine, assigned, assignedNa
     if (assigned && !mine && reason.trim().length < 5) { setError("Indica el motivo (mínimo 5 caracteres)."); return; }
     const parsed = cajaAssignmentSchema.safeParse({ id, version, operation: mode ?? (mine ? "release" : assigned ? "takeover" : "claim"), reason });
     if (!parsed.success) { setError("Actualiza la solicitud."); return; }
-    startTransition(async () => { try { const result = await assignCajaAction(parsed.data); if (result.success) { setError(""); sileo.success({ title: result.message }); } else setError(result.message); } catch { setError("No se pudo cambiar la atención. Reintenta."); } });
+    startTransition(async () => { try { const result = await notifyAction(() => assignCajaAction(parsed.data), { loading: { title: "Actualizando atención", description: "Registramos el responsable y el motivo del cambio." }, success: { title: parsed.data.operation === "release" ? "Solicitud liberada" : "Atención asignada", description: parsed.data.operation === "release" ? "La solicitud está disponible para el equipo de esta unidad de negocio; el borrador se conserva." : "El responsable quedó registrado en el historial. Puedes continuar con la revisión y emisión." }, error: { title: "No se pudo cambiar la atención", description: "Actualiza la solicitud y revisa su responsable actual." } }); if (result.success) { setError(""); } else setError(result.message); } catch { setError("No se pudo cambiar la atención. Reintenta."); } });
   }}>{pending ? "Guardando…" : mode === "release" ? "Confirmar liberación" : mode === "takeover" ? "Confirmar reasignación" : mine ? "Liberar solicitud" : assigned ? "Reasignar atención" : "Tomar atención"}</Button>{assigned && !mine && !mode ? <Button type="button" variant="outline" onClick={() => setMode("release")}>Desasignar con motivo</Button> : null}{mode ? <label className="w-full text-xs font-medium">Motivo del cambio{mine ? " (opcional)" : ""}<textarea value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Indica por qué necesitas cambiar la atención" maxLength={1000} disabled={pending} className="mt-2 min-h-20 w-full rounded-lg border border-input p-3 text-sm" /></label> : null}{error ? <p role="alert" className="w-full text-xs text-destructive">{error}</p> : null}</section>;
 }

@@ -152,3 +152,10 @@ Para sintaxis/configuración/debug de librerías, SDK, API, CLI o servicios clou
 - Reinicio autorizado de pruebas ejecutado antes de 0017 mediante clear-orders: se conservaron catálogo/configuración/accesos y los archivos/correos físicos de Google; no ejecutar otro borrado por validación/despliegue. Nuevas dependencias de pedidos incluidas en el script RESTRICT; treasury_mailboxes es configuración y se conserva.
 
 - Nomenclatura de Tesorería: en sus etiquetas, filtros, configuración y mensajes visibles usar «unidad de negocio» en lugar de «sello». Identificadores publisher_imprint/publisher_imprints y lógica interna se conservan; catálogo y pantallas editoriales mantienen su nomenclatura.
+
+## Notificaciones Sileo
+
+- src/lib/ui/notifications.ts centraliza notifyAction: una sola invocación por operación, loading/success/error mediante sileo.promise; respuestas success:false se convierten en rechazo para el toast y se devuelven intactas para errores inline. Nunca mostrar éxito por el simple hecho de resolver una Promise, ni añadir reintentos automáticos/botones que repitan mutaciones.
+- Títulos en estilo oración, sin punto final, descripciones claras de resultado o siguiente paso. El CSS específico del viewport desactiva text-transform:capitalize que Sileo aplica por defecto, conservando nombres propios. Errores técnicos usan mensajes seguros, no Error.message crudo del transporte.
+- warning para validación/cargas pendientes, info para información sin cambio de estado, action solo con navegación/consulta útil. FilePond mantiene su propio progreso sin un toast por archivo. Confirmar persistencia no equivale a confirmar entrega de Gmail.
+- Toaster ligero global, bottom-right por defecto, offset16, descripción expandida y tiempos suficientes de lectura. Posición no modificada a top-center sin elección del usuario. Mantener errores inline/foco, especialmente en iframe; un toast fijo dentro del iframe no garantiza visibilidad al hacer scroll en WordPress.
