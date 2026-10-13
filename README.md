@@ -74,10 +74,9 @@ Configura también `DATABASE_URL`, `BETTER_AUTH_SECRET`, las credenciales de Goo
 
 `CRON_SECRET` protege `/api/internal/jobs`. Usa una cadena aleatoria de al menos 32 caracteres, sin prefijo `Bearer`; Vercel añade ese encabezado automáticamente. El cron diario está programado a las 12:00 UTC, 07:00 de Perú, exclusivamente para sincronizar permisos privados de Drive. Las operaciones normales intentan enviar el aviso nuevo durante la misma solicitud, después de guardar el cambio. El cron nunca envía correos.
 
-La migración `0018_handy_lizard.sql` elimina la programación de avisos históricos pendientes, conservando el historial y los mensajes aceptados por Gmail. Para desplegar este cambio, desactiva el cron de la versión anterior y pausa operaciones/cargas; espera a que terminen los envíos en curso. Aplica `pnpm db:migrate`, publica la versión nueva y reactiva el cron (ahora solo permisos Drive). La migración rechaza leases activos; no ejecutar la versión anterior después de migrar. No hace envíos ni borra pedidos. No basta con actualizar variables de entorno.
+La instalación utiliza una única migración inicial, `src/db/migrations/0000_initial.sql`, con el esquema completo. El historial de desarrollo anterior se compactó durante un reinicio explícito de la BD configurada. Conserva el SQL, `meta/0000_snapshot.json` y `meta/_journal.json`: permiten instalar el sistema y generar las migraciones futuras. No apliques esta base sobre otra BD que conserve el historial anterior; esa BD debe reconciliarse antes.
 
-
-Las migraciones se aplican explícitamente contra la BD destino, **fuera del build**. Conserva todo `src/db/migrations`, incluidos sus snapshots y journal. No regeneres ni edites migraciones ya aplicadas.
+Las migraciones se aplican explícitamente contra la BD destino, **fuera del build**. Cuando existan datos operativos, los cambios se harán mediante nuevas migraciones incrementales, sin borrar ni reescribir las ya aplicadas. Implementar o publicar un feature no reinicia la BD.
 
 ## Google OAuth, Drive y Gmail
 
@@ -141,23 +140,23 @@ Configura los buzones de servicio y los accesos personales desde **Configuració
 
 Tesorería Recaudación adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y Tesorería Recaudación lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
 
-La funcionalidad requiere las migraciones 0012 y 0013. Para validar cambios futuros, utiliza una BD separada de producción. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
+Para validar cambios futuros, utiliza una BD separada de producción. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
 
-El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias. Esta operación requiere la migración 0013.
+El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias.
 
 
 ## Promociones por temporada
 
 En `/admin/promociones`, los gestores registran campañas activas/inactivas, porcentajes separados para comunidad y público general y las publicaciones participantes (o todo el catálogo). Las fechas y horas se ingresan en horario de Perú. Usa 0 si un público no participa; los descuentos adicionales admiten porcentajes enteros del 1 al 99. La mayor promoción vigente por título se aplica automáticamente al precio correspondiente; el envío conserva su costo.
 
-El comprador revisa precios actualizados en confirmación; la creación vuelve a calcularlos en servidor y detiene el envío si cambió el resumen aceptado. Los pedidos guardan descuentos y precios aplicados, incluso al editar o desactivar campañas. Las campañas con pedidos asociados no se eliminan. Migración 0014 requerida.
+El comprador revisa precios actualizados en confirmación; la creación vuelve a calcularlos en servidor y detiene el envío si cambió el resumen aceptado. Los pedidos guardan descuentos y precios aplicados, incluso al editar o desactivar campañas. Las campañas con pedidos asociados no se eliminan.
 
 
 ## Cupones
 
 En `/admin/cupones`, los gestores crean o generan un código, porcentaje de 1–99%, público destinatario, vigencia opcional y cantidad máxima de usos o ilimitados. El comprador lo aplica en confirmación. No se combinan promociones y cupones: se comparan ambas alternativas completas y se conserva el mayor ahorro. En empate se conservan las promociones; no se consume el cupón. El envío mantiene su importe.
 
-Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código. Migración 0015 requerida.
+Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código.
 
 Promociones y cupones están integrados. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.
 
@@ -168,7 +167,7 @@ Promociones y cupones están integrados. Las migraciones conservan datos existen
 3. Verifica el contenido de las tres guías PDF y su correspondencia con las cuentas vigentes. Configuración → Integraciones comprueba presencia/formato de configuración; no confirma que el token Google siga autorizado.
 4. Pega el bloque HTML completo del iframe en WordPress y revisa ancho/altura en móvil y escritorio. La aplicación desplegada no actualiza automáticamente el bloque de WordPress.
 
-El reinicio autorizado conserva configuración y migraciones, pero exige volver a registrar catálogo y accesos. Los archivos de Drive y correos ya enviados no se borran al reiniciar la BD. No repitas un reinicio sobre datos operativos.
+El reinicio de desarrollo dejó catálogo, pedidos, descuentos, avisos y sesiones vacíos. Se conservaron campus, cuentas bancarias, buzones y accesos autorizados; debes iniciar sesión nuevamente y cargar el catálogo. Los archivos/correos físicos de Google permanecen. No se ejecutan reinicios automáticos. Los archivos de Drive y correos ya enviados no se borran al reiniciar la BD. No repitas un reinicio sobre datos operativos.
 
 ### Vaciar únicamente pedidos al terminar las demos
 
@@ -223,7 +222,7 @@ El maestro añade o revoca cuentas personales y configura buzones de servicio po
 
 En el detalle, pulsa **Tomar atención** antes de cargar el PDF. Solo la persona asignada puede cargar, retirar o finalizar el documento; el resto consulta datos, vista previa e historial. **Liberar solicitud** permite el relevo conservando el borrador. Revocar un acceso cierra sus sesiones y libera sus solicitudes abiertas; los registros cerrados conservan su responsable. Una devolución a caja abre un nuevo ciclo disponible para el equipo.
 
-El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; los fallos de envío quedan registrados sin recuperación posterior. Universidad e Instituto mantienen bandejas e hilos separados. La funcionalidad requiere la migración 0016, aplicada fuera del build sin reiniciar datos.
+El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; los fallos de envío quedan registrados sin recuperación posterior. Universidad e Instituto mantienen bandejas e hilos separados.
 
 ## Revisión en Tesorería Recaudación
 
@@ -233,4 +232,4 @@ El responsable registra observaciones formales de datos, importes o comprobantes
 
 Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
 
-Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos. La migración 0017 se aplica fuera del build y conserva configuración y roles existentes.
+Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos.

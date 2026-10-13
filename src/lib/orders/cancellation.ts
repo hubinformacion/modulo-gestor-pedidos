@@ -37,13 +37,13 @@ export async function cancelPurchase(input: { token?: string; id?: string; versi
       }
     }
     await tx.update(orders).set({ orderStatus: "CANCELADO", cancelledAt: now, cancellationSource: actor ? "gestor" : "comprador", cancellationReason: input.reason || null, stockRestoredAt: order.stockRestoredAt ?? now }).where(eq(orders.id, order.id));
-    await tx.update(orderNotifications).set({ status: "OMITIDO" }).where(and(eq(orderNotifications.orderId, order.id), inArray(orderNotifications.status, ["NO_ENVIADO", "PENDIENTE", "ERROR"])));
+    await tx.update(orderNotifications).set({ status: "OMITIDO" }).where(and(eq(orderNotifications.orderId, order.id), inArray(orderNotifications.status, ["NO_ENVIADO", "ERROR"])));
     const [event] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: "CANCELADO", payload: { source: actor ? "gestor" : "comprador", reason: input.reason } }).returning({ id: orderNotifications.id });
     const cajaEvents: { requestId: string; notificationId: string }[] = [];
     const requests = await tx.select().from(cajaRequests).where(eq(cajaRequests.orderId, order.id)).for("update");
     for (const request of requests) {
       await tx.update(cajaRequests).set({ status: "ANULADA" }).where(eq(cajaRequests.id, request.id));
-      await tx.update(cajaNotifications).set({ status: "OMITIDO" }).where(and(eq(cajaNotifications.requestId, request.id), inArray(cajaNotifications.status, ["NO_ENVIADO", "PENDIENTE", "ERROR"])));
+      await tx.update(cajaNotifications).set({ status: "OMITIDO" }).where(and(eq(cajaNotifications.requestId, request.id), inArray(cajaNotifications.status, ["NO_ENVIADO", "ERROR"])));
       const [notice] = await tx.insert(cajaNotifications).values({ requestId: request.id, cycle: request.cycle, eventType: "ANULADA", reason: input.reason || "Pedido cancelado." }).onConflictDoNothing().returning({ id: cajaNotifications.id });
       if (notice) cajaEvents.push({ requestId: request.id, notificationId: notice.id });
     }
