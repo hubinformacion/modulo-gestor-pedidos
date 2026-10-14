@@ -13,14 +13,14 @@ import { reportServerError, safeErrorDetails } from "./server-diagnostics";
 import { createAuth } from "./auth";
 import { AccessError, authorizedEmailSchema, type AuthorizedActor } from "./access-policy";
 
-type SessionIdentity = { user: { email: string; emailVerified: boolean; id: string; name: string }; session: { id: string } };
+type SessionIdentity = { user: { email: string; emailVerified: boolean; id: string; name: string; image?: string | null }; session: { id: string } };
 async function authorizeIdentity(db: Database, result: SessionIdentity | null): Promise<AuthorizedActor> {
   if (!result) throw new AccessError("UNAUTHENTICATED");
   const email = authorizedEmailSchema.safeParse(result.user.email);
   if (!result.user.emailVerified || !email.success) throw new AccessError("FORBIDDEN");
   const [allowed] = await db.select().from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
   if (!allowed) throw new AccessError("FORBIDDEN");
-  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
+  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, image: result.user.image ?? null, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
 }
 function accessFailure(error: unknown): never {
   if (error instanceof AccessError) throw error;

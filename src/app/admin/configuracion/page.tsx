@@ -1,3 +1,4 @@
+import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import type { Metadata } from "next";
 import { treasuryScopes } from "@/lib/treasury/scope";
 import { CajaSettings } from "@/components/caja/settings";
@@ -35,7 +36,7 @@ export default async function AuthorizedEmailsPage() {
   const paymentSetup = await getPaymentSetupStatus();
   return (
     <>
-      <h1 className="page-heading">Configuración</h1>
+      <WorkspacePageHeading eyebrow="Sistema" title="Configuración" description="Organiza los accesos, campus, cuentas y servicios del equipo." />
       <SettingsTabs emails={<section aria-labelledby="emails-title">
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>

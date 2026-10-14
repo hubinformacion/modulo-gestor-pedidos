@@ -1,3 +1,4 @@
+import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import { SortableTable } from "@/components/sortable-table";
 import Link from "next/link";
 import { BarChart3, Banknote, Package, CheckCheck, Clock3, UsersRound, AlertCircle } from "lucide-react";
@@ -40,11 +41,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   ];
   const states = [{ title: "Esperando pago", value: live.waiting }, { title: "En revisión", value: live.review }, { title: "En distribución", value: live.distribution }, { title: "Despachados / listos para recojo", value: live.dispatched }];
   return <div className="space-y-7">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-primary">Resumen operativo</p><h1 className="page-heading mt-2">Dashboard</h1><p className="mt-3 text-sm text-muted-foreground">Consulta cada área desde su pestaña.</p></div><div className="flex items-center gap-3"><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></div></header>
-    <nav aria-label="Secciones del dashboard" className="flex gap-1 overflow-x-auto border-b border-border">
+    <WorkspacePageHeading eyebrow="Resumen operativo" title="Dashboard" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
+    <nav aria-label="Secciones del dashboard" className="workspace-dashboard-tabs flex gap-1 overflow-x-auto">
       {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{item.label}</Link>)}
     </nav>
-    <form action="/admin/dashboard" className={`grid items-end gap-3 rounded-xl border border-border bg-muted/20 p-4 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
+    <form action="/admin/dashboard" className={`workspace-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
       <input type="hidden" name="tab" value={tab} />
       {tab !== "inventario" ? <>
       <label className="space-y-2 text-xs font-medium">Desde<input name="from" type="date" required defaultValue={filters.from} className={fieldClass} /></label>

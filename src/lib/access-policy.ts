@@ -31,6 +31,7 @@ export type AuthorizedActor = {
   sessionId: string;
   email: string;
   name: string;
+  image: string | null;
   role: "gestor" | "caja";
   publisherImprint: "universidad" | "instituto" | null;
   publisherImprints: ("universidad" | "instituto")[];

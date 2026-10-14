@@ -36,12 +36,12 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
       <div className="absolute right-4 top-4"><OrderLiveRefresh finished={closed} /></div>
     </header>
     {!closed && !service ? <CajaAssignmentControls key={`${request.id}:${request.assignedTo ?? "unassigned"}:${request.assignedAt?.toISOString() ?? ""}`} id={request.id} version={version} mine={mine} assigned={Boolean(request.assignedTo)} assignedName={request.assignedName} /> : <p className="mt-4 text-center text-xs text-muted-foreground">{service ? "Buzón de servicio · Solo consulta" : `Responsable: ${request.assignedName ?? "Sin asignar"}`}</p>}
-    <div className="mt-6 grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="mt-6 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="min-w-0 space-y-5">{contact}{purchase}{review}
         <details className="rounded-xl border border-border bg-white p-5"><summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><MessageSquareText className="size-4 text-primary" aria-hidden="true" />Notas internas<span className="ml-auto text-xs text-muted-foreground">{notes.length}</span></summary><p className="my-4 text-xs leading-5 text-muted-foreground">Exclusivas del equipo de Tesorería Recaudación.</p>{!service ? <TreasuryComposer note id={request.id} version={version} /> : null}<ul tabIndex={0} aria-label="Notas internas de Tesorería Recaudación" className="mt-5 max-h-80 space-y-4 overflow-y-auto overscroll-contain">{notes.map((note) => <li key={note.id} className="border-t border-border pt-3 text-xs"><p className="whitespace-pre-wrap leading-6">{note.content}</p><p className="mt-2 text-[10px] text-muted-foreground">{note.actorName} · {dates.format(note.createdAt)}</p></li>)}</ul></details>
         <details className="rounded-xl border border-border bg-white p-5"><summary className="flex cursor-pointer items-center gap-2 text-sm font-semibold"><History className="size-4 text-primary" aria-hidden="true" />Historial de atención<span className="ml-auto text-xs text-muted-foreground">{activity.length}</span></summary><ul tabIndex={0} aria-label="Historial de atención de la solicitud" className="mt-4 max-h-80 space-y-4 overflow-y-auto overscroll-contain">{activity.map((event) => <li key={event.id} className="border-t border-border pt-3 text-xs"><p className="leading-6">{event.detail}</p><p className="mt-1 text-[10px] text-muted-foreground">{event.actorName} · {dates.format(event.createdAt)}</p></li>)}</ul>{!activity.length ? <p className="mt-3 text-xs text-muted-foreground">Sin movimientos registrados.</p> : null}</details>
       </div>
-      <aside className="min-w-0 lg:sticky lg:top-6" aria-label="Emisión del documento">{emission}</aside>
+      <aside className="min-w-0 xl:sticky xl:top-24" aria-label="Emisión del documento">{emission}</aside>
     </div>
   </>;
 }

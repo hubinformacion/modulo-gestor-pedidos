@@ -56,7 +56,9 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/tesoreria-recaudacion/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
 
-El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Responsables de caja. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Tesorería Recaudación. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+
+Los módulos internos usan navegación lateral: en escritorio puedes plegarla para ampliar el área de trabajo y en móvil se abre desde el botón de menú. La preferencia de plegado se guarda en ese navegador. El perfil muestra nombre y foto de la cuenta Google; si no hay foto, aparecen las iniciales. Expande el menú para acceder al cierre de sesión. Tesorería mantiene visibles sus unidades habilitadas y la condición de solo consulta de los buzones de servicio. La compra y el seguimiento públicos conservan su navegación propia.
 
 ## Producción en Vercel
 
