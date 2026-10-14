@@ -25,7 +25,7 @@ export default async function LoginPage({ searchParams }: {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icon.svg" width={48} height={48} alt="Universidad Continental" />
         </div>
-        <div className="login-introduction"><p className="workspace-page-eyebrow">Plataforma de atención</p><h1 id="login-title">Iniciar sesión</h1><p>Ingresa para gestionar pedidos y solicitudes de emisión.</p></div>
+        <div className="login-introduction"><h1 id="login-title">Iniciar sesión</h1><p>Ingresa para gestionar pedidos y solicitudes de emisión.</p></div>
         {message ? <p role="alert" className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs leading-6">{message}</p> : null}
         <div className="mt-8"><LoginButton configured={configured} /></div>
         <div className="login-access-note"><ShieldCheck className="size-4 shrink-0 text-primary" aria-hidden="true" /><p>Acceso exclusivo para cuentas autorizadas. Si necesitas ingresar, contacta al administrador.</p></div>

@@ -327,7 +327,7 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .login-brand { display: flex; align-items: center; justify-content: center; padding-bottom: 28px; border-bottom: 1px solid var(--border); }
 .login-brand img { flex-shrink: 0; }
 .login-introduction { margin-top: 30px; text-align: center; }
-.login-introduction h1 { margin-top: 10px; font-size: 30px; font-weight: 650; letter-spacing: -.045em; line-height: 1.2; }
+.login-introduction h1 { margin-top: 0; font-size: 30px; font-weight: 650; letter-spacing: -.045em; line-height: 1.2; }
 .login-introduction > p:last-child { margin-top: 14px; font-size: 13px; color: var(--muted-foreground); line-height: 1.9; }
 .login-access-note { display: flex; align-items: center; gap: 10px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
 .login-access-note p { font-size: 11px; color: var(--muted-foreground); line-height: 1.9; }
@@ -336,3 +336,7 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .workspace-compact-filters { margin-top: 20px; padding-block: 16px; border-bottom: 1px solid var(--workspace-line); }
 .treasury-summary-panels { display: grid; align-items: stretch; gap: 20px; }
 @media (min-width: 1024px) { .treasury-summary-panels { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+
+.treasury-summary-filters { gap: 12px 16px; }
+.treasury-summary-unit { min-width: 300px; flex: 1 0 300px; }
+@media (max-width: 639px) { .treasury-summary-unit { min-width: 0; flex-basis: auto; } }

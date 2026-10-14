@@ -27,10 +27,10 @@ export default async function TreasurySummaryPage({ searchParams }: { searchPara
   const inbox = (state: string, owner = "all") => `/tesoreria-recaudacion/solicitudes?${new URLSearchParams({ state, owner, imprint: filters.imprint })}`;
   return <div className="space-y-6">
     <WorkspacePageHeading eyebrow="Tesorería Recaudación" title="Resumen de emisión" description="Organiza la carga del equipo y consulta cómo avanza la emisión de documentos." actions={<><Link href="/tesoreria-recaudacion/solicitudes" className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-xs font-semibold text-white">Ver solicitudes<ArrowUpRight className="size-3.5" /></Link><OrderLiveRefresh finished /></>} />
-    <form action="/tesoreria-recaudacion" className="workspace-inline-filters">
-      <label className="flex items-center gap-2 text-xs font-medium">Desde<DatePicker aria-label="Desde" name="from" required defaultValue={filters.from} className="h-9 w-40 text-xs" /></label>
-      <label className="flex items-center gap-2 text-xs font-medium">Hasta<DatePicker aria-label="Hasta" name="to" required defaultValue={filters.to} className="h-9 w-40 text-xs" /></label>
-      <label className="flex items-center gap-2 text-xs font-medium">Unidad de negocio<Select aria-label="Unidad de negocio" name="imprint" defaultValue={filters.imprint} className="h-9 border border-border px-3 text-xs"><option value="">Todas mis unidades</option>{imprints.map((unit) => <option value={unit} key={unit}>{unit === "universidad" ? "Universidad" : "Instituto"}</option>)}</Select></label>
+    <form action="/tesoreria-recaudacion" className="workspace-inline-filters treasury-summary-filters">
+      <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-medium">Desde<DatePicker aria-label="Desde" name="from" required defaultValue={filters.from} className="h-9 w-40 text-xs" /></label>
+      <label className="flex shrink-0 items-center gap-2 whitespace-nowrap text-xs font-medium">Hasta<DatePicker aria-label="Hasta" name="to" required defaultValue={filters.to} className="h-9 w-40 text-xs" /></label>
+      <label className="treasury-summary-unit flex items-center gap-2 text-xs font-medium"><span className="shrink-0 whitespace-nowrap">Unidad de negocio</span><Select aria-label="Unidad de negocio" name="imprint" defaultValue={filters.imprint} className="h-9 min-w-36 flex-1 border border-border px-3 text-xs"><option value="">Todas mis unidades</option>{imprints.map((unit) => <option value={unit} key={unit}>{unit === "universidad" ? "Universidad" : "Instituto"}</option>)}</Select></label>
       <button type="submit" className="h-9 rounded-lg bg-primary px-4 text-xs font-semibold text-white">Aplicar</button>
     </form>
     {!parsed.success ? <p role="alert" className="text-xs text-destructive">{parsed.error.issues[0]?.message} Mostramos el mes actual.</p> : null}
