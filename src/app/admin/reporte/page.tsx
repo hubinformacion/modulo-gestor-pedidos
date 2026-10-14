@@ -1,3 +1,6 @@
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { Select } from "@/components/ui/select";
+import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import { SortableTable } from "@/components/sortable-table";
 import Link from "next/link";
 import { BarChart3, Banknote, Package, CheckCheck, Clock3, UsersRound, AlertCircle } from "lucide-react";
@@ -10,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { TrendChart, StockRanking } from "@/components/dashboard/charts";
 import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { Button } from "@/components/ui/button";
-export const metadata = { title: "Dashboard", robots: { index: false, follow: false } };
+export const metadata = { title: "Reporte", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 const number = new Intl.NumberFormat("es-PE");
 function duration(metric: DurationMetric) {
@@ -27,9 +30,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const parsed = schema.safeParse(query);
   const filters = parsed.success ? parsed.data : schema.parse({});
   const [data, managers] = await Promise.all([getDashboard(filters), tab === "inventario" ? Promise.resolve([]) : dashboardManagers()]);
-  const tabs = [{ value: "pedidos", label: "Pedidos e importes" }, { value: "atencion", label: "Atención" }, { value: "inventario", label: "Inventario" }] as const;
+  const tabs = [{ value: "pedidos", label: "Pedidos e importes", Icon: BarChart3, detail: "Volumen y evolución" }, { value: "atencion", label: "Atención", Icon: UsersRound, detail: "Carga y tiempos del equipo" }, { value: "inventario", label: "Inventario", Icon: Package, detail: "Disponibilidad de publicaciones" }] as const;
   function tabHref(value: string) {
-    return `/admin/dashboard?${new URLSearchParams({ ...filters, tab: value }).toString()}`;
+    return `/admin/reporte?${new URLSearchParams({ ...filters, tab: value }).toString()}`;
   }
   const { period, live, stock, times } = data;
   const metrics = [
@@ -40,18 +43,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   ];
   const states = [{ title: "Esperando pago", value: live.waiting }, { title: "En revisión", value: live.review }, { title: "En distribución", value: live.distribution }, { title: "Despachados / listos para recojo", value: live.dispatched }];
   return <div className="space-y-7">
-    <header className="flex flex-wrap items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[.16em] text-primary">Resumen operativo</p><h1 className="page-heading mt-2">Dashboard</h1><p className="mt-3 text-sm text-muted-foreground">Consulta cada área desde su pestaña.</p></div><div className="flex items-center gap-3"><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></div></header>
-    <nav aria-label="Secciones del dashboard" className="flex gap-1 overflow-x-auto border-b border-border">
-      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{item.label}</Link>)}
+    <WorkspacePageHeading eyebrow="Resumen operativo" title="Reporte" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
+    <nav aria-label="Secciones del reporte" className="workspace-dashboard-sections">
+      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}><item.Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0"><span className="block font-semibold">{item.label}</span><span className="mt-1 block text-[10px] font-normal text-muted-foreground">{item.detail}</span></span></Link>)}
     </nav>
-    <form action="/admin/dashboard" className={`grid items-end gap-3 rounded-xl border border-border bg-muted/20 p-4 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 lg:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
+    <form action="/admin/reporte" className={`workspace-compact-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[minmax(17rem,1.4fr)_minmax(10rem,1fr)_minmax(10rem,1fr)_auto]"}`}>
       <input type="hidden" name="tab" value={tab} />
       {tab !== "inventario" ? <>
-      <label className="space-y-2 text-xs font-medium">Desde<input name="from" type="date" required defaultValue={filters.from} className={fieldClass} /></label>
-      <label className="space-y-2 text-xs font-medium">Hasta<input name="to" type="date" required defaultValue={filters.to} className={fieldClass} /></label>
+      <div className="min-w-0"><label htmlFor="summary-period" className="mb-2 block text-xs font-medium">Período</label><DateRangePicker id="summary-period" fromName="from" toName="to" required maxDays={366} defaultValue={{ from: filters.from, to: filters.to }} className={fieldClass} /></div>
       </> : <><input type="hidden" name="from" value={filters.from} /><input type="hidden" name="to" value={filters.to} /></>}
-      <label className="space-y-2 text-xs font-medium">Sello editorial<select name="imprint" defaultValue={filters.imprint} className={`${fieldClass} cursor-pointer`}><option value="">Ambos sellos</option><option value="universidad">Universidad</option><option value="instituto">Instituto</option></select></label>
-      {tab !== "inventario" ? <label className="space-y-2 text-xs font-medium">Gestor<select name="manager" defaultValue={filters.manager} className={`${fieldClass} cursor-pointer`}><option value="">Todo el equipo</option>{managers.map((manager) => <option key={manager.id} value={manager.email}>{manager.email}</option>)}</select></label> : <input type="hidden" name="manager" value={filters.manager} />}
+      <div className="min-w-0"><label htmlFor="summary-imprint" className="mb-2 block text-xs font-medium">Sello editorial</label><Select id="summary-imprint" name="imprint" defaultValue={filters.imprint} className={`${fieldClass} cursor-pointer`}><option value="">Ambos sellos</option><option value="universidad">Universidad</option><option value="instituto">Instituto</option></Select></div>
+      {tab !== "inventario" ? <div className="min-w-0"><label htmlFor="summary-manager" className="mb-2 block text-xs font-medium">Gestor</label><Select id="summary-manager" name="manager" defaultValue={filters.manager} className={`${fieldClass} cursor-pointer`}><option value="">Todo el equipo</option>{managers.map((manager) => <option key={manager.id} value={manager.email}>{manager.email}</option>)}</Select></div> : <input type="hidden" name="manager" value={filters.manager} />}
       <Button type="submit" className="h-10 cursor-pointer">Aplicar</Button>
     </form>
     {!parsed.success ? <p role="alert" className="text-sm text-destructive">{parsed.error.issues[0]?.message} Mostramos el mes actual.</p> : null}

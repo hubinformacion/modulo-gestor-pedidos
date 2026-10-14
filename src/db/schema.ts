@@ -389,7 +389,8 @@ export const cajaNotifications = pgTable("caja_notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
   cycle: integer("cycle").notNull(),
-  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA">().notNull(),
+  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA" | "ASIGNACION">().notNull(),
+  assignmentKey: uuid("assignment_key"),
   reason: text("reason"),
   status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
@@ -398,8 +399,10 @@ export const cajaNotifications = pgTable("caja_notifications", {
   rfcMessageId: text("rfc_message_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType),
-  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA')`),
+  uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType).where(sql`${table.eventType} <> 'ASIGNACION'`),
+  uniqueIndex("caja_notifications_assignment_unique").on(table.requestId, table.assignmentKey).where(sql`${table.eventType} = 'ASIGNACION'`),
+  check("caja_notifications_assignment_key", sql`(${table.eventType} = 'ASIGNACION' AND ${table.assignmentKey} IS NOT NULL) OR (${table.eventType} <> 'ASIGNACION' AND ${table.assignmentKey} IS NULL)`),
+  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA','ASIGNACION')`),
   check("caja_notifications_state", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
 ]);
 export const saleDocumentBatches = pgTable("sale_document_batches", {

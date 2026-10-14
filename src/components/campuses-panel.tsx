@@ -72,7 +72,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   }
 
   return (
-    <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h3 className="text-sm font-semibold">Campus registrados</h3><span className="rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">{rows.length}</span></div>
         {rows.length ? <ul className="divide-y divide-border">
@@ -98,7 +98,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
         </ul> : <p className="px-5 py-10 text-center text-sm text-muted-foreground">Añade el primer campus y su biblioteca.</p>}
       </div>
       <div>
-        <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-6 rounded-xl border border-border p-5">
+        <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-24 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold">{editingId ? "Editar campus" : "Añadir campus"}</h3>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">Los campus activos aparecen en el comprador y en el recojo.</p>
           <fieldset disabled={pending} className="mt-5 space-y-5">
@@ -106,7 +106,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <Field id="campus-name" label="Nombre del campus" value={form.name} onChange={(event) => set("name", event.target.value)} error={errors.name} maxLength={120} required />
             <Field id="campus-address" label="Dirección de biblioteca" value={form.libraryAddress} onChange={(event) => set("libraryAddress", event.target.value)} error={errors.libraryAddress} maxLength={300} required />
             <Field id="campus-library-location" label="Ubicación dentro del campus (opcional)" placeholder="Ej. Pabellón F, segundo piso" value={form.libraryLocation} onChange={(event) => set("libraryLocation", event.target.value)} error={errors.libraryLocation} maxLength={200} />
-            <SelectField id="campus-status" label="Estado" value={form.status} onChange={(event) => set("status", event.target.value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
+            <SelectField id="campus-status" label="Estado" value={form.status} onValueChange={(value) => set("status", value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
             <div className="border-t border-border pt-5">
               <h4 className="text-xs font-semibold">Ubicación precisa (opcional)</h4>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">Usa coordenadas o la URL src del mapa embebido de Google. La URL tiene prioridad.</p>

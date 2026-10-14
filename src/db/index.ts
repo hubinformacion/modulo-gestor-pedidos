@@ -33,7 +33,7 @@ export async function withReadDatabase<T>(work: (db: ReadDatabase) => Promise<T>
 
 // Interactive transactions/auth keep a Pool scoped to their request. Pure page
 // reads use HTTP so parallel queries do not compete for WebSocket connections.
-export async function withDatabase<T>(work: (db: Database) => Promise<T>): Promise<T> {
+async function databaseAttempt<T>(work: (db: Database) => Promise<T>): Promise<T> {
   const pool = new Pool({ connectionString: getDatabaseUrl(), connectionTimeoutMillis: 10_000, query_timeout: 25_000, max: 1 });
   let ownedClient: PoolClient | undefined;
   // Pool.error covers idle clients only. Listen before checkout so an active
@@ -51,10 +51,8 @@ export async function withDatabase<T>(work: (db: Database) => Promise<T>): Promi
     return await work(createDatabase(ownedClient));
   }
   catch (error) {
-    if (!isDatabaseFailure(error)) throw error; // Preserve business/auth errors.
-    const safe = new DatabaseOperationError(error, "db.transaction");
-    reportServerError("db.operation.failed", safe);
-    throw safe;
+    if (!isDatabaseFailure(error) && (ownedClient || !transientDatabaseFailure(error))) throw error; // Preserve business/auth errors.
+    throw new DatabaseOperationError(error, ownedClient ? "db.transaction" : "db.connect");
   } finally {
     // Destroy only our checkout after work settles. Client.query does not
     // auto-release like Pool.query, so parallel reads cannot release it twice.
@@ -73,4 +71,18 @@ export async function withDatabase<T>(work: (db: Database) => Promise<T>): Promi
     } catch (error) { reportServerError("db.pool.close", new DatabaseOperationError(error, "db.cleanup")); }
     finally { if (closeTimer) clearTimeout(closeTimer); }
   }
+}
+
+export async function withDatabase<T>(work: (db: Database) => Promise<T>): Promise<T> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try { return await databaseAttempt(work); }
+    catch (error) {
+      // A failed checkout never called work. Only that phase can be repeated,
+      // on a fresh Pool; transactions/auth callbacks are never replayed here.
+      if (attempt === 0 && error instanceof DatabaseOperationError && error.stage === "db.connect" && transientDatabaseFailure(error)) continue;
+      if (error instanceof DatabaseOperationError) reportServerError("db.operation.failed", error);
+      throw error;
+    }
+  }
+  throw new Error("DB_CONNECTION_UNAVAILABLE");
 }

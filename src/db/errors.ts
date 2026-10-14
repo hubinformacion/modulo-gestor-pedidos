@@ -18,7 +18,7 @@ export function isDatabaseFailure(error: unknown) {
 }
 export function transientDatabaseFailure(error: unknown) {
   const { code, status } = safeErrorDetails(error);
-  return socketEvent(error) || queryTimeout(error) || Boolean(code && (/^08/.test(code) || ["ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "53300", "57P01", "57P02", "57P03"].includes(code))) || Boolean(status && [429, 500, 502, 503, 504].includes(status)) || records(error).some((value) => ["AbortError", "TimeoutError", "TypeError"].includes(String(value.name)));
+  return socketEvent(error) || queryTimeout(error) || Boolean(code && (/^08/.test(code) || ["DB_WEBSOCKET_ERROR", "DB_QUERY_TIMEOUT", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "EAI_AGAIN", "53300", "57P01", "57P02", "57P03"].includes(code))) || Boolean(status && [429, 500, 502, 503, 504].includes(status)) || records(error).some((value) => ["AbortError", "TimeoutError", "TypeError"].includes(String(value.name)));
 }
 export class DatabaseOperationError extends Error {
   readonly code?: string;

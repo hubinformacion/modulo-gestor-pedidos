@@ -48,15 +48,20 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/seguimiento/[token]` | Seguimiento público mediante enlace privado |
 | `/admin` | Redirige a Pedidos |
 | `/admin/pedidos` | Bandeja y atención de pedidos |
-| `/admin/dashboard` | Indicadores de pedidos, importes, atención y stock |
+| `/admin/reporte` | Reporte de pedidos, importes, atención y stock |
 | `/admin/inventario` | Publicaciones, stock y precios |
 | `/admin/promociones` | Campañas, fechas, públicos y títulos |
 | `/admin/cupones` | Códigos, vigencia y límites de uso |
-| `/tesoreria-recaudacion` | Bandeja de Tesorería Recaudación, según sellos autorizados |
+| `/tesoreria-recaudacion` | Bandeja de solicitudes por unidad autorizada |
+| `/tesoreria-recaudacion/reporte` | Reporte de carga de trabajo y evolución de emisión |
 | `/tesoreria-recaudacion/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
+| `/admin/guia` | Guía interactiva de atención para gestores |
+| `/tesoreria-recaudacion/guia` | Guía interactiva de emisión y correcciones |
 
-El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Responsables de caja. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Tesorería Recaudación. El ingreso Google redirige a Pedidos para gestores y a Solicitudes para Tesorería, según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+
+Los módulos internos reutilizan el SVG local del favicon como identificador en el sidebar y usan navegación lateral: en escritorio puedes plegarla para ampliar el área de trabajo y en móvil se abre desde el botón de menú. La preferencia de plegado se guarda en ese navegador. El perfil muestra nombre y foto de la cuenta Google; si no hay foto, aparecen las iniciales. El cierre de sesión permanece visible también con el menú plegado. Tesorería mantiene visibles sus unidades habilitadas y la condición de solo consulta de los buzones de servicio. La compra y el seguimiento públicos conservan su navegación propia. El login muestra el isotipo y títulos centrados, sin nombre de área, y un botón con el icono de Google. Las rutas anteriores `/admin/dashboard`, `/admin/configuración`, `/tesoreria-recaudacion/solicitudes` y `/tesoreria-recaudacion/resumen` fueron retiradas; usa las rutas de la tabla.
 
 ## Producción en Vercel
 
@@ -74,7 +79,7 @@ Configura también `DATABASE_URL`, `BETTER_AUTH_SECRET`, las credenciales de Goo
 
 `CRON_SECRET` protege `/api/internal/jobs`. Usa una cadena aleatoria de al menos 32 caracteres, sin prefijo `Bearer`; Vercel añade ese encabezado automáticamente. El cron diario está programado a las 12:00 UTC, 07:00 de Perú, exclusivamente para sincronizar permisos privados de Drive. Las operaciones normales intentan enviar el aviso nuevo durante la misma solicitud, después de guardar el cambio. El cron nunca envía correos.
 
-La instalación utiliza una única migración inicial, `src/db/migrations/0000_initial.sql`, con el esquema completo. El historial de desarrollo anterior se compactó durante un reinicio explícito de la BD configurada. Conserva el SQL, `meta/0000_snapshot.json` y `meta/_journal.json`: permiten instalar el sistema y generar las migraciones futuras. No apliques esta base sobre otra BD que conserve el historial anterior; esa BD debe reconciliarse antes.
+La instalación aplica la base `src/db/migrations/0000_initial.sql` y las migraciones incrementales siguientes mediante `pnpm db:migrate`, fuera del build. Conserva los SQL, snapshots y journal de Drizzle: permiten instalar y evolucionar el sistema sin borrar datos. No reescribas migraciones aplicadas en un entorno operativo.
 
 Las migraciones se aplican explícitamente contra la BD destino, **fuera del build**. Cuando existan datos operativos, los cambios se harán mediante nuevas migraciones incrementales, sin borrar ni reescribir las ya aplicadas. Implementar o publicar un feature no reinicia la BD.
 
@@ -167,7 +172,7 @@ Promociones y cupones están integrados. Las migraciones conservan datos existen
 3. Verifica el contenido de las tres guías PDF y su correspondencia con las cuentas vigentes. Configuración → Integraciones comprueba presencia/formato de configuración; no confirma que el token Google siga autorizado.
 4. Pega el bloque HTML completo del iframe en WordPress y revisa ancho/altura en móvil y escritorio. La aplicación desplegada no actualiza automáticamente el bloque de WordPress.
 
-El reinicio de desarrollo dejó catálogo, pedidos, descuentos, avisos y sesiones vacíos. Se conservaron campus, cuentas bancarias, buzones y accesos autorizados; debes iniciar sesión nuevamente y cargar el catálogo. Los archivos/correos físicos de Google permanecen. No se ejecutan reinicios automáticos. Los archivos de Drive y correos ya enviados no se borran al reiniciar la BD. No repitas un reinicio sobre datos operativos.
+El reinicio previo a producción dejó vacíos catálogo, campus, pedidos, descuentos, buzones, avisos y usuarios/sesiones OAuth. Se conservaron únicamente las cuatro cuentas bancarias y la autorización del correo maestro `distribucionfe@continental.edu.pe`. Inicia sesión con esa cuenta, configura campus, incorpora gestores y personal/buzones de Tesorería y carga el catálogo real. Los permisos privados gestionados se reconciliaron; archivos y correos físicos de Google permanecen. No hay reinicios automáticos ni se debe repetir este borrado sobre datos operativos.
 
 ### Vaciar únicamente pedidos al terminar las demos
 
@@ -191,6 +196,16 @@ Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entre
 
 Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/tesoreria-recaudacion/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
 
+Para un reinicio completo **solo bajo petición expresa, antes de tener datos operativos**, el mismo comando admite:
+
+```bash
+pnpm db:orders:clear --reset-all-except-bank-accounts
+pnpm db:orders:clear --reset-all-except-bank-accounts --execute --maintenance --confirm=REINICIAR_BD_CONSERVAR_CUENTAS
+```
+
+La primera línea es una vista previa. La segunda elimina usuarios, accesos, sesiones, catálogo, campus, buzones e historial, además de pedidos; conserva las cuentas bancarias sin alterar sus filas, el esquema/migraciones y habilita solo el correo maestro. Requiere pausar Vercel, desactivar el cron, cerrar pruebas y dejar terminar las cargas antes de ejecutarla. El comando comprueba las huellas de las cuentas y reconcilia los permisos privados registrados en archivos/carpetas antes de borrar. No elimina archivos ni correos físicos de Google.
+
+
 Los archivos físicos en Drive y los mensajes ya enviados en Gmail **se conservan**, también las copias recibidas por compradores/gestores. El script no envía correos ni borra archivos. Antes de eliminar los registros de permisos individuales, usa las credenciales Google del propietario para retirar únicamente lectores directos gestionados de caja; conserva owners, writers y permisos heredados o no gestionados. Si no hay permisos gestionados, no requiere credenciales Google. Si falla la reconciliación, no borra los pedidos. Si falla después, las revocaciones Google ya realizadas no se revierten: mantén el mantenimiento, resuelve el error y repite. Un fallo de confirmación de `COMMIT` requiere revisar primero la vista previa.
 
 La restitución de stock, liberación de usos y eliminación se ejecutan en una sola transacción. Se enumeran las tablas con `RESTRICT`, sin `CASCADE` abierto; nuevas dependencias ajenas al alcance bloquean la limpieza para revisar el script. Una vez verificado el resultado, vuelve a habilitar el acceso y cron. No ejecutes este comando como parte del build, despliegue o cron.
@@ -207,7 +222,7 @@ Conserva migraciones, snapshots, journal, guías y la atribución de los datos d
 
 ## Dashboard y seguimiento del equipo
 
-Todos los gestores pueden consultar `/admin/dashboard`, organizado en **Pedidos e importes**, **Atención** e **Inventario**. Las pestañas conservan los filtros y pueden compartirse mediante su URL; Inventario solo muestra el filtro de sello. En el menú, Pedidos aparece antes de Dashboard. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
+Todos los gestores pueden consultar `/admin/reporte`, organizado en **Pedidos e importes**, **Atención** e **Inventario**. Las pestañas conservan los filtros y pueden compartirse mediante su URL; Inventario solo muestra el filtro de sello. En el menú, Pedidos aparece antes de Dashboard. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
 
 El importe solicitado excluye cancelados; el importe verificado suma únicamente los pagos aprobados por sello, incluso si el otro sello de un pedido mixto sigue pendiente. Los importes incluyen el envío correspondiente y los descuentos aplicados. No son un reporte de conciliación bancaria ni de devoluciones. Los tiempos muestran la mediana y su muestra, en horas/días calendario, incluyendo esperas del comprador. Primera asignación se obtiene del historial, despacho/entrega desde el registro y emisión desde la solicitud a caja.
 
@@ -228,10 +243,31 @@ El correo interno de cada evento se envía una sola vez al buzón de servicio de
 
 La migración incremental `0001_hot_red_shift.sql` añade el número propio de solicitud y elimina el tipo de observación; se aplica con `pnpm db:migrate` sin reiniciar datos. La base inicial permanece conservada.
 
-En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. La bandeja muestra un número propio de solicitud, unidad de negocio, comprobante, estado y responsable; comprador e importe se consultan en el detalle. Este usa una única vista con los datos a la izquierda y el PDF a la derecha, sin wizard. Puedes consultar antes de tomar atención; modificar o finalizar requiere estar asignado. Para facturas, el comprador completa en Confirmación la solicitud, RUC, razón social y dirección fiscal, eligiendo dirección de envío u otra; recojo exige una dirección fiscal propia.
+En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. La bandeja muestra número y fecha propios de solicitud, solicitante de Fondo Editorial, unidad de negocio, tipo de comprobante, importe, estado y responsable de emisión. Solicitante es el gestor asignado al pedido, no el comprador. En el detalle del gestor, la facturación se despliega desde los datos del comprador y la card del responsable reúne las acciones de atención y el botón pequeño para abrir el seguimiento del comprador en la cabecera de esa card. Las cards del gestor y Tesorería comparten iconos y jerarquía de títulos; el detalle de compra usa la misma tabla y distribución de importes en ambos roles. El detalle de Tesorería separa el destinatario fiscal y su contacto, el detalle de compra con totales y, en dos columnas, los pagos verificados y las observaciones/correcciones. El panel para adjuntar y finalizar el PDF permanece a la derecha en escritorio y se apila en móvil, sin wizard. Notas e historial se consultan desde botones en la cabecera. Puedes consultar antes de tomar atención; modificar o finalizar requiere estar asignado. Para facturas, el comprador completa en Confirmación la solicitud, RUC, razón social y dirección fiscal, eligiendo dirección de envío u otra; recojo exige una dirección fiscal propia.
 
 El responsable describe la observación en texto libre, sin escoger un tipo. Fondo Editorial las recibe en Pagos del pedido: el gestor asignado coordina la subsanación, puede adjuntar documentos adicionales y registrar datos corregidos de emisión y una respuesta. La respuesta puede actualizar datos fiscales o adjuntar documentos; los originales e importes verificados se conservan. No se podrá finalizar la emisión con observaciones abiertas; la distribución/entrega no se bloquea por ese trámite.
 
 Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
 
 Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos.
+
+
+## Resumen y guías de trabajo
+
+Tesorería Recaudación dispone de Solicitudes, Reporte y Guía de uso en su menú lateral. Reporte permite elegir un período en un único calendario de rango y una unidad autorizada. Por defecto muestra el mes actual y admite hasta 366 días en horario de Perú. Por asignar (libres sin observaciones), En atención (asignadas sin observaciones) y Observadas son grupos separados de solicitudes abiertas actuales, independientes del período. La emisión del período cuenta solicitudes actualmente finalizadas según finalized_at; si se devuelve un PDF, deja de contar hasta completar su corrección. No representa una auditoría contable de todas las emisiones/revisiones históricas. El tiempo mediano incluye espera y correcciones desde el registro y muestra su cantidad de muestras. Recibidas se agrupa por fecha de registro; finalizadas, por fecha de finalización vigente. Fechas en Perú. No hay polling ni tareas programadas para obtener estos datos.
+
+Las guías de gestores y Tesorería incluyen un flujo seleccionable, acciones por etapa, condiciones de excepción y preguntas frecuentes. Son ayuda contextual dentro de las rutas protegidas, no ejecutan cambios sobre pedidos ni consultan datos operativos adicionales. SVG y estilos locales usan la identidad de la aplicación; no dependen de visores externos. Mantener su contenido alineado con los cambios de negocio.
+
+
+Al tomar o reasignar una solicitud de Tesorería Recaudación, se genera un aviso en su hilo al buzón de servicio de la unidad, con el nombre del operador. Liberar no envía correo. La asignación queda guardada aunque el aviso falle; el sistema muestra la advertencia y no reenvía posteriormente. No se envían estos cambios al comprador ni a las cuentas personales.
+
+Los hilos nuevos usan los asuntos «Solicitud de emisión de comprobante #000 - Fondo Editorial» para Tesorería Recaudación y «Hemos recibido tu orden #000-año» para compradores. Las respuestas de hilos existentes conservan su asunto para mantener la conversación. La secuencia guardada no cambia; tablas y detalles muestran el número con tres dígitos como mínimo, por ejemplo 001-2026; números mayores no se recortan.
+
+Si aparece caja.drive.access.pending con ETIMEDOUT, se agotó una espera preparando el permiso privado de un archivo. El archivo no se elimina. La pantalla conserva el enlace de recuperación, que vuelve a preparar el acceso al abrirlo. Los permisos ya registrados no disparan consultas nuevas a Google en cada visita; las validaciones de autorización siguen siendo obligatorias.
+
+
+Los selectores usan Base UI con el estilo de la aplicación. Los calendarios usan react-day-picker y Popover, siguiendo el patrón de shadcn, en español; las horas de promociones y cupones se eligen como hora de Perú. Se conservan los valores ISO de fecha y fecha/hora que valida el servidor. El catálogo público no carga el calendario de administración para usar sus selectores.
+
+En la bandeja de pedidos, fecha y tipo de comprador tienen columnas y ordenación independientes. Los códigos pueden buscarse con o sin ceros iniciales. El botón Cancelar pedido del comprador aparece junto a actualizar; al pulsarlo, la confirmación se muestra debajo del encabezado, dentro del iframe.
+
+Los filtros de reportes y la vigencia de promociones/cupones comparten un selector de rango. Las campañas conservan horas de inicio y fin de Perú; los cupones permiten solo inicio, solo fin o ninguna fecha. Un error `DB_WEBSOCKET_ERROR` indica fallo del canal de conexión. Solo se reintenta una apertura fallida antes del trabajo, o la lectura de sesión sin renovación con una conexión nueva; no se repiten transacciones, renovaciones OAuth ni avisos operativos. Si persiste, se devuelve el error de disponibilidad y se requiere reintentar la operación desde la interfaz.

@@ -13,14 +13,14 @@ import { reportServerError, safeErrorDetails } from "./server-diagnostics";
 import { createAuth } from "./auth";
 import { AccessError, authorizedEmailSchema, type AuthorizedActor } from "./access-policy";
 
-type SessionIdentity = { user: { email: string; emailVerified: boolean; id: string; name: string }; session: { id: string } };
+type SessionIdentity = { user: { email: string; emailVerified: boolean; id: string; name: string; image?: string | null }; session: { id: string } };
 async function authorizeIdentity(db: Database, result: SessionIdentity | null): Promise<AuthorizedActor> {
   if (!result) throw new AccessError("UNAUTHENTICATED");
   const email = authorizedEmailSchema.safeParse(result.user.email);
   if (!result.user.emailVerified || !email.success) throw new AccessError("FORBIDDEN");
   const [allowed] = await db.select().from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
   if (!allowed) throw new AccessError("FORBIDDEN");
-  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
+  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, image: result.user.image ?? null, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
 }
 function accessFailure(error: unknown): never {
   if (error instanceof AccessError) throw error;
@@ -36,9 +36,14 @@ export async function getSignedInSession(db: Database, requestHeaders: Headers):
   for (let attempt = 0; attempt < 2; attempt++) {
     let source: unknown;
     try {
-      const auth = createAuth(db, getAuthEnvironment(), (error) => { source = error; });
-      const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
-      return await authorizeIdentity(db, result);
+      const read = async (connection: Database) => {
+        const auth = createAuth(connection, getAuthEnvironment(), (error) => { source = error; });
+        const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
+        return authorizeIdentity(connection, result);
+      };
+      // A disconnected client cannot recover by reading it again. Retry only
+      // this non-renewing session lookup, with a fresh request-scoped client.
+      return attempt === 0 ? await read(db) : await withDatabase(read);
     } catch (error) {
       if (error instanceof AccessError) throw error;
       const details = safeErrorDetails(error);

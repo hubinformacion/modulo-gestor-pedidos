@@ -31,7 +31,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       const bytes = await salePdfBytes(file.driveId, file.hash);
       return new Response(new Uint8Array(bytes), { headers: { ...responseHeaders, "Content-Type": "application/pdf", "Content-Disposition": `${mode.get("download") === "1" ? "attachment" : "inline"}; filename*=UTF-8''${encodeURIComponent(file.name)}` } });
     }
-    await ensureCajaFileReader(actor, parsed.data.id, file.driveId);
+    await ensureCajaFileReader(actor, parsed.data.id, file.driveId, true);
     return new Response(null, { status: 302, headers: { ...responseHeaders, Location: file.url } });
   } catch (error) {
     if (error instanceof AccessError) return new Response(null, { status: error.code === "UNAUTHENTICATED" ? 401 : error.code === "FORBIDDEN" ? 403 : 503, headers: responseHeaders });

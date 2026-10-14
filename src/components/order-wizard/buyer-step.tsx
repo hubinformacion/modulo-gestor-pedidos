@@ -17,7 +17,7 @@ export function BuyerStep({ buyer, campuses, errors, onChange }: {
         {campuses.length === 0 ? <p className="mt-3 text-xs leading-5 text-muted-foreground">La opción de comunidad estará disponible cuando se habiliten sus sedes.</p> : null}
       </fieldset>
       {buyer.type === "comunidad_continental" ? (
-        <SelectField id="buyer-campus" label="Sede" value={buyer.campus} onChange={(event) => set("campus", event.target.value)} error={errors.campus} required>
+        <SelectField id="buyer-campus" label="Sede" value={buyer.campus} onValueChange={(value) => set("campus", value)} error={errors.campus} required>
           <option value="">Selecciona tu sede</option>
           {campuses.map((campus) => <option key={campus.id} value={campus.id}>{campus.name}</option>)}
         </SelectField>

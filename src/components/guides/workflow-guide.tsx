@@ -1,0 +1,27 @@
+"use client";
+import { useId, useState, type CSSProperties } from "react";
+import Link from "next/link";
+import { ArrowRight, Check, Info, ShieldCheck } from "lucide-react";
+import type { RoleGuide } from "@/lib/guides/content";
+
+export function WorkflowGuide({ guide, service = false }: { guide: RoleGuide; service?: boolean }) {
+  const [selected, setSelected] = useState(0);
+  const id = useId();
+  const step = guide.steps[selected];
+  return <div className="mt-7 space-y-6">
+    {service ? <p className="flex items-start gap-3 rounded-xl border border-primary/15 bg-secondary/40 p-4 text-xs leading-6"><ShieldCheck className="mt-1 size-4 shrink-0 text-primary" />Tu buzón tiene acceso de consulta. Las acciones de atención y emisión requieren una cuenta personal autorizada.</p> : null}
+    <section className="workspace-guide-flow" aria-label={`Flujo: ${guide.title}`}>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Tu flujo de trabajo</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">{guide.intro}</p></div><span className="text-[10px] font-medium text-primary">{guide.steps.length} etapas · explora a tu ritmo</span></div>
+      <ol className="workspace-flow-nodes" style={{ "--flow-count": guide.steps.length } as CSSProperties}>{guide.steps.map((node, index) => <li key={node.title}>
+        <button type="button" id={`${id}-step-${index}`} aria-controls={`${id}-detail`} aria-pressed={selected === index} className="workspace-flow-node" onClick={() => setSelected(index)}>
+          <svg viewBox="0 0 56 56" width="48" height="48" aria-hidden="true"><rect x="5" y="5" width="46" height="46" rx="14" fill={selected === index ? "var(--primary)" : "var(--secondary)"} stroke={selected === index ? "var(--primary)" : "#dfc9f0"} strokeDasharray={node.optional ? "3 3" : undefined} /><text x="28" y="33" textAnchor="middle" fill={selected === index ? "white" : "var(--primary)"} fontSize="16" fontWeight="650" fontFamily="inherit">{index + 1}</text></svg>
+          <span className="workspace-flow-node-title">{node.title}</span><span className="workspace-flow-node-subtitle">{node.short}</span>{node.optional ? <span className="workspace-flow-conditional">{node.branchLabel ?? (node.title === "Corregir" ? "Si corresponde" : "En paralelo")}</span> : null}
+        </button>{index < guide.steps.length - 1 ? <svg className="workspace-flow-arrow" viewBox="0 0 32 16" aria-hidden="true"><path d="M1 8H28M23 3L28 8L23 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={node.optional || guide.steps[index + 1].optional ? "3 3" : undefined} /></svg> : null}
+      </li>)}</ol>
+    </section>
+    <div className="workspace-panel-grid">
+      <section id={`${id}-detail`} aria-labelledby={`${id}-step-${selected}`} className="workspace-panel-section"><p className="workspace-page-eyebrow">Etapa {selected + 1} de {guide.steps.length}</p><h2 className="text-xl font-semibold tracking-tight">{step.title}</h2><p className="mt-3 text-sm leading-7 text-muted-foreground">{step.description}</p><h3 className="mt-6 text-xs font-semibold">Qué debes revisar</h3><ul className="mt-4 space-y-4">{step.checklist.map((item) => <li key={item} className="flex items-start gap-3 text-sm leading-6"><span className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-primary"><Check className="size-3" /></span>{item}</li>)}</ul><div className="mt-6 rounded-xl bg-secondary/50 p-5"><h3 className="text-xs font-semibold text-primary">Qué ocurre después</h3><p className="mt-2 text-sm leading-7">{step.result}</p></div><div className="mt-5 flex items-start gap-3 text-xs leading-6 text-muted-foreground"><Info className="mt-1 size-4 shrink-0 text-primary" /><p>{step.exception}</p></div><div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5"><Link href={step.href} prefetch={false} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white">{step.link}<ArrowRight className="size-3.5" /></Link><div className="flex gap-3"><button type="button" disabled={selected === 0} onClick={() => setSelected(selected - 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Anterior</button><button type="button" disabled={selected === guide.steps.length - 1} onClick={() => setSelected(selected + 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Siguiente</button></div></div></section>
+      <aside className="min-w-0 space-y-5"><section className="workspace-panel-section"><h2 className="text-sm font-semibold">Antes de continuar</h2><ul className="mt-4 space-y-4">{guide.reminders.map((reminder, index) => <li key={reminder} className="flex gap-3 text-xs leading-6"><span className="font-semibold tabular-nums text-primary">0{index + 1}</span>{reminder}</li>)}</ul></section><section className="workspace-panel-section"><h2 className="mb-3 text-sm font-semibold">Preguntas frecuentes</h2><div className="divide-y divide-border">{guide.faq.map(({question,answer}) => <details key={question} className="py-3"><summary className="text-xs font-medium leading-6">{question}</summary><p className="mt-3 text-xs leading-7 text-muted-foreground">{answer}</p></details>)}</div></section></aside>
+    </div>
+  </div>;
+}
