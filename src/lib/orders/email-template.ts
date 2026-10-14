@@ -3,7 +3,10 @@ import { imprintNames } from "./types";
 import type { getTrackedOrder } from "./tracking";
 export type EmailOrder = NonNullable<Awaited<ReturnType<typeof getTrackedOrder>>>;
 export function escapeHtml(value: string) { return value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!); }
-export const emailSubject = (number: string) => `Pedido ${number} · Fondo Editorial`;
+export const emailSubject = (number: string) => {
+  const [sequence, year] = number.split("-");
+  return `Hemos recibido tu orden #${sequence.padStart(5, "0")}-${year}`;
+};
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 export function emailShell(content: string) {
   return `<!doctype html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f4f2f7;font-family:Inter,Arial,sans-serif;color:#191922"><table role="presentation" width="100%" cellspacing="0" cellpadding="0"><tr><td align="center" style="padding:24px 12px"><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:white;border-radius:12px;overflow:hidden"><tr><td style="padding:28px">${content}</td></tr></table></td></tr></table></body></html>`;

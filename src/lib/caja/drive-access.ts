@@ -44,8 +44,8 @@ async function reconcileFile(fileId: string, email: string) {
   }));
 }
 async function retryFile(fileId: string, email: string) { try { await reconcileFile(fileId, email); } catch { await reconcileFile(fileId, email); } }
-export async function ensureCajaFileReader(actor: AuthorizedActor, requestId: string, fileId: string) {
-  await withDatabase((db) => db.transaction(async (tx) => {
+export async function ensureCajaFileReader(actor: AuthorizedActor, requestId: string, fileId: string, refresh = false) {
+  const ready = await withDatabase((db) => db.transaction(async (tx) => {
     await assertAccessRole(tx, actor, "caja");
     const [request] = await tx.select().from(cajaRequests).where(eq(cajaRequests.id, requestId));
     if (!request || !actor.publisherImprints.includes(request.publisherImprint)) throw new AccessError("FORBIDDEN");
@@ -53,9 +53,15 @@ export async function ensureCajaFileReader(actor: AuthorizedActor, requestId: st
     const [supporting] = await tx.select({ id: treasurySupportingFiles.id }).from(treasurySupportingFiles).where(and(eq(treasurySupportingFiles.requestId, requestId), eq(treasurySupportingFiles.driveFileId, fileId), sql`${treasurySupportingFiles.uploadedAt} IS NOT NULL`));
     const [receipt] = document || supporting ? [] : await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(and(eq(paymentReceipts.orderId, request.orderId), eq(paymentReceipts.publisherImprint, request.publisherImprint), eq(paymentReceipts.driveFileId, fileId)));
     if (!document && !receipt && !supporting) throw new AccessError("FORBIDDEN");
+    const [grant] = await tx.select({ permissionId: driveFileReaderGrants.permissionId }).from(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, actor.email), eq(driveFileReaderGrants.requestId, requestId)));
+    if (grant?.permissionId) return true;
     await tx.insert(driveFileReaderGrants).values({ driveFileId: fileId, email: actor.email, requestId }).onConflictDoNothing();
+    return false;
   }));
-  await retryFile(fileId, actor.email);
+  // Current authorization and file ownership were checked above. Established
+  // grants need no Google request on every render; the recovery link forces a
+  // fresh reconciliation if an ACL was changed outside this application.
+  if (!ready || refresh) await retryFile(fileId, actor.email);
   await withDatabase((db) => db.transaction(async (tx) => { await assertAccessRole(tx, actor, "caja"); }));
 }
 export async function synchronizeCajaFileReaders() {

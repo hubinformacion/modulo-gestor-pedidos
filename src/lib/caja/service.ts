@@ -176,8 +176,16 @@ export async function changeCajaAssignment(actor: AuthorizedActor, input: { id: 
     if (input.operation === "release" && !request.assignedTo) throw new CajaError("La solicitud ya está disponible.");
     if (input.operation === "takeover" && (!request.assignedTo || request.assignedTo === actor.userId)) throw new CajaError("Actualiza la atención de la solicitud.");
     if ((input.operation === "takeover" || (input.operation === "release" && request.assignedTo !== actor.userId)) && input.reason.length < 5) throw new CajaError("Indica el motivo del cambio (mínimo 5 caracteres).");
-    await tx.update(cajaRequests).set(input.operation !== "release" ? { assignedTo: actor.userId, assignedName: actor.name, assignedAt: new Date(), assignmentToken: randomUUID() } : { assignedTo: null, assignedName: null, assignedAt: null, assignmentToken: null }).where(eq(cajaRequests.id, request.id));
+    const assignmentKey = randomUUID();
+    await tx.update(cajaRequests).set(input.operation !== "release" ? { assignedTo: actor.userId, assignedName: actor.name, assignedAt: new Date(), assignmentToken: assignmentKey } : { assignedTo: null, assignedName: null, assignedAt: null, assignmentToken: null }).where(eq(cajaRequests.id, request.id));
     await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "ASIGNACION", detail: `${input.operation === "release" ? "Liberó la solicitud" : "Tomó la atención"}. Responsable anterior: ${request.assignedName ?? "Sin asignar"}. Nuevo: ${input.operation === "release" ? "Sin asignar" : actor.name}.${input.reason ? ` Motivo: ${input.reason}` : ""}` });
     await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: input.operation === "release" ? "CAJA_LIBERADA" : "CAJA_ASIGNADA", detail: input.operation !== "release" ? `${actor.name} tomó la emisión de ${request.publisherImprint === "universidad" ? "Universidad" : "Instituto"}.` : "La emisión está disponible para otra persona de Tesorería Recaudación." });
+    if (input.operation === "release") return null;
+    const [notice] = await tx.insert(cajaNotifications).values({
+      requestId: request.id, cycle: request.cycle, eventType: "ASIGNACION", assignmentKey,
+      reason: `${actor.name} (${actor.email}) ${input.operation === "takeover" ? "asumió la atención de" : "tomó la atención de"} esta solicitud de Tesorería Recaudación.${request.assignedName ? ` Responsable anterior: ${request.assignedName}.` : ""}${input.reason ? ` Motivo: ${input.reason}` : ""}`,
+    }).returning({ id: cajaNotifications.id });
+    return { requestId: request.id, notificationId: notice.id };
+
   }));
 }

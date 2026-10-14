@@ -1,5 +1,5 @@
 "use client";
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Info, ShieldCheck } from "lucide-react";
 import type { RoleGuide } from "@/lib/guides/content";
@@ -12,10 +12,10 @@ export function WorkflowGuide({ guide, service = false }: { guide: RoleGuide; se
     {service ? <p className="flex items-start gap-3 rounded-xl border border-primary/15 bg-secondary/40 p-4 text-xs leading-6"><ShieldCheck className="mt-1 size-4 shrink-0 text-primary" />Tu buzón tiene acceso de consulta. Las acciones de atención y emisión requieren una cuenta personal autorizada.</p> : null}
     <section className="workspace-guide-flow" aria-label={`Flujo: ${guide.title}`}>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-sm font-semibold">Tu flujo de trabajo</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">{guide.intro}</p></div><span className="text-[10px] font-medium text-primary">{guide.steps.length} etapas · explora a tu ritmo</span></div>
-      <ol className="workspace-flow-nodes">{guide.steps.map((node, index) => <li key={node.title}>
+      <ol className="workspace-flow-nodes" style={{ "--flow-count": guide.steps.length } as CSSProperties}>{guide.steps.map((node, index) => <li key={node.title}>
         <button type="button" id={`${id}-step-${index}`} aria-controls={`${id}-detail`} aria-pressed={selected === index} className="workspace-flow-node" onClick={() => setSelected(index)}>
           <svg viewBox="0 0 56 56" width="48" height="48" aria-hidden="true"><rect x="5" y="5" width="46" height="46" rx="14" fill={selected === index ? "var(--primary)" : "var(--secondary)"} stroke={selected === index ? "var(--primary)" : "#dfc9f0"} strokeDasharray={node.optional ? "3 3" : undefined} /><text x="28" y="33" textAnchor="middle" fill={selected === index ? "white" : "var(--primary)"} fontSize="16" fontWeight="650" fontFamily="inherit">{index + 1}</text></svg>
-          <span className="workspace-flow-node-title">{node.title}</span><span className="workspace-flow-node-subtitle">{node.short}</span>{node.optional ? <span className="workspace-flow-conditional">{node.title === "Corregir" ? "Si corresponde" : "En paralelo"}</span> : null}
+          <span className="workspace-flow-node-title">{node.title}</span><span className="workspace-flow-node-subtitle">{node.short}</span>{node.optional ? <span className="workspace-flow-conditional">{node.branchLabel ?? (node.title === "Corregir" ? "Si corresponde" : "En paralelo")}</span> : null}
         </button>{index < guide.steps.length - 1 ? <svg className="workspace-flow-arrow" viewBox="0 0 32 16" aria-hidden="true"><path d="M1 8H28M23 3L28 8L23 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={node.optional || guide.steps[index + 1].optional ? "3 3" : undefined} /></svg> : null}
       </li>)}</ol>
     </section>
