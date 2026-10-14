@@ -72,7 +72,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   }
 
   return (
-    <div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h3 className="text-sm font-semibold">Campus registrados</h3><span className="rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">{rows.length}</span></div>
         {rows.length ? <ul className="divide-y divide-border">
@@ -98,7 +98,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
         </ul> : <p className="px-5 py-10 text-center text-sm text-muted-foreground">Añade el primer campus y su biblioteca.</p>}
       </div>
       <div>
-        <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-6 rounded-xl border border-border p-5">
+        <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-24 rounded-xl border border-border p-5">
           <h3 className="text-sm font-semibold">{editingId ? "Editar campus" : "Añadir campus"}</h3>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">Los campus activos aparecen en el comprador y en el recojo.</p>
           <fieldset disabled={pending} className="mt-5 space-y-5">

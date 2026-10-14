@@ -28,7 +28,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const parsed = schema.safeParse(query);
   const filters = parsed.success ? parsed.data : schema.parse({});
   const [data, managers] = await Promise.all([getDashboard(filters), tab === "inventario" ? Promise.resolve([]) : dashboardManagers()]);
-  const tabs = [{ value: "pedidos", label: "Pedidos e importes" }, { value: "atencion", label: "Atención" }, { value: "inventario", label: "Inventario" }] as const;
+  const tabs = [{ value: "pedidos", label: "Pedidos e importes", detail: "Volumen y evolución" }, { value: "atencion", label: "Atención", detail: "Carga y tiempos del equipo" }, { value: "inventario", label: "Inventario", detail: "Disponibilidad de publicaciones" }] as const;
   function tabHref(value: string) {
     return `/admin/dashboard?${new URLSearchParams({ ...filters, tab: value }).toString()}`;
   }
@@ -42,8 +42,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const states = [{ title: "Esperando pago", value: live.waiting }, { title: "En revisión", value: live.review }, { title: "En distribución", value: live.distribution }, { title: "Despachados / listos para recojo", value: live.dispatched }];
   return <div className="space-y-7">
     <WorkspacePageHeading eyebrow="Resumen operativo" title="Dashboard" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
-    <nav aria-label="Secciones del dashboard" className="workspace-dashboard-tabs flex gap-1 overflow-x-auto">
-      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}>{item.label}</Link>)}
+    <nav aria-label="Secciones del dashboard" className="workspace-dashboard-sections">
+      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}><span>{item.label}</span><span className="mt-1 text-[10px] font-normal text-muted-foreground">{item.detail}</span></Link>)}
     </nav>
     <form action="/admin/dashboard" className={`workspace-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
       <input type="hidden" name="tab" value={tab} />

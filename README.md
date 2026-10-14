@@ -55,10 +55,13 @@ El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock,
 | `/tesoreria-recaudacion` | Bandeja de Tesorería Recaudación, según sellos autorizados |
 | `/tesoreria-recaudacion/[id]` | Emisión y finalización de boleta/factura |
 | `/admin/configuracion` | Correos, campus, cuentas e integraciones |
+| `/admin/guia` | Guía interactiva de atención para gestores |
+| `/tesoreria-recaudacion/resumen` | Carga de trabajo y evolución de la emisión |
+| `/tesoreria-recaudacion/guia` | Guía interactiva de emisión y correcciones |
 
-El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Tesorería Recaudación. El ingreso Google redirige según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
+El alias `/admin/configuración` también abre configuración. Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Tesorería Recaudación. El ingreso Google redirige a Pedidos para gestores y a Resumen para Tesorería, según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
 
-Los módulos internos usan navegación lateral: en escritorio puedes plegarla para ampliar el área de trabajo y en móvil se abre desde el botón de menú. La preferencia de plegado se guarda en ese navegador. El perfil muestra nombre y foto de la cuenta Google; si no hay foto, aparecen las iniciales. Expande el menú para acceder al cierre de sesión. Tesorería mantiene visibles sus unidades habilitadas y la condición de solo consulta de los buzones de servicio. La compra y el seguimiento públicos conservan su navegación propia.
+Los módulos internos usan navegación lateral: en escritorio puedes plegarla para ampliar el área de trabajo y en móvil se abre desde el botón de menú. La preferencia de plegado se guarda en ese navegador. El perfil muestra nombre y foto de la cuenta Google; si no hay foto, aparecen las iniciales. El cierre de sesión permanece visible también con el menú plegado. Tesorería mantiene visibles sus unidades habilitadas y la condición de solo consulta de los buzones de servicio. La compra y el seguimiento públicos conservan su navegación propia.
 
 ## Producción en Vercel
 
@@ -237,3 +240,10 @@ El responsable describe la observación en texto libre, sin escoger un tipo. Fon
 Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
 
 Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos.
+
+
+## Resumen y guías de trabajo
+
+Tesorería Recaudación dispone de Resumen, Solicitudes y Guía de uso en su menú lateral. Resumen permite elegir últimos 30 o 90 días y una unidad autorizada. Por asignar (libres sin observaciones), En atención (asignadas sin observaciones) y Observadas son grupos separados de solicitudes abiertas actuales, independientes del período. La emisión del período cuenta solicitudes actualmente finalizadas según finalized_at; si se devuelve un PDF, deja de contar hasta completar su corrección. No representa una auditoría contable de todas las emisiones/revisiones históricas. El tiempo mediano incluye espera y correcciones desde el registro y muestra su cantidad de muestras. Recibidas se agrupa por fecha de registro; finalizadas, por fecha de finalización vigente. Fechas en Perú. No hay polling ni tareas programadas para obtener estos datos.
+
+Las guías de gestores y Tesorería incluyen un flujo seleccionable, acciones por etapa, condiciones de excepción y preguntas frecuentes. Son ayuda contextual dentro de las rutas protegidas, no ejecutan cambios sobre pedidos ni consultan datos operativos adicionales. SVG y estilos locales usan la identidad de la aplicación; no dependen de visores externos. Mantener su contenido alineado con los cambios de negocio.

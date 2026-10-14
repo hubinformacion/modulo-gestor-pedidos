@@ -7,7 +7,7 @@ import { sileo } from "sileo";
 import { Button } from "@/components/ui/button";
 import { authClient } from "@/lib/auth-client";
 
-export function LogoutButton() {
+export function LogoutButton({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
 
@@ -24,5 +24,5 @@ export function LogoutButton() {
     }
   }
 
-  return <Button variant="ghost" className="h-10" disabled={pending} onClick={signOut}><LogOut aria-hidden="true" />{pending ? "Cerrando…" : "Salir"}</Button>;
+  return <Button variant="destructive" className="workspace-signout h-10" title={compact ? "Cerrar sesión" : undefined} disabled={pending} onClick={signOut}><LogOut aria-hidden="true" /><span className={compact ? "sr-only" : undefined}>{pending ? "Cerrando sesión…" : "Cerrar sesión"}</span></Button>;
 }
