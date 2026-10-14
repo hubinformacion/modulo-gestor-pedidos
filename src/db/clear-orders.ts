@@ -4,7 +4,7 @@ import { OAuth2Client } from "google-auth-library";
 import { drive } from "googleapis/build/src/apis/drive/index.js";
 
 // Standalone maintenance command: never imported by routes or deployment builds.
-const tables = [
+const orderTables = [
   "orders", "order_items", "payment_receipts", "payment_uploads",
   "pickup_evidence", "order_activity", "order_emails", "order_notifications",
   "caja_requests", "caja_notifications", "sale_documents",
@@ -12,6 +12,13 @@ const tables = [
   "sale_document_batches", "drive_file_reader_grants", "coupon_redemptions",
   "order_counters", "payment_guides",
 ] as const;
+const fullReset = process.argv.includes("--reset-all-except-bank-accounts");
+const tables: readonly string[] = fullReset ? [...orderTables,
+  "books", "campuses", "promotions", "promotion_books", "coupons",
+  "treasury_mailboxes", "drive_reader_grants", "authorized_emails",
+  "account", "session", "user", "verification",
+] : orderTables;
+const masterEmail = "distribucionfe@continental.edu.pe";
 const tableSql = tables.map((table) => `public."${table}"`).join(", ");
 type Grant = { drive_file_id: string; email: string; managed: boolean };
 type Snapshot = { table_name: string; count: string; fingerprint: string };
@@ -29,6 +36,10 @@ async function snapshot(client: PoolClient) {
 }
 
 async function checkScope(client: PoolClient) {
+  if (fullReset) {
+    const unknown = await client.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND NOT (tablename = ANY($1::text[]))", [[...tables, "bank_accounts"]]);
+    if (unknown.rowCount) fail("FULL_RESET_SCHEMA_CHANGED");
+  }
   const { rows } = await client.query<{ unexpected: boolean }>(`
     SELECT EXISTS (
       SELECT 1 FROM pg_constraint c
@@ -47,6 +58,7 @@ async function checkScope(client: PoolClient) {
       OR EXISTS (SELECT 1 FROM public.caja_requests WHERE lease_until > now()) AS active
   `);
   if (leases.rows[0].active) fail("MAIL_WORKER_ACTIVE");
+  if (fullReset) return;
   const counters = await client.query<{ invalid: boolean }>(`
     SELECT EXISTS (
       SELECT 1 FROM public.coupons c JOIN (
@@ -109,13 +121,15 @@ async function revokeCajaReaders(grants: Grant[]) {
 async function main() {
   const args = process.argv.slice(2);
   if (args.includes("--help")) {
-    console.log("Vista previa: pnpm db:orders:clear\nBorrar: pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDOS\nOpcional: --keep-stock conserva las existencias actuales en vez de restituir las unidades de las demos.");
+    console.log("Vista previa: pnpm db:orders:clear\nBorrar pedidos: pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDOS\nReinicio completo: pnpm db:orders:clear --reset-all-except-bank-accounts --execute --maintenance --confirm=REINICIAR_BD_CONSERVAR_CUENTAS\nEl reinicio completo conserva bank_accounts, el esquema y migraciones, y habilita únicamente el correo maestro. --maintenance exige tráfico/cron/cargas detenidos externamente.");
     return;
   }
-  const allowed = new Set(["--execute", "--maintenance", "--confirm=ELIMINAR_TODOS_LOS_PEDIDOS", "--keep-stock"]);
+  const allowed = new Set(["--execute", "--maintenance", "--confirm=ELIMINAR_TODOS_LOS_PEDIDOS", "--keep-stock", "--reset-all-except-bank-accounts", "--confirm=REINICIAR_BD_CONSERVAR_CUENTAS"]);
   if (args.some((arg) => !allowed.has(arg))) fail("INVALID_ARGUMENTS");
   const execute = args.includes("--execute");
-  if (execute && (!args.includes("--maintenance") || !args.includes("--confirm=ELIMINAR_TODOS_LOS_PEDIDOS"))) {
+  if (fullReset && args.includes("--keep-stock")) fail("INVALID_ARGUMENTS");
+  const confirmation = fullReset ? "--confirm=REINICIAR_BD_CONSERVAR_CUENTAS" : "--confirm=ELIMINAR_TODOS_LOS_PEDIDOS";
+  if (execute && (!args.includes("--maintenance") || !args.includes(confirmation))) {
     fail("EXPLICIT_CONFIRMATION_AND_MAINTENANCE_REQUIRED");
   }
   config({ path: ".env.local", quiet: true });
@@ -131,15 +145,20 @@ async function main() {
     await client.query("SET LOCAL statement_timeout = '60s'");
     await checkScope(client);
     const before = await snapshot(client);
-    const { rows: grants } = await client.query<Grant>("SELECT drive_file_id, email, managed FROM public.drive_file_reader_grants ORDER BY drive_file_id, email");
+    const { rows: grants } = await client.query<Grant>(fullReset
+      ? "SELECT drive_file_id, email, managed FROM public.drive_file_reader_grants UNION ALL SELECT folder_id AS drive_file_id, email, true AS managed FROM public.drive_reader_grants ORDER BY drive_file_id, email"
+      : "SELECT drive_file_id, email, managed FROM public.drive_file_reader_grants ORDER BY drive_file_id, email");
+    const bankFingerprint = async () => (await client!.query<{ fingerprint: string; count: string }>("SELECT count(*)::text AS count, md5(coalesce(string_agg(md5(to_jsonb(b)::text), '' ORDER BY id), '')) AS fingerprint FROM public.bank_accounts b")).rows[0];
+    const banksBefore = fullReset ? await bankFingerprint() : null;
     const { rows: units } = await client.query<{ units: string }>(`
       SELECT coalesce(sum(i.quantity), 0)::text AS units FROM public.order_items i
       JOIN public.orders o ON o.id = i.order_id WHERE o.stock_restored_at IS NULL
     `);
     await client.query("COMMIT");
-    console.log("Alcance: TODOS los pedidos de DATABASE_URL, sin distinguir demos de pedidos reales.");
+    console.log(fullReset ? "Alcance: TODA la información de DATABASE_URL excepto las cuentas bancarias. Se restablece únicamente la autorización maestra." : "Alcance: TODOS los pedidos de DATABASE_URL, sin distinguir demos de pedidos reales.");
+    if (banksBefore) console.log(`Cuentas bancarias a conservar sin cambios: ${banksBefore.count}.`);
     for (const row of before) console.log(`${row.table_name}: ${row.count}`);
-    console.log(`Unidades a restituir: ${args.includes("--keep-stock") ? "0 (stock actual conservado)" : units[0].units}. Permisos individuales registrados: ${grants.length}.`);
+    console.log(`Unidades a restituir: ${fullReset ? "0 (catálogo eliminado)" : args.includes("--keep-stock") ? "0 (stock actual conservado)" : units[0].units}. Permisos individuales registrados: ${grants.length}.`);
     if (!execute) {
       console.log("Vista previa de solo lectura. No se cambió la BD ni Google. Usa --help para ver el comando de borrado.");
       return;
@@ -151,11 +170,11 @@ async function main() {
     await client.query("BEGIN");
     await client.query("SET LOCAL lock_timeout = '10s'");
     await client.query("SET LOCAL statement_timeout = '60s'");
-    await client.query(`LOCK TABLE ${tableSql}, public.books, public.coupons IN ACCESS EXCLUSIVE MODE`);
+    await client.query(`LOCK TABLE ${fullReset ? `${tableSql}, public.bank_accounts` : `${tableSql}, public.books, public.coupons`} IN ACCESS EXCLUSIVE MODE`);
     await checkScope(client);
     const current = await snapshot(client);
     if (JSON.stringify(current) !== JSON.stringify(before)) fail("ORDERS_CHANGED_DURING_MAINTENANCE");
-    if (!args.includes("--keep-stock")) {
+    if (!fullReset && !args.includes("--keep-stock")) {
       await client.query(`
         UPDATE public.books b SET stock = b.stock + restored.quantity, updated_at = now()
         FROM (SELECT i.book_id, sum(i.quantity) AS quantity FROM public.order_items i
@@ -163,17 +182,22 @@ async function main() {
           GROUP BY i.book_id) restored WHERE b.id = restored.book_id
       `);
     }
-    await client.query(`
+    if (!fullReset) await client.query(`
       UPDATE public.coupons c SET used_count = c.used_count - restored.uses, updated_at = now()
       FROM (SELECT coupon_id, count(*) AS uses FROM public.coupon_redemptions
         WHERE released_at IS NULL GROUP BY coupon_id) restored WHERE c.id = restored.coupon_id
     `);
     // Explicit scope and RESTRICT: a future FK must abort, never expand deletion.
     // One TRUNCATE also resolves the circular receipt/document references.
-    await client.query(`TRUNCATE TABLE ${tableSql} RESTRICT`);
+    if (fullReset && JSON.stringify(await bankFingerprint()) !== JSON.stringify(banksBefore)) fail("BANK_ACCOUNTS_CHANGED_DURING_MAINTENANCE");
+    await client.query(`TRUNCATE TABLE ${tableSql}${fullReset ? " RESTART IDENTITY" : ""} RESTRICT`);
+    if (fullReset) {
+      await client.query("INSERT INTO public.authorized_emails (email, added_by) VALUES ($1, $1)", [masterEmail]);
+      if (JSON.stringify(await bankFingerprint()) !== JSON.stringify(banksBefore)) fail("BANK_ACCOUNTS_CHANGED_DURING_MAINTENANCE");
+    }
     commitStarted = true;
     await client.query("COMMIT");
-    console.log("Pedidos y dependencias eliminados. Numeración reiniciada. Configuración y accesos conservados. Archivos y correos de Google conservados.");
+    console.log(fullReset ? "Reinicio completado. Solo se conservan las cuentas bancarias sin cambios y la autorización del correo maestro. Usuarios OAuth, sesiones, catálogo, campus, buzones, pedidos e historial eliminados; numeración reiniciada. Esquema/migraciones y archivos/correos físicos de Google conservados." : "Pedidos y dependencias eliminados. Numeración reiniciada. Configuración y accesos conservados. Archivos y correos de Google conservados.");
   } catch (error) {
     if (client) { try { await client.query("ROLLBACK"); } catch { /* Only safe codes are reported below. */ } }
     if (execute) {
@@ -189,7 +213,7 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  const known = new Set(["INVALID_ARGUMENTS", "EXPLICIT_CONFIRMATION_AND_MAINTENANCE_REQUIRED", "DATABASE_URL_REQUIRED", "ORDER_SCHEMA_CHANGED", "MAIL_WORKER_ACTIVE", "COUPON_COUNTER_INCONSISTENT", "GOOGLE_CREDENTIALS_REQUIRED", "DRIVE_ACL_CLEANUP_FAILED", "ORDERS_CHANGED_DURING_MAINTENANCE"]);
+  const known = new Set(["FULL_RESET_SCHEMA_CHANGED", "BANK_ACCOUNTS_CHANGED_DURING_MAINTENANCE", "INVALID_ARGUMENTS", "EXPLICIT_CONFIRMATION_AND_MAINTENANCE_REQUIRED", "DATABASE_URL_REQUIRED", "ORDER_SCHEMA_CHANGED", "MAIL_WORKER_ACTIVE", "COUPON_COUNTER_INCONSISTENT", "GOOGLE_CREDENTIALS_REQUIRED", "DRIVE_ACL_CLEANUP_FAILED", "ORDERS_CHANGED_DURING_MAINTENANCE"]);
   const code = error instanceof Error && known.has(error.message) ? error.message : "ORDER_CLEANUP_FAILED";
   console.error(`No se completó la operación (${code}). No se imprimen datos personales ni credenciales.`);
   process.exitCode = 1;
