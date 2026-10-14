@@ -9,7 +9,7 @@ export async function proxy(request: NextRequest) {
     const isCaja = request.nextUrl.pathname.startsWith("/tesoreria-recaudacion");
     if ((isCaja && session.actor.role !== "caja") || (!isCaja && session.actor.role !== "gestor")) {
       if (request.headers.has("next-action")) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403, headers: { "Cache-Control": "no-store" } });
-      const response = NextResponse.redirect(new URL(session.actor.role === "caja" ? "/tesoreria-recaudacion/resumen" : "/admin/pedidos", request.url));
+      const response = NextResponse.redirect(new URL(session.actor.role === "caja" ? "/tesoreria-recaudacion" : "/admin/pedidos", request.url));
       for (const cookie of session.responseHeaders.getSetCookie()) response.headers.append("Set-Cookie", cookie);
       response.headers.set("Cache-Control", "private, no-store");
       return response;

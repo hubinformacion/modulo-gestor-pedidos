@@ -18,8 +18,8 @@ const managerItems = [
   { href: "/admin/guia", label: "Guía de uso", icon: BookOpen, group: "Ayuda" },
 ];
 const treasuryItems = [
-  { href: "/tesoreria-recaudacion/resumen", label: "Resumen", icon: LayoutDashboard, group: "Operación" },
-  { href: "/tesoreria-recaudacion", label: "Solicitudes", icon: ReceiptText, group: "Operación" },
+  { href: "/tesoreria-recaudacion", label: "Resumen", icon: LayoutDashboard, group: "Operación" },
+  { href: "/tesoreria-recaudacion/solicitudes", label: "Solicitudes", icon: ReceiptText, group: "Operación" },
   { href: "/tesoreria-recaudacion/guia", label: "Guía de uso", icon: BookOpen, group: "Ayuda" },
 ];
 const preferenceKey = "fec:sidebar:v1";
@@ -49,7 +49,7 @@ export function WorkspaceShell({ kind, profile, children }: { kind: "manager" | 
   const collapsed = temporaryCollapsed ?? savedCollapsed;
   const [mobileOpen, setMobileOpen] = useState(false);
   const items = kind === "manager" ? managerItems : treasuryItems;
-  const title = kind === "manager" ? "Gestión editorial" : "Tesorería Recaudación";
+  const title = kind === "manager" ? "Fondo Editorial" : "Tesorería Recaudación";
   const current = [...items].sort((a, b) => b.href.length - a.href.length).find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? items[0];
   const detail = pathname.startsWith(`${current.href}/`);
   function toggleCollapsed() {
@@ -62,7 +62,7 @@ export function WorkspaceShell({ kind, profile, children }: { kind: "manager" | 
         {/* The local SVG is also the app favicon; keep its original rendering without an image proxy. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icon.svg" width={32} height={32} alt="" />
-      </span><div className="workspace-expanded"><span className="workspace-overline">Espacio de trabajo</span><p>{title}</p></div></div>
+      </span><div className="workspace-expanded"><p>{title}</p></div></div>
       <nav aria-label={title} className="workspace-nav">{items.map(({ href, label, icon: Icon, group }, index) => {
         const active = current.href === href;
         return <div key={href}>{index === 0 || items[index - 1].group !== group ? <p className="workspace-nav-group"><span className="workspace-expanded">{group}</span></p> : null}<Link href={href} prefetch={false} title={compact ? label : undefined} aria-label={compact ? label : undefined} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={cn("workspace-nav-link", active && "is-active")}><Icon className="size-[18px] shrink-0" aria-hidden="true" /><span className="workspace-expanded">{label}</span>{active ? <span className="workspace-active-dot workspace-expanded" aria-hidden="true" /> : null}</Link></div>;

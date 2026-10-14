@@ -5,11 +5,16 @@ import { withReadDatabase } from "@/db";
 import { requireCajaAccess } from "@/lib/access";
 import type { TreasurySummary } from "./dashboard-types";
 
-export const treasurySummaryFilters = z.object({
-  days: z.enum(["30", "90"]).catch("30"),
-  imprint: z.enum(["", "universidad", "instituto"]).catch(""),
-});
-export async function treasurySummary(filters: z.infer<typeof treasurySummaryFilters>) {
+export function treasurySummaryFilters(today: string) {
+  return z.object({
+    from: z.iso.date().default(`${today.slice(0, 7)}-01`),
+    to: z.iso.date().default(today),
+    imprint: z.enum(["", "universidad", "instituto"]).catch(""),
+  }).refine((value) => value.from <= value.to && (Date.parse(value.to) - Date.parse(value.from)) / 86400000 <= 365,
+    "Selecciona un período de hasta 366 días con inicio anterior al fin.");
+}
+type SummaryFilters = z.infer<ReturnType<typeof treasurySummaryFilters>>;
+export async function treasurySummary(filters: SummaryFilters) {
   const actor = await requireCajaAccess();
   const scopes = actor.publisherImprints.filter((imprint) => !filters.imprint || imprint === filters.imprint);
   // A single read-only statement, scoped before aggregation. The browser receives
@@ -17,8 +22,7 @@ export async function treasurySummary(filters: z.infer<typeof treasurySummaryFil
   const permitted = scopes.length ? sql`r.publisher_imprint::text IN (${sql.join(scopes.map((imprint) => sql`${imprint}`), sql`, `)})` : sql`false`;
   const payload = sql<TreasurySummary>`(
     WITH bounds AS (
-      SELECT (current_timestamp AT TIME ZONE 'America/Lima')::date AS today,
-        (current_timestamp AT TIME ZONE 'America/Lima')::date - (${Number(filters.days)}::integer - 1) AS first_day
+      SELECT ${filters.to}::date AS last_day, ${filters.from}::date AS first_day
     ), scoped AS MATERIALIZED (
       SELECT r.id, r.publisher_imprint, r.status, r.created_at, r.finalized_at, r.assigned_to,
         o.billing_ruc IS NOT NULL AS invoice,
@@ -28,11 +32,11 @@ export async function treasurySummary(filters: z.infer<typeof treasurySummaryFil
     issued AS MATERIALIZED (
       SELECT s.* FROM scoped s, bounds b WHERE s.status = 'FINALIZADA'
         AND s.finalized_at >= (b.first_day::timestamp AT TIME ZONE 'America/Lima')
-        AND s.finalized_at < ((b.today + 1)::timestamp AT TIME ZONE 'America/Lima')
+        AND s.finalized_at < ((b.last_day + 1)::timestamp AT TIME ZONE 'America/Lima')
     ), received AS (
       SELECT (s.created_at AT TIME ZONE 'America/Lima')::date AS day, count(*) AS total
       FROM scoped s, bounds b WHERE s.created_at >= (b.first_day::timestamp AT TIME ZONE 'America/Lima')
-        AND s.created_at < ((b.today + 1)::timestamp AT TIME ZONE 'America/Lima') GROUP BY 1
+        AND s.created_at < ((b.last_day + 1)::timestamp AT TIME ZONE 'America/Lima') GROUP BY 1
     ), finished AS (
       SELECT (finalized_at AT TIME ZONE 'America/Lima')::date AS day, count(*) AS total FROM issued GROUP BY 1
     )
@@ -53,7 +57,7 @@ export async function treasurySummary(filters: z.infer<typeof treasurySummaryFil
         'sample', count(*) FILTER (WHERE finalized_at >= created_at)
       ) FROM issued),
       'trend', (SELECT coalesce(json_agg(json_build_object('day', d.day::date::text, 'received', coalesce(r.total, 0), 'finished', coalesce(f.total, 0)) ORDER BY d.day), '[]'::json)
-        FROM bounds b CROSS JOIN LATERAL generate_series(b.first_day::timestamp, b.today::timestamp, interval '1 day') d(day)
+        FROM bounds b CROSS JOIN LATERAL generate_series(b.first_day::timestamp, b.last_day::timestamp, interval '1 day') d(day)
         LEFT JOIN received r ON r.day = d.day::date LEFT JOIN finished f ON f.day = d.day::date),
       'units', (SELECT coalesce(json_agg(json_build_object('imprint', u.publisher_imprint,
         'open', (SELECT count(*) FROM live l WHERE l.publisher_imprint = u.publisher_imprint),

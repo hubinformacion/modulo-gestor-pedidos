@@ -7,6 +7,7 @@ import { gmail } from "googleapis/build/src/apis/gmail/index.js";
 import { z } from "zod";
 import { safeErrorDetails } from "@/lib/server-diagnostics";
 import { googleConfigured, getPublicOrigin, readOrderPaymentGuide } from "@/lib/payments/config";
+import { formatOrderNumber } from "@/lib/orders/number";
 import { formatMoney, toCents } from "@/lib/orders/money";
 import { managerMailCopies } from "@/lib/orders/mail-recipients";
 import { customerTrackingUrl } from "@/lib/orders/customer-links";
@@ -152,7 +153,7 @@ export async function sendOrderConfirmationEmail(tracking: Tracking) {
     .map((imprint) => `${imprintNames[imprint]}: ${formatMoney(toCents(imprint === "universidad" ? tracking.order.totalUniversidad : tracking.order.totalInstituto))}`)
     .join("\n");
   return sendMime({ tracking, art: "received", artCid, html: renderOrderEmail(tracking, { intro, link, artCid }),
-    text: `Pedido ${tracking.order.orderNumber}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Seguimiento y pago: ${link}\nGuía de pago adjunta en PDF.`,
+    text: `Pedido ${formatOrderNumber(tracking.order.orderNumber)}\n${intro}\n${amounts}\n${tracking.order.orderType === "mixto" ? "Realiza dos depósitos independientes.\n" : ""}Seguimiento y pago: ${link}\nGuía de pago adjunta en PDF.`,
     attachment: await readOrderPaymentGuide(tracking.order),
   });
 }
@@ -177,7 +178,7 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const art: MailArt = notification.eventType === "CANCELADO" ? "rejected" : notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
   const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
-  return sendMime({ tracking, art, artCid, attachments, eventCreatedAt: notification.createdAt, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${tracking.order.orderNumber}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
+  return sendMime({ tracking, art, artCid, attachments, eventCreatedAt: notification.createdAt, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${formatOrderNumber(tracking.order.orderNumber)}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
 }
 
 export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string, art: MailArt, eventCreatedAt: Date) {
