@@ -58,7 +58,11 @@ export function WorkspaceShell({ kind, profile, children }: { kind: "manager" | 
   function sidebar(mobile = false) {
     const compact = collapsed && !mobile;
     return <div className={cn("workspace-sidebar-inner", compact && "is-compact")}>
-      <div className="workspace-identity"><span className="workspace-mark" aria-hidden="true">{kind === "manager" ? <ClipboardList /> : <ReceiptText />}</span><div className="workspace-expanded"><span className="workspace-overline">Espacio de trabajo</span><p>{title}</p></div></div>
+      <div className="workspace-identity"><span className="workspace-mark" role="img" aria-label="Universidad Continental">
+        {/* The local SVG is also the app favicon; keep its original rendering without an image proxy. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icon.svg" width={32} height={32} alt="" />
+      </span><div className="workspace-expanded"><span className="workspace-overline">Espacio de trabajo</span><p>{title}</p></div></div>
       <nav aria-label={title} className="workspace-nav">{items.map(({ href, label, icon: Icon, group }, index) => {
         const active = current.href === href;
         return <div key={href}>{index === 0 || items[index - 1].group !== group ? <p className="workspace-nav-group"><span className="workspace-expanded">{group}</span></p> : null}<Link href={href} prefetch={false} title={compact ? label : undefined} aria-label={compact ? label : undefined} aria-current={active ? "page" : undefined} onClick={() => setMobileOpen(false)} className={cn("workspace-nav-link", active && "is-active")}><Icon className="size-[18px] shrink-0" aria-hidden="true" /><span className="workspace-expanded">{label}</span>{active ? <span className="workspace-active-dot workspace-expanded" aria-hidden="true" /> : null}</Link></div>;

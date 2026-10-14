@@ -89,7 +89,7 @@ html[data-fec-embedded="true"] .public-order-surface { max-width: none; padding-
 .workspace-sidebar-inner { display: flex; height: 100%; min-height: 0; flex-direction: column; padding: 28px 16px 16px; }
 .workspace-identity { display: flex; align-items: center; gap: 12px; padding: 0 8px 26px; }
 .workspace-mark { display: grid; width: 36px; height: 40px; flex-shrink: 0; place-items: center; color: var(--primary); }
-.workspace-mark svg { width: 26px; height: 26px; stroke-width: 1.7; }
+.workspace-mark img { width: 32px; height: 32px; object-fit: contain; }
 .workspace-overline { display: block; margin-bottom: 4px; font-size: 9px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: #81718f; }
 .workspace-identity p { font-size: 14px; font-weight: 650; line-height: 1.4; letter-spacing: -.025em; }
 .workspace-nav { flex: 1; min-height: 0; overflow-y: auto; padding-bottom: 24px; }
@@ -276,22 +276,41 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .treasury-case-meta strong { font-weight: 600; }
 .treasury-case-workspace { display: grid; align-items: start; gap: 24px; margin-top: 24px; min-width: 0; }
 .treasury-case-sheet { overflow: hidden; border: 1px solid var(--workspace-line); border-radius: 14px; background: white; }
-.treasury-case-section { padding: 24px; }
-.treasury-case-section + .treasury-case-section { border-top: 1px solid var(--workspace-line); }
 .treasury-section-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 24px; }
 .treasury-section-icon { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 36px; height: 36px; border: 1px solid #e7d9f2; border-radius: 10px; background: #f8f2fd; color: var(--primary); }
 .treasury-section-icon svg { width: 18px; height: 18px; stroke-width: 1.6; }
 .treasury-section-heading h2 { font-size: 14px; font-weight: 650; }
 .treasury-section-heading p { margin-top: 5px; font-size: 11px; line-height: 1.7; color: var(--muted-foreground); }
-.treasury-identity-fields { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 22px 32px; }
-.treasury-identity-fields dt { font-size: 10px; color: var(--muted-foreground); }
-.treasury-identity-fields dd { margin-top: 7px; overflow-wrap: anywhere; font-size: 12px; font-weight: 550; line-height: 1.8; }
-.treasury-fiscal-block { margin-top: 24px; padding: 20px; border: 1px solid #ede0f5; border-radius: 10px; background: #fcf9ff; }
-.treasury-amounts-strip { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); margin-top: 20px; gap: 16px; border-radius: 10px; background: #f8f4fc; padding: 18px; }
-.treasury-amounts-strip dt { font-size: 10px; color: var(--muted-foreground); }
-.treasury-amounts-strip dd { margin-top: 8px; font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
-.treasury-amounts-strip > div:last-child { color: var(--primary); }
-.treasury-payment-file { display: flex; align-items: flex-start; gap: 14px; border: 1px solid var(--workspace-line); border-radius: 10px; padding: 16px; }
+.treasury-recipient, .treasury-purchase, .treasury-payment { min-width: 0; overflow: hidden; border: 1px solid var(--workspace-line); border-radius: 14px; background: white; }
+.treasury-recipient-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-bottom: 1px solid var(--workspace-line); padding: 18px 24px; }
+.treasury-recipient-heading h2 { font-size: 13px; font-weight: 650; }
+.treasury-recipient-content { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); }
+.treasury-billing-identity { padding: 26px 24px; }
+.treasury-field-label { font-size: 10px; font-weight: 500; color: var(--muted-foreground); }
+.treasury-recipient-name { margin-top: 10px; overflow-wrap: anywhere; font-size: 19px; font-weight: 650; line-height: 1.5; letter-spacing: -.035em; }
+.treasury-recipient-document { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.treasury-recipient-document span { color: var(--muted-foreground); font-weight: 400; }
+.treasury-billing-address { margin-top: 24px; }
+.treasury-billing-address > p:last-child { margin-top: 7px; overflow-wrap: anywhere; font-size: 12px; line-height: 1.8; }
+.treasury-buyer-contact { padding: 26px 24px; border-left: 1px solid var(--workspace-line); background: #faf9fc; }
+.treasury-buyer-contact h3 { margin-bottom: 18px; font-size: 11px; font-weight: 600; }
+.treasury-buyer-contact dl { display: grid; gap: 14px; }
+.treasury-buyer-contact dt { font-size: 10px; color: var(--muted-foreground); }
+.treasury-buyer-contact dd { margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; line-height: 1.7; }
+.treasury-purchase > .treasury-section-heading, .treasury-payment > .treasury-section-heading { padding: 22px 24px; margin: 0; }
+.treasury-purchase-table thead { background: #faf9fc; border-block: 1px solid var(--workspace-line); color: var(--muted-foreground); }
+.treasury-purchase-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 22px 24px; }
+.treasury-purchase-footer > p { font-size: 10px; color: var(--muted-foreground); }
+.treasury-purchase-footer dl { width: 280px; max-width: 100%; display: grid; gap: 12px; }
+.treasury-purchase-footer dl > div { display: flex; justify-content: space-between; gap: 20px; font-size: 11px; }
+.treasury-purchase-footer dt { color: var(--muted-foreground); }
+.treasury-purchase-footer dd { font-weight: 600; font-variant-numeric: tabular-nums; }
+.treasury-purchase-footer dl > div:last-child { border-top: 1px solid #e7d9f2; padding-top: 14px; font-size: 15px; color: var(--primary); }
+.treasury-purchase-footer dl > div:last-child dt { font-weight: 600; color: inherit; }
+.treasury-payment-verified { display: inline-flex; align-items: center; gap: 5px; margin-left: auto; border-radius: 6px; background: #edf7f0; padding: 5px 8px; font-size: 9px; font-weight: 600; color: #24633e; }
+.treasury-payment-list { padding-inline: 24px; }
+.treasury-payment-file { display: flex; align-items: flex-start; gap: 14px; padding-block: 16px; border-top: 1px solid var(--workspace-line); }
+.treasury-payment-file:last-child { padding-bottom: 24px; }
 .treasury-issue-column { min-width: 0; }
 .treasury-issue-panel { border: 1px solid #decaee; border-radius: 14px; background: white; overflow: hidden; }
 .treasury-issue-heading { border-bottom: 1px solid var(--workspace-line); padding: 24px; }
@@ -299,4 +318,4 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .treasury-issue-body { padding: 24px; }
 @media (min-width: 1280px) { .treasury-case-workspace { grid-template-columns: minmax(0,1fr) 352px; } .treasury-issue-column { position: sticky; top: 92px; } }
 @media (min-width: 1600px) { .treasury-case-workspace { grid-template-columns: minmax(0,1fr) 400px; } }
-@media (max-width: 639px) { .treasury-case-section, .treasury-issue-heading, .treasury-issue-body { padding: 20px; } .treasury-identity-fields { grid-template-columns: 1fr; gap: 18px; } .treasury-amounts-strip { grid-template-columns: 1fr; gap: 12px; } .treasury-amounts-strip > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; } .treasury-amounts-strip dd { margin-top: 0; } }
+@media (max-width: 639px) { .treasury-issue-heading, .treasury-issue-body, .treasury-billing-identity, .treasury-buyer-contact { padding: 20px; } .treasury-recipient-content { grid-template-columns: 1fr; } .treasury-buyer-contact { border-left: 0; border-top: 1px solid var(--workspace-line); } .treasury-recipient-heading, .treasury-purchase > .treasury-section-heading, .treasury-payment > .treasury-section-heading, .treasury-purchase-footer { padding: 18px 20px; } .treasury-payment-list { padding-inline: 20px; } .treasury-purchase-footer dl { width: 100%; } }

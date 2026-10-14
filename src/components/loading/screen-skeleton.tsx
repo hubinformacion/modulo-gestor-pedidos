@@ -58,7 +58,20 @@ export function AdminOrderSkeleton() {
   return <LoadingRegion label="Cargando atención del pedido"><div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones /><SectionTabsBones /><div className="mt-6 space-y-5"><Bones kind="back" /><div className="grid gap-5 xl:grid-cols-2">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind={i === 3 ? "summary" : "lines"} /></Card>)}</div></div></LoadingRegion>;
 }
 export function CashierOrderSkeleton() {
-  return <LoadingRegion label="Cargando solicitud de Tesorería Recaudación"><div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones /><div className="treasury-case-meta"><div className="w-36"><Bones kind="action" /></div><div className="w-48"><Bones kind="back" /></div></div><div className="mt-5"><Card><div className="flex flex-wrap items-center justify-between gap-4"><div className="w-64"><Bones kind="back" /></div><div className="w-32"><Bones kind="action" /></div></div></Card></div><div className="treasury-case-workspace"><div className="min-w-0 space-y-5"><div className="treasury-case-sheet"><section className="treasury-case-section"><Bones kind="back" /><div className="mt-6 grid gap-5 sm:grid-cols-2"><Bones kind="lines" /><Bones kind="lines" /></div></section><section className="treasury-case-section"><Bones kind="summary" /></section><section className="treasury-case-section"><Bones kind="lines" /></section></div><Card><Bones kind="lines" /><Bones kind="field" /></Card></div><aside className="treasury-issue-panel"><div className="treasury-issue-heading"><Bones kind="heading" /></div><div className="treasury-issue-body"><Bones kind="preview" /><div className="mt-5"><Bones kind="action" /></div></div></aside></div></LoadingRegion>;
+  return <LoadingRegion label="Cargando solicitud de Tesorería Recaudación">
+    <div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones />
+    <div className="treasury-case-meta"><div className="w-36"><Bones kind="action" /></div><div className="w-48"><Bones kind="back" /></div></div>
+    <div className="mt-5"><Card><div className="flex flex-wrap items-center justify-between gap-4"><div className="w-64"><Bones kind="back" /></div><div className="w-32"><Bones kind="action" /></div></div></Card></div>
+    <div className="treasury-case-workspace">
+      <div className="min-w-0 space-y-5">
+        <div className="treasury-recipient"><div className="treasury-recipient-heading"><div className="w-48"><Bones kind="back" /></div></div><div className="treasury-recipient-content"><div className="treasury-billing-identity"><Bones kind="heading" /><div className="mt-5"><Bones kind="lines" /></div></div><div className="treasury-buyer-contact"><Bones kind="lines" /><Bones kind="back" /></div></div></div>
+        <div className="treasury-purchase"><div className="treasury-section-heading"><div className="w-48"><Bones kind="back" /></div></div><div className="px-6"><Bones kind="summary" /></div><div className="treasury-purchase-footer"><div className="ml-auto w-64"><Bones kind="lines" /></div></div></div>
+        <Card><Bones kind="back" /><div className="mt-5"><Bones kind="lines" /></div></Card>
+        <Card><Bones kind="lines" /><Bones kind="field" /></Card>
+      </div>
+      <aside className="treasury-issue-panel"><div className="treasury-issue-heading"><Bones kind="heading" /></div><div className="treasury-issue-body"><Bones kind="preview" /><div className="mt-5"><Bones kind="action" /></div></div></aside>
+    </div>
+  </LoadingRegion>;
 }
 export function TrackingSkeleton() {
   return <main id="contenido" className="public-order-surface mx-auto w-full max-w-6xl px-5 py-7 sm:px-10 sm:py-10"><LoadingRegion label="Cargando seguimiento del pedido"><Bones kind="heading" /><div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]"><div className="overflow-hidden rounded-2xl border border-border"><div className="bg-secondary/40 p-5"><Bones kind="heading" /></div><div className="border-b border-border"><Bones kind="tabs" /></div><div className="space-y-4 p-5"><Card><Bones kind="summary" /></Card><Card><Bones kind="lines" /></Card></div></div><SidePanel /></div></LoadingRegion></main>;
