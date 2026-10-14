@@ -50,12 +50,12 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
       <h3 className="text-sm font-semibold">{editing ? "Editar cuenta" : "Añadir cuenta"}</h3>
       <p className="mt-2 text-xs leading-6 text-muted-foreground">Todas las cuentas están en soles. Solo se ofrecen las activas; puedes guardar datos pendientes como inactivos.</p>
       <fieldset disabled={pending} className="mt-5 space-y-4">
-        <SelectField id="bank-imprint" label="Sello" value={form.publisherImprint} onChange={(event) => set("publisherImprint", event.target.value as BankForm["publisherImprint"])} error={errors.publisherImprint}><option value="universidad">Universidad Continental</option><option value="instituto">Instituto Continental</option></SelectField>
+        <SelectField id="bank-imprint" label="Sello" value={form.publisherImprint} onValueChange={(value) => set("publisherImprint", value as BankForm["publisherImprint"])} error={errors.publisherImprint}><option value="universidad">Universidad Continental</option><option value="instituto">Instituto Continental</option></SelectField>
         <Field id="bank-name" label="Banco" placeholder="Ej. BCP o BBVA" value={form.bank} onChange={(event) => set("bank", event.target.value)} maxLength={80} error={errors.bank} required />
         <Field id="bank-holder" label="Titular de la cuenta" placeholder="Razón social exacta del titular" value={form.holder} onChange={(event) => set("holder", event.target.value)} maxLength={200} error={errors.holder} />
         <Field id="bank-number" label="Número de cuenta" placeholder="Número proporcionado por el banco" value={form.account} onChange={(event) => set("account", event.target.value)} maxLength={40} error={errors.account} required />
         <Field id="bank-cci" label="CCI" placeholder="20 dígitos" value={form.cci} onChange={(event) => set("cci", event.target.value)} maxLength={30} error={errors.cci} hint="Puedes pegarlo con guiones; se guardan solo los dígitos." />
-        <SelectField id="bank-status" label="Estado" value={form.status} onChange={(event) => set("status", event.target.value as BankForm["status"])} error={errors.status}><option value="INACTIVO">Inactiva</option><option value="ACTIVO">Activa</option></SelectField>
+        <SelectField id="bank-status" label="Estado" value={form.status} onValueChange={(value) => set("status", value as BankForm["status"])} error={errors.status}><option value="INACTIVO">Inactiva</option><option value="ACTIVO">Activa</option></SelectField>
         <Button type="submit" className="h-11 w-full" disabled={pending}>{pending ? "Guardando…" : editing ? "Guardar cambios" : "Crear cuenta"}</Button>
         {editing ? <Button type="button" variant="ghost" disabled={pending} onClick={cancel}>Cancelar edición</Button> : null}
       </fieldset>

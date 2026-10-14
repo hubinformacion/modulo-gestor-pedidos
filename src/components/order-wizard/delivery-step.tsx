@@ -28,7 +28,7 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
       </fieldset>
       {delivery.type === "recojo_campus" ? (
         <div>
-          <SelectField id="delivery-campus" label="Campus de recojo" value={delivery.campus} onChange={(event) => set("campus", event.target.value)} error={errors.campus} required>
+          <SelectField id="delivery-campus" label="Campus de recojo" value={delivery.campus} onValueChange={(value) => set("campus", value)} error={errors.campus} required>
             <option value="">Selecciona un campus</option>
             {pickupCampuses.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
           </SelectField>
@@ -37,15 +37,15 @@ export function DeliveryStep({ delivery, campuses, errors, onChange, buyer }: {
       ) : (
         <>
           <div className="grid gap-5 sm:grid-cols-2">
-            <SelectField id="delivery-department" label="Departamento" value={delivery.department} onChange={(event) => onChange({ ...delivery, department: event.target.value, province: "", district: "" })} error={errors.department} required>
+            <SelectField id="delivery-department" label="Departamento" value={delivery.department} onValueChange={(value) => onChange({ ...delivery, department: value, province: "", district: "" })} error={errors.department} required>
               <option value="">Selecciona el departamento</option>
               {departments.map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
             </SelectField>
-            <SelectField id="delivery-province" label="Provincia" value={delivery.province} onChange={(event) => onChange({ ...delivery, province: event.target.value, district: "" })} disabled={!delivery.department} error={errors.province} required>
+            <SelectField id="delivery-province" label="Provincia" value={delivery.province} onValueChange={(value) => onChange({ ...delivery, province: value, district: "" })} disabled={!delivery.department} error={errors.province} required>
               <option value="">Selecciona la provincia</option>
               {provincesFor(delivery.department).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
             </SelectField>
-            <SelectField id="delivery-district" label="Distrito" value={delivery.district} onChange={(event) => set("district", event.target.value)} disabled={!delivery.province} error={errors.district} required>
+            <SelectField id="delivery-district" label="Distrito" value={delivery.district} onValueChange={(value) => set("district", value)} disabled={!delivery.province} error={errors.district} required>
               <option value="">Selecciona el distrito</option>
               {districtsFor(delivery.province).map((option) => <option key={option.id} value={option.id}>{option.name}</option>)}
             </SelectField>

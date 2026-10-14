@@ -106,7 +106,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <Field id="campus-name" label="Nombre del campus" value={form.name} onChange={(event) => set("name", event.target.value)} error={errors.name} maxLength={120} required />
             <Field id="campus-address" label="Dirección de biblioteca" value={form.libraryAddress} onChange={(event) => set("libraryAddress", event.target.value)} error={errors.libraryAddress} maxLength={300} required />
             <Field id="campus-library-location" label="Ubicación dentro del campus (opcional)" placeholder="Ej. Pabellón F, segundo piso" value={form.libraryLocation} onChange={(event) => set("libraryLocation", event.target.value)} error={errors.libraryLocation} maxLength={200} />
-            <SelectField id="campus-status" label="Estado" value={form.status} onChange={(event) => set("status", event.target.value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
+            <SelectField id="campus-status" label="Estado" value={form.status} onValueChange={(value) => set("status", value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
             <div className="border-t border-border pt-5">
               <h4 className="text-xs font-semibold">Ubicación precisa (opcional)</h4>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">Usa coordenadas o la URL src del mapa embebido de Google. La URL tiene prioridad.</p>

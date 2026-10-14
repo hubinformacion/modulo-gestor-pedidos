@@ -1,3 +1,4 @@
+import { Select, type SelectProps } from "@/components/ui/select";
 import type { ComponentProps, ReactNode } from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -15,13 +16,13 @@ export function Field({ label, error, hint, id, className, ...props }: Component
   );
 }
 
-export function SelectField({ label, error, id, children, className, ...props }: ComponentProps<"select"> & { label: string; error?: string }) {
+export function SelectField({ label, error, id, children, className, ...props }: SelectProps & { label: string; error?: string }) {
   return (
     <div>
       <label htmlFor={id} className="mb-2 block text-xs font-medium">{label}</label>
-      <select {...props} id={id} className={cn("h-11 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/20 disabled:opacity-50", className)} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined}>
+      <Select {...props} id={id} className={cn("h-11 w-full rounded-lg border border-input bg-white px-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-3 focus-visible:ring-primary/20 disabled:opacity-50", className)} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-error` : undefined}>
         {children}
-      </select>
+      </Select>
       {error ? <p id={`${id}-error`} className="mt-2 text-xs leading-5 text-destructive">{error}</p> : null}
     </div>
   );

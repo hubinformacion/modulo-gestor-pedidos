@@ -1,3 +1,5 @@
+import { DatePicker } from "@/components/ui/date-picker";
+import { Select } from "@/components/ui/select";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import { SortableTable } from "@/components/sortable-table";
 import Link from "next/link";
@@ -43,16 +45,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return <div className="space-y-7">
     <WorkspacePageHeading eyebrow="Resumen operativo" title="Dashboard" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
     <nav aria-label="Secciones del dashboard" className="workspace-dashboard-sections">
-      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}><span className="flex items-center gap-2"><item.Icon className="size-4" aria-hidden="true" />{item.label}</span><span className="mt-1 text-[10px] font-normal text-muted-foreground">{item.detail}</span></Link>)}
+      {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}><item.Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0"><span className="block font-semibold">{item.label}</span><span className="mt-1 block text-[10px] font-normal text-muted-foreground">{item.detail}</span></span></Link>)}
     </nav>
     <form action="/admin/dashboard" className={`workspace-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
       <input type="hidden" name="tab" value={tab} />
       {tab !== "inventario" ? <>
-      <label className="space-y-2 text-xs font-medium">Desde<input name="from" type="date" required defaultValue={filters.from} className={fieldClass} /></label>
-      <label className="space-y-2 text-xs font-medium">Hasta<input name="to" type="date" required defaultValue={filters.to} className={fieldClass} /></label>
+      <label className="space-y-2 text-xs font-medium">Desde<DatePicker aria-label="Desde" name="from"  required defaultValue={filters.from} className={fieldClass} /></label>
+      <label className="space-y-2 text-xs font-medium">Hasta<DatePicker aria-label="Hasta" name="to"  required defaultValue={filters.to} className={fieldClass} /></label>
       </> : <><input type="hidden" name="from" value={filters.from} /><input type="hidden" name="to" value={filters.to} /></>}
-      <label className="space-y-2 text-xs font-medium">Sello editorial<select name="imprint" defaultValue={filters.imprint} className={`${fieldClass} cursor-pointer`}><option value="">Ambos sellos</option><option value="universidad">Universidad</option><option value="instituto">Instituto</option></select></label>
-      {tab !== "inventario" ? <label className="space-y-2 text-xs font-medium">Gestor<select name="manager" defaultValue={filters.manager} className={`${fieldClass} cursor-pointer`}><option value="">Todo el equipo</option>{managers.map((manager) => <option key={manager.id} value={manager.email}>{manager.email}</option>)}</select></label> : <input type="hidden" name="manager" value={filters.manager} />}
+      <label className="space-y-2 text-xs font-medium">Sello editorial<Select aria-label="Sello editorial" name="imprint" defaultValue={filters.imprint} className={`${fieldClass} cursor-pointer`}><option value="">Ambos sellos</option><option value="universidad">Universidad</option><option value="instituto">Instituto</option></Select></label>
+      {tab !== "inventario" ? <label className="space-y-2 text-xs font-medium">Gestor<Select aria-label="Gestor" name="manager" defaultValue={filters.manager} className={`${fieldClass} cursor-pointer`}><option value="">Todo el equipo</option>{managers.map((manager) => <option key={manager.id} value={manager.email}>{manager.email}</option>)}</Select></label> : <input type="hidden" name="manager" value={filters.manager} />}
       <Button type="submit" className="h-10 cursor-pointer">Aplicar</Button>
     </form>
     {!parsed.success ? <p role="alert" className="text-sm text-destructive">{parsed.error.issues[0]?.message} Mostramos el mes actual.</p> : null}
