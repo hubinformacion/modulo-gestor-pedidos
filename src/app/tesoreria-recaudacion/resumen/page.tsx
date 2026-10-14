@@ -3,5 +3,5 @@ export default async function LegacySummaryPage({ searchParams }: { searchParams
   const values = await searchParams;
   const query = new URLSearchParams();
   for (const key of ["from", "to", "imprint"]) if (typeof values[key] === "string") query.set(key, values[key]);
-  redirect(`/tesoreria-recaudacion${query.size ? `?${query}` : ""}`);
+  redirect(`/tesoreria-recaudacion/reporte${query.size ? `?${query}` : ""}`);
 }

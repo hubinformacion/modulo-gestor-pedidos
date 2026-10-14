@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const managerItems = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList, group: "Operación" },
-  { href: "/admin/dashboard", label: "Resumen", icon: ChartNoAxesCombined, group: "Operación" },
+  { href: "/admin/reporte", label: "Reporte", icon: ChartNoAxesCombined, group: "Operación" },
   { href: "/admin/inventario", label: "Inventario", icon: Package, group: "Catálogo" },
   { href: "/admin/promociones", label: "Promociones", icon: Tags, group: "Catálogo" },
   { href: "/admin/cupones", label: "Cupones", icon: TicketPercent, group: "Catálogo" },
@@ -18,8 +18,8 @@ const managerItems = [
   { href: "/admin/guia", label: "Guía de uso", icon: BookOpen, group: "Ayuda" },
 ];
 const treasuryItems = [
-  { href: "/tesoreria-recaudacion", label: "Resumen", icon: LayoutDashboard, group: "Operación" },
-  { href: "/tesoreria-recaudacion/solicitudes", label: "Solicitudes", icon: ReceiptText, group: "Operación" },
+  { href: "/tesoreria-recaudacion", label: "Solicitudes", icon: ReceiptText, group: "Operación" },
+  { href: "/tesoreria-recaudacion/reporte", label: "Reporte", icon: LayoutDashboard, group: "Operación" },
   { href: "/tesoreria-recaudacion/guia", label: "Guía de uso", icon: BookOpen, group: "Ayuda" },
 ];
 const preferenceKey = "fec:sidebar:v1";

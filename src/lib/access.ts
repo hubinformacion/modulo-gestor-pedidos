@@ -36,9 +36,14 @@ export async function getSignedInSession(db: Database, requestHeaders: Headers):
   for (let attempt = 0; attempt < 2; attempt++) {
     let source: unknown;
     try {
-      const auth = createAuth(db, getAuthEnvironment(), (error) => { source = error; });
-      const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
-      return await authorizeIdentity(db, result);
+      const read = async (connection: Database) => {
+        const auth = createAuth(connection, getAuthEnvironment(), (error) => { source = error; });
+        const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
+        return authorizeIdentity(connection, result);
+      };
+      // A disconnected client cannot recover by reading it again. Retry only
+      // this non-renewing session lookup, with a fresh request-scoped client.
+      return attempt === 0 ? await read(db) : await withDatabase(read);
     } catch (error) {
       if (error instanceof AccessError) throw error;
       const details = safeErrorDetails(error);

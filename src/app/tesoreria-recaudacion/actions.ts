@@ -78,8 +78,8 @@ export async function assignCajaAction(input: unknown) {
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const notice = await changeCajaAssignment(actor, parsed.data);
     const mailed = notice ? await deliverCajaEmail(notice.requestId, notice.notificationId) : true;
-    revalidatePath(`/tesoreria-recaudacion/solicitudes/${parsed.data.id}`);
-    revalidatePath("/tesoreria-recaudacion/solicitudes");
+    revalidatePath(`/tesoreria-recaudacion/${parsed.data.id}`);
+    revalidatePath("/tesoreria-recaudacion/reporte");
     revalidatePath("/tesoreria-recaudacion"); revalidatePath("/admin/pedidos", "layout");
     return { success: true as const, ...(!mailed ? { mailWarning: "La atención quedó guardada, pero no se pudo confirmar el aviso al buzón de servicio. No se reintentará automáticamente." } : {}), message: parsed.data.operation === "release" ? "Solicitud liberada." : parsed.data.operation === "takeover" ? "Atención reasignada." : "Atención tomada." };
   } catch (error) { return failure(error); }
