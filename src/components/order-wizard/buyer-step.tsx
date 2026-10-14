@@ -28,20 +28,7 @@ export function BuyerStep({ buyer, campuses, errors, onChange }: {
         <Field id="buyer-phone" placeholder="Ej. 987654321" label="Teléfono" type="tel" autoComplete="tel" value={buyer.phone} onChange={(event) => set("phone", event.target.value)} error={errors.phone} maxLength={24} required />
         <Field id="buyer-document" placeholder="Ej. 12345678" label="DNI, CE o pasaporte" value={buyer.document} onChange={(event) => set("document", event.target.value)} error={errors.document} maxLength={20} required />
       </div>
-      <fieldset className="border-t border-border pt-6">
-        <legend className="sr-only">Facturación</legend>
-        <label className="flex min-h-10 cursor-pointer items-center gap-3 text-sm font-medium">
-          <input type="checkbox" className="size-4 accent-primary" checked={buyer.wantsInvoice} onChange={(event) => set("wantsInvoice", event.target.checked)} />
-          Necesito factura
-        </label>
-        <p className="ml-7 text-xs leading-5 text-muted-foreground">Añade los datos fiscales de la empresa.</p>
-        {buyer.wantsInvoice ? (
-          <div className="mt-5 grid gap-5 sm:grid-cols-2">
-            <Field id="buyer-ruc" placeholder="Ej. 20123456789" label="RUC" inputMode="numeric" value={buyer.billingRuc} onChange={(event) => set("billingRuc", event.target.value)} error={errors.billingRuc} maxLength={11} required />
-            <Field id="buyer-business-name" placeholder="Nombre legal de la empresa" label="Razón social" value={buyer.billingBusinessName} onChange={(event) => set("billingBusinessName", event.target.value)} error={errors.billingBusinessName} maxLength={200} required />
-          </div>
-        ) : null}
-      </fieldset>
+
     </div>
   );
 }

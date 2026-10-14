@@ -5,120 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1791215561690,
-      "tag": "0000_eager_korg",
+      "when": 1791916352948,
+      "tag": "0000_initial",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1791220059603,
-      "tag": "0001_public_havok",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1791223251784,
-      "tag": "0002_magenta_purifiers",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1791231651026,
-      "tag": "0003_stormy_bullseye",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1791232116922,
-      "tag": "0004_groovy_starjammers",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1791232331473,
-      "tag": "0005_wet_redwing",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1791240918913,
-      "tag": "0006_typical_blockbuster",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1791258634083,
-      "tag": "0007_vengeful_silk_fever",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1791267250393,
-      "tag": "0008_confused_microchip",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1791294516857,
-      "tag": "0009_omit_assignment_emails",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1791298621135,
-      "tag": "0010_group_mixed_payment_notices",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1791300436668,
-      "tag": "0011_library_location_and_pickup_evidence",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1791324433861,
-      "tag": "0012_ancient_celestials",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1791384905885,
-      "tag": "0013_red_morgan_stark",
-      "breakpoints": true
-    },
-    {
-      "idx": 14,
-      "version": "7",
-      "when": 1791405813650,
-      "tag": "0014_sour_liz_osborn",
-      "breakpoints": true
-    },
-    {
-      "idx": 15,
-      "version": "7",
-      "when": 1791406446416,
-      "tag": "0015_polite_moonstone",
-      "breakpoints": true
-    },
-    {
-      "idx": 16,
-      "version": "7",
-      "when": 1791582212317,
-      "tag": "0016_real_captain_marvel",
+      "when": 1791927207317,
+      "tag": "0001_hot_red_shift",
       "breakpoints": true
     }
   ]

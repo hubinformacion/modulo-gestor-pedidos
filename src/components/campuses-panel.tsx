@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition, type FormEvent } from "react";
 import { MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import { sileo } from "sileo";
+import { notifyAction } from "@/lib/ui/notifications";
 import { Button } from "@/components/ui/button";
 import { Field, SelectField } from "@/components/order-wizard/fields";
 import { createCampusAction, deleteCampusAction, updateCampusAction } from "@/app/admin/campus-actions";
@@ -25,8 +26,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   function report(result: CampusActionResult) {
     setMessage(result);
     if (result.fieldErrors) setErrors(result.fieldErrors);
-    if (result.success) sileo.success({ title: result.message });
-    else sileo.error({ title: "No se pudo actualizar el campus", description: result.message });
+
   }
 
   function cancel() { setEditingId(null); setForm(emptyCampus); setErrors({}); setMessage(null); }
@@ -44,13 +44,13 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message;
       setErrors(next);
-      setMessage({ success: false, message: "Revisa los datos del campus." });
+      setMessage({ success: false, message: "Revisa los datos del campus." }); sileo.warning({ title: "Revisa el campus", description: "Corrige los campos señalados antes de guardar." });
       return;
     }
     setErrors({}); setMessage(null);
     startTransition(async () => {
       try {
-        const result = editingId ? await updateCampusAction({ ...parsed.data, id: editingId }) : await createCampusAction(parsed.data);
+        const result = await notifyAction(() => editingId ? updateCampusAction({ ...parsed.data, id: editingId }) : createCampusAction(parsed.data), { loading: { title: "Guardando campus", description: "Actualizamos los datos y el lugar de recojo." }, success: { title: editingId ? "Campus actualizado" : "Campus añadido", description: "Los datos de biblioteca y ubicación están disponibles en la configuración." }, error: { title: "No se pudo guardar el campus", description: "Conserva los datos del formulario y reintenta." } });
         if (result.success) { setEditingId(null); setForm(emptyCampus); }
         report(result);
       } catch { report({ success: false, message: "No se pudo guardar. Recarga la página e intenta nuevamente." }); }
@@ -61,7 +61,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
     setMessage(null);
     startTransition(async () => {
       try {
-        const result = await deleteCampusAction(id);
+        const result = await notifyAction(() => deleteCampusAction(id), { loading: { title: "Eliminando campus", description: "Comprobamos si tiene pedidos asociados." }, success: { title: "Campus eliminado", description: "El campus se retiró de la configuración de recojo." }, error: { title: "No se pudo eliminar el campus", description: "Actualiza los datos y vuelve a intentarlo." } });
         if (result.success) {
           setConfirmId(null);
           if (editingId === id) { setEditingId(null); setForm(emptyCampus); setErrors({}); }

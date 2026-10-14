@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Campus, CatalogBook } from "./types";
 import { departments, districtsFor, provincesFor } from "./geography";
+import { resolveLocation } from "./geography";
 import { resolveRecipient } from "./recipient";
 
 export const phoneSchema = z.string().trim().regex(/^\+?[0-9 ()-]{7,24}$/, "Ingresa un teléfono válido.")
@@ -25,7 +26,7 @@ export function createCartSchema(catalog: CatalogBook[]) {
     });
 }
 
-export function createBuyerSchema(campuses: Campus[]) {
+export function createBuyerSchema(campuses: Campus[], validateBilling = true) {
   return z.object({
     type: z.enum(["comunidad_continental", "publico_general"]),
     campus: z.string().trim().max(120),
@@ -36,12 +37,14 @@ export function createBuyerSchema(campuses: Campus[]) {
     wantsInvoice: z.boolean(),
     billingRuc: z.string().trim().max(11, "El RUC debe tener 11 dígitos."),
     billingBusinessName: z.string().trim().max(200),
+    billingAddressMode: z.enum(["shipping", "custom"]).default("shipping"),
+    billingAddress: z.string().trim().max(500).default(""),
   }).superRefine((buyer, ctx) => {
     if (buyer.type === "comunidad_continental") {
       if (!campuses.some((campus) => campus.id === buyer.campus)) ctx.addIssue({ code: "custom", path: ["campus"], message: "Selecciona tu sede." });
       if (!/^[^@]+@continental\.edu\.pe$/.test(buyer.email)) ctx.addIssue({ code: "custom", path: ["email"], message: "Usa tu correo @continental.edu.pe." });
     }
-    if (buyer.wantsInvoice) {
+    if (validateBilling && buyer.wantsInvoice) {
       if (!/^[0-9]{11}$/.test(buyer.billingRuc)) ctx.addIssue({ code: "custom", path: ["billingRuc"], message: "El RUC debe tener 11 dígitos." });
       if (buyer.billingBusinessName.length < 2) ctx.addIssue({ code: "custom", path: ["billingBusinessName"], message: "Ingresa la razón social." });
     }
@@ -96,11 +99,16 @@ export function createDeliverySchema(campuses: Campus[]) {
   }));
 }
 
-export function createOrderDraftSchema(catalog: CatalogBook[], campuses: Campus[]) {
-  return z.object({ cart: createCartSchema(catalog), buyer: createBuyerSchema(campuses), delivery: createDeliverySchema(campuses) })
+export function createOrderDraftSchema(catalog: CatalogBook[], campuses: Campus[], validateBilling = true) {
+  return z.object({ cart: createCartSchema(catalog), buyer: createBuyerSchema(campuses, validateBilling), delivery: createDeliverySchema(campuses) })
+    .superRefine((draft, ctx) => {
+      if (validateBilling && draft.buyer.wantsInvoice && ((draft.buyer.billingAddressMode === "custom" && draft.buyer.billingAddress.length < 5) || (draft.delivery.type === "recojo_campus" && (draft.buyer.billingAddressMode !== "custom" || draft.buyer.billingAddress.length < 5)))) ctx.addIssue({ code: "custom", path: ["buyer", "billingAddress"], message: "Ingresa la dirección fiscal completa para emitir la factura." });
+    })
     .transform((draft) => {
+      const location = resolveLocation(draft.delivery.district);
+      const billingAddress = draft.buyer.wantsInvoice ? draft.buyer.billingAddressMode === "shipping" ? [draft.delivery.address, location?.district.name, location?.province.name, location?.department.name].filter(Boolean).join(", ") : draft.buyer.billingAddress : "";
       const recipient = resolveRecipient(draft.delivery, draft.buyer);
-      return { ...draft, delivery: { ...draft.delivery, recipient: recipient.name, recipientDocument: recipient.document, recipientPhone: recipient.phone } };
+      return { ...draft, buyer: { ...draft.buyer, billingAddress }, delivery: { ...draft.delivery, recipient: recipient.name, recipientDocument: recipient.document, recipientPhone: recipient.phone } };
     });
 }
 

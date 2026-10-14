@@ -1,4 +1,5 @@
 import "server-only";
+import { treasuryScopes } from "./treasury/scope";
 import { APIError } from "better-auth/api";
 import { DatabaseOperationError, isDatabaseFailure, transientDatabaseFailure } from "@/db/errors";
 import { getAuthEnvironment } from "./env";
@@ -19,7 +20,7 @@ async function authorizeIdentity(db: Database, result: SessionIdentity | null): 
   if (!result.user.emailVerified || !email.success) throw new AccessError("FORBIDDEN");
   const [allowed] = await db.select().from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
   if (!allowed) throw new AccessError("FORBIDDEN");
-  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, role: allowed.role, publisherImprint: allowed.publisherImprint };
+  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
 }
 function accessFailure(error: unknown): never {
   if (error instanceof AccessError) throw error;
@@ -57,7 +58,7 @@ export async function getAuthorizedSession(db: Database, requestHeaders: Headers
 }
 export async function getCajaSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
   const actor = await getSignedInSession(db, requestHeaders);
-  if (actor.role !== "caja" || !actor.publisherImprint) throw new AccessError("FORBIDDEN");
+  if (actor.role !== "caja" || !actor.publisherImprints.length) throw new AccessError("FORBIDDEN");
   return actor;
 }
 

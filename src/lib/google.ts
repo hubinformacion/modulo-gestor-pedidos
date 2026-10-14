@@ -109,7 +109,7 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const recipients = [...new Set(z.array(z.email()).min(1).parse(audience?.to ?? [tracking.order.customerEmail]).map((email) => email.toLowerCase()))];
   const to = recipients.join(", ");
-  const cc = await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
+  const cc = audience ? [] : await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);
@@ -131,11 +131,11 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
   const raw = pdfs.length ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
     ...pdfs.flatMap((pdf) => [`--${boundary}`, "Content-Type: application/pdf", "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; ${attachmentName(pdf.filename)}`, "", base64Lines(pdf.content)]), `--${boundary}--`, ""].join("\r\n")
     : [...headers, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody].join("\r\n");
-  return retryOnce(async () => {
+  {
     const response = await gmail({ version: "v1", auth: ownerAuth() }).users.messages.send({ userId: "me", requestBody: { raw: Buffer.from(raw).toString("base64url"), ...((audience?.threadId ?? (!audience && notificationId ? tracking.emailThreadId : null)) ? { threadId: audience?.threadId ?? tracking.emailThreadId! } : {}) } }, { timeout: 20_000, retry: false });
     if (!response.data.id || !response.data.threadId) throw new Error("NO_GMAIL_ID");
     return { id: response.data.id, threadId: response.data.threadId, messageId, rootMessageId: originalMessageId(tracking) };
-  });
+  }
 }
 
 export async function sendOrderConfirmationEmail(tracking: Tracking) {

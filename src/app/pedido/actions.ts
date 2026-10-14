@@ -1,6 +1,5 @@
 "use server";
 
-import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createOrder } from "@/lib/orders/create";
 import { deliverOrderEmail } from "@/lib/orders/email";
@@ -9,10 +8,10 @@ import { OrderInputError, submissionSchema, type OrderCreationResult } from "@/l
 export async function createOrderAction(input: unknown): Promise<OrderCreationResult> {
   if (!submissionSchema.safeParse(input).success) return { success: false, message: "Revisa los datos del pedido y acepta la política." };
   try {
-    const trackingToken = await createOrder(input);
-    after(async () => { try { await deliverOrderEmail(trackingToken); } catch { /* Durable outbox remains available for retry. */ } });
+    const { trackingToken, created } = await createOrder(input);
+    const mailed = !created || await deliverOrderEmail(trackingToken, null);
     revalidatePath("/pedido");
-    return { success: true, trackingToken };
+    return { success: true, trackingToken, ...(!mailed ? { mailWarning: "El pedido quedó registrado, pero no se pudo enviar el correo. Conserva tu enlace de seguimiento; no se reintentará el envío automáticamente." } : {}) };
   } catch (error) {
     return { success: false, message: error instanceof OrderInputError ? error.message : "No pudimos confirmar el pedido. Reintenta sin cambiar tus datos: el mismo intento evita duplicados." };
   }
@@ -28,7 +27,7 @@ export async function reviewPricingAction(input: unknown) {
     const { getActiveCampuses } = await import("@/lib/campuses/catalog");
     const { createOrderDraftSchema } = await import("@/lib/orders/validation");
     const [catalog, campuses] = await Promise.all([getPublicCatalog(), getActiveCampuses()]);
-    const draft = createOrderDraftSchema(catalog, campuses).safeParse(parsed.data);
+    const draft = createOrderDraftSchema(catalog, campuses, false).safeParse(parsed.data);
     if (!draft.success) return { success: false as const, message: draft.error.issues[0].message };
     const { pricingClock } = await import("@/lib/discounts/catalog");
     const at = await pricingClock();

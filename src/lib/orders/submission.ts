@@ -10,5 +10,5 @@ export const submissionSchema = z.object({
 });
 export const trackingTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32}$/);
 export const consentVersion = "2026-10-05";
-export type OrderCreationResult = { success: true; trackingToken: string } | { success: false; message: string };
+export type OrderCreationResult = { success: true; trackingToken: string; mailWarning?: string } | { success: false; message: string };
 export class OrderInputError extends Error {}

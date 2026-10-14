@@ -70,3 +70,8 @@ html[data-fec-embedded="true"] .public-order-surface { max-width: none; padding-
 @media (prefers-reduced-motion: reduce) {
   [data-loading-bones] * { animation: none !important; }
 }
+
+/* Sileo capitalizes every word by default. Preserve sentence case and names. */
+[data-sileo-viewport] [data-sileo-title] {
+  text-transform: none;
+}

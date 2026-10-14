@@ -1,7 +1,6 @@
 "use server";
 
 import { reportServerError } from "@/lib/server-diagnostics";
-import { after } from "next/server";
 import { z } from "zod";
 import { deliverOrderEmail } from "@/lib/orders/email";
 import { OrderInputError } from "@/lib/orders/submission";
@@ -17,7 +16,7 @@ export async function uploadReceiptAction(input: unknown): Promise<{ success: tr
   if (!metadata.success || !file.success) return { success: false, message: "Selecciona un sello válido y un PDF, JPG o PNG de hasta 3 MB." };
   try {
     const result = await uploadReceipt(metadata.data, file.data);
-    if (result.notify) after(async () => { try { await deliverOrderEmail(metadata.data.token); } catch (error) { reportServerError("receipt.mail.pending", error); } });
+    if (result.notificationId) await deliverOrderEmail(metadata.data.token, result.notificationId);
     // The client refreshes after its entire FilePond batch succeeds. Revalidating
     // here can unmount the uploader after the first file and lose queued files.
     // Both order screens read dynamically; admin sees committed receipts on its next navigation/focus refresh.
@@ -36,9 +35,9 @@ export async function cancelOrderAction(input: unknown) {
   try {
     const outcome = await cancelPurchase(parsed.data);
     const { revalidatePath } = await import("next/cache");
-    after(async () => { try { await deliverOrderEmail(outcome.token); } catch (error) { reportServerError("cancel.mail.pending", error); } });
+    const mailed = !outcome.notificationId || await deliverOrderEmail(outcome.token, outcome.notificationId);
     revalidatePath(`/seguimiento/${outcome.token}`); revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario");
-    return { success: true, message: "Pedido cancelado." };
+    return { success: true, ...(!mailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Pedido cancelado." };
   } catch (error) {
     if (!(error instanceof CancellationError)) reportServerError("order.cancel.failed", error);
     return { success: false, message: error instanceof CancellationError ? error.message : "No pudimos cancelar el pedido. Reintenta." };

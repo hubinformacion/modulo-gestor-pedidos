@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { FilePond, registerPlugin } from "react-filepond";
 import FileValidateType from "filepond-plugin-file-validate-type";
 import FileValidateSize from "filepond-plugin-file-validate-size";
-import { removeSaleDraftAction, uploadSaleAction } from "@/app/caja/actions";
+import { removeSaleDraftAction, uploadSaleAction } from "@/app/tesoreria-recaudacion/actions";
 import { pdfSchema, uploadSaleSchema } from "@/lib/caja/validation";
 registerPlugin(FileValidateType, FileValidateSize);
 export type DraftPdf = { id: string; name: string; size: number; href: string };

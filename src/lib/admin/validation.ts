@@ -3,7 +3,7 @@ import { z } from "zod";
 export const orderLabels = { PENDIENTE_PAGO: "Pendiente de pago", EN_PREPARACION: "En distribución", DESPACHADO: "Despachado", ENTREGADO: "Entregado", CANCELADO: "Cancelado" } as const;
 export const paymentLabels = { NO_APLICA: "No aplica", PENDIENTE: "Sin comprobante", EN_REVISION: "En revisión", VERIFICADO: "Verificado", RECHAZADO: "Rechazado" } as const;
 export const assignmentSchema = z.object({ id: z.uuid(), version: z.iso.datetime(), operation: z.enum(["claim", "release"]) });
-export type ActionResult = { success: boolean; message: string };
+export type ActionResult = { success: boolean; message: string; mailWarning?: string };
 const version = z.iso.datetime();
 export const reviewSchema = z.object({ id: z.uuid(), imprint: z.enum(["universidad", "instituto"]), receiptId: z.uuid(), version, decision: z.enum(["VERIFICADO", "RECHAZADO"]), reason: z.string().trim().max(500).default("") }).refine((value) => value.decision !== "RECHAZADO" || value.reason.length >= 5, "Explica el motivo del rechazo (al menos 5 caracteres).");
 export const dispatchSchema = z.object({ id: z.uuid(), version, evidenceId: z.uuid().nullable().optional().default(null), status: z.enum(["DESPACHADO", "ENTREGADO"]), courier: z.string().trim().max(150), trackingCode: z.string().trim().max(120).default(""), trackingUrl: z.union([z.literal(""), z.url().max(2000).refine((value) => { const url = new URL(value); return url.protocol === "https:" && !url.username && !url.password; }, "Usa un enlace HTTPS válido.")]).transform((value) => value ? new URL(value).toString() : "").default("") });
@@ -22,6 +22,7 @@ export type BookForm = z.infer<typeof bookSchema>;
 export type BookRow = BookForm & { id: string; version: string };
 export const emptyBook: BookForm = { inventoryCode: "", title: "", author: "", publisherImprint: "universidad", standardPrice: "", communityPrice: "", stock: 0, status: "INACTIVO" };
 export const filterSchema = z.object({
+  sort: z.enum(["number", "customer", "manager", "delivery", "status", "amount", "date"]).catch("date"), dir: z.enum(["asc", "desc"]).catch("desc"),
   q: z.string().trim().max(120).catch(""),
   status: z.enum(["", "PENDIENTE_PAGO", "EN_PREPARACION", "DESPACHADO", "ENTREGADO", "CANCELADO"]).catch(""),
   owner: z.enum(["all", "mine", "unassigned"]).catch("all"),

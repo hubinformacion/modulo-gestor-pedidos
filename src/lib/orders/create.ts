@@ -31,7 +31,7 @@ export async function createOrder(input: unknown) {
     const [existing] = await tx.select({ trackingToken: orders.trackingToken, draftHash: orders.draftHash }).from(orders).where(eq(orders.requestId, data.requestId));
     if (existing) {
       if (existing.draftHash !== draftHash) throw new OrderInputError("Este intento ya corresponde a otro pedido. Recarga para iniciar uno nuevo.");
-      return existing.trackingToken;
+      return { trackingToken: existing.trackingToken, created: false };
     }
     const accounts = bankAccountsFromRows(await tx.select().from(bankAccounts).where(eq(bankAccounts.status, "ACTIVO")).orderBy(asc(bankAccounts.id)).for("share"));
     if (!accounts || !ready) throw new OrderInputError("El registro de pedidos no está disponible temporalmente. Conserva tus datos e inténtalo más tarde.");
@@ -76,7 +76,7 @@ export async function createOrder(input: unknown) {
       subtotalUniversidad: centsToDecimal(university?.subtotal ?? 0), subtotalInstituto: centsToDecimal(institute?.subtotal ?? 0),
       shippingCost: centsToDecimal(quote.shippingCost), shippingUniversidad: centsToDecimal(university?.shipping ?? 0), shippingInstituto: centsToDecimal(institute?.shipping ?? 0),
       totalUniversidad: centsToDecimal(university?.total ?? 0), totalInstituto: centsToDecimal(institute?.total ?? 0), total: centsToDecimal(quote.total), discountTotal: centsToDecimal(quote.discountTotal), ...(quote.couponApplied && coupon ? { couponId: coupon.id, couponCode: coupon.code, couponPercent: coupon.percent } : {}),
-      billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null,
+      billingRuc: buyer.billingRuc || null, billingBusinessName: buyer.billingBusinessName || null, billingAddress: buyer.billingAddress || null,
       paymentStatusUniversidad: university ? "PENDIENTE" : "NO_APLICA", paymentStatusInstituto: institute ? "PENDIENTE" : "NO_APLICA",
     }).returning({ id: orders.id });
     await tx.insert(orderItems).values(quote.lines.map((line) => ({ orderId: order.id, bookId: line.book.id, bookTitle: line.book.title, bookCode: line.book.inventoryCode, publisherImprint: line.book.publisherImprint, baseUnitPrice: centsToDecimal(line.baseUnitPrice), discountPercent: line.discountPercent, promotionId: line.promotionId, promotionName: line.promotionName, unitPrice: centsToDecimal(line.unitPrice), quantity: line.quantity, subtotal: centsToDecimal(line.subtotal) })));
@@ -87,6 +87,6 @@ export async function createOrder(input: unknown) {
     for (const line of quote.lines) await tx.update(books).set({ stock: sql`${books.stock} - ${line.quantity}` }).where(eq(books.id, line.book.id));
     await tx.insert(orderActivity).values({ orderId: order.id, eventType: "PEDIDO_RECIBIDO", detail: "Registramos tu pedido." });
     await tx.insert(orderEmails).values({ orderId: order.id });
-    return token;
+    return { trackingToken: token, created: true };
   }));
 }

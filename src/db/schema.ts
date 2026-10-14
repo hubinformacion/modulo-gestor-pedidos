@@ -114,6 +114,7 @@ export const orders = pgTable("orders", {
   couponPercent: integer("coupon_percent"),
   billingRuc: text("billing_ruc"),
   billingBusinessName: text("billing_business_name"),
+  billingAddress: text("billing_address"),
   cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
   cancellationSource: text("cancellation_source").$type<"comprador" | "gestor">(),
   cancellationReason: text("cancellation_reason"),
@@ -215,12 +216,15 @@ export const paymentReceipts = pgTable("payment_receipts", {
 export const authorizedEmails = pgTable("authorized_emails", {
   email: text("email").primaryKey(),
   role: text("role").$type<"gestor" | "caja">().default("gestor").notNull(),
+  publisherImprints: jsonb("publisher_imprints").$type<("universidad" | "instituto")[]>().default([]).notNull(),
+  treasuryService: boolean("treasury_service").default(false).notNull(),
   publisherImprint: publisherImprint("publisher_imprint"),
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("authorized_emails_caja_imprint_idx").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
   check("authorized_emails_role", sql`(${table.role} = 'gestor' AND ${table.publisherImprint} IS NULL) OR (${table.role} = 'caja' AND ${table.publisherImprint} IS NOT NULL)`),
+  check("authorized_emails_scope", sql`jsonb_typeof(${table.publisherImprints}) = 'array' AND ${table.publisherImprints} <@ '["universidad","instituto"]'::jsonb AND (${table.role} = 'caja' OR (${table.publisherImprints} = '[]'::jsonb AND ${table.treasuryService} = false))`),
   check("authorized_emails_master_role", sql`${table.email} <> 'distribucionfe@continental.edu.pe' OR ${table.role} = 'gestor'`),
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
 ]);
@@ -238,10 +242,10 @@ export const paymentUploads = pgTable("payment_uploads", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("payment_uploads_order_idx").on(table.orderId)]);
 
-// A committed order remains recoverable even if Gmail is temporarily unavailable.
+// Delivery audit and Gmail thread metadata; no deferred delivery worker.
 export const orderEmails = pgTable("order_emails", {
   orderId: uuid("order_id").primaryKey().references(() => orders.id, { onDelete: "restrict" }),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -255,7 +259,7 @@ export const orderEmails = pgTable("order_emails", {
   leaseId: uuid("lease_id"),
   leaseUntil: timestamp("lease_until", { withTimezone: true }),
   sentAt: timestamp("sent_at", { withTimezone: true }),
-}, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
+}, (table) => [check("order_emails_valid_status", sql`${table.status} IN ('NO_ENVIADO', 'ENVIANDO', 'ENVIADO', 'ERROR')`)]);
 
 export const orderNotifications = pgTable("order_notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -264,7 +268,7 @@ export const orderNotifications = pgTable("order_notifications", {
   payload: jsonb("payload").$type<Record<string, string>>().default({}).notNull(),
   publisherImprint: publisherImprint("publisher_imprint"),
   receiptId: uuid("receipt_id").references((): AnyPgColumn => paymentReceipts.id, { onDelete: "restrict" }),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -272,9 +276,8 @@ export const orderNotifications = pgTable("order_notifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   index("order_notifications_order_idx").on(table.orderId, table.createdAt),
-  index("order_notifications_retry_idx").on(table.status, table.lastAttemptAt),
   check("order_notifications_valid_event", sql`${table.eventType} IN ('COMPROBANTE_RECIBIDO', 'PAGO_VERIFICADO', 'PAGO_RECHAZADO', 'ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
-  check("order_notifications_valid_status", sql`${table.status} IN ('PENDIENTE', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
+  check("order_notifications_valid_status", sql`${table.status} IN ('NO_ENVIADO', 'ENVIANDO', 'ENVIADO', 'ERROR', 'OMITIDO')`),
   check("order_notifications_event_fields", sql`(${table.eventType} = 'COMPROBANTE_RECIBIDO' AND ${table.publisherImprint} IS NOT NULL AND ${table.receiptId} IS NOT NULL) OR (${table.eventType} IN ('PAGO_VERIFICADO', 'PAGO_RECHAZADO') AND ${table.publisherImprint} IS NOT NULL) OR ${table.eventType} IN ('ASIGNADO', 'DESPACHADO', 'ENTREGADO', 'DOCUMENTOS_VENTA', 'CANCELADO')`),
 ]);
 
@@ -339,6 +342,7 @@ export const pickupEvidence = pgTable("pickup_evidence", {
 // Caja is independent of delivery. One request per applicable imprint, with
 // immutable upload revisions and separate internal Gmail conversations.
 export const cajaRequests = pgTable("caja_requests", {
+  requestNumber: integer("request_number").generatedAlwaysAsIdentity().notNull().unique(),
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
@@ -387,7 +391,7 @@ export const cajaNotifications = pgTable("caja_notifications", {
   cycle: integer("cycle").notNull(),
   eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA">().notNull(),
   reason: text("reason"),
-  status: text("status").default("PENDIENTE").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
   attempts: integer("attempts").default(0).notNull(),
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   gmailMessageId: text("gmail_message_id"),
@@ -395,9 +399,8 @@ export const cajaNotifications = pgTable("caja_notifications", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
   uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType),
-  index("caja_notifications_retry_idx").on(table.status, table.lastAttemptAt),
   check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA')`),
-  check("caja_notifications_state", sql`${table.status} IN ('PENDIENTE','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
+  check("caja_notifications_state", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
 ]);
 export const saleDocumentBatches = pgTable("sale_document_batches", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -463,3 +466,35 @@ export const couponRedemptions = pgTable("coupon_redemptions", {
   releasedAt: timestamp("released_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("coupon_redemptions_coupon_idx").on(table.couponId)]);
+
+export const treasuryMailboxes = pgTable("treasury_mailboxes", {
+  publisherImprint: publisherImprint("publisher_imprint").primaryKey(),
+  email: text("email").notNull(),
+  ...timestamps(),
+}, (table) => [check("treasury_mailboxes_email", sql`${table.email} = lower(btrim(${table.email}))`)]);
+export const treasuryNotes = pgTable("treasury_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }),
+  actorName: text("actor_name").notNull(), content: text("content").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_notes_request_idx").on(table.requestId, table.createdAt)]);
+export const treasuryActivity = pgTable("treasury_activity", {
+  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }), actorName: text("actor_name").notNull(),
+  event: text("event").notNull(), detail: text("detail").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_activity_request_idx").on(table.requestId, table.createdAt)]);
+export const treasuryObservations = pgTable("treasury_observations", {
+  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  content: text("content").notNull(), actorName: text("actor_name").notNull(), correction: jsonb("correction").$type<Record<string, string>>(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }), resolvedBy: text("resolved_by"), response: text("response"),
+}, (table) => [index("treasury_observations_request_idx").on(table.requestId, table.resolvedAt)]);
+export const treasurySupportingFiles = pgTable("treasury_supporting_files", {
+  id: uuid("id").primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  driveFileId: text("drive_file_id").notNull().unique(), driveViewUrl: text("drive_view_url"),
+  fileName: text("file_name").notNull(), mimeType: text("mime_type").notNull(), contentHash: text("content_hash").notNull(), size: integer("size").notNull(),
+  actorId: text("actor_id").notNull().references(() => authUser.id, { onDelete: "restrict" }),
+  uploadedAt: timestamp("uploaded_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("treasury_supporting_request_idx").on(table.requestId), check("treasury_supporting_size", sql`${table.size} BETWEEN 1 AND 3145728`)]);
