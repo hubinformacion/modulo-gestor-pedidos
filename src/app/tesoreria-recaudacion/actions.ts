@@ -77,7 +77,8 @@ export async function assignCajaAction(input: unknown) {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     await changeCajaAssignment(actor, parsed.data);
-    revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath("/admin/pedidos", "layout");
-    return { success: true as const, message: parsed.data.operation === "claim" ? "Atención tomada." : "Solicitud liberada." };
+    revalidatePath(`/tesoreria-recaudacion/${parsed.data.id}`);
+    revalidatePath("/tesoreria-recaudacion"); revalidatePath("/admin/pedidos", "layout");
+    return { success: true as const, message: parsed.data.operation === "release" ? "Solicitud liberada." : parsed.data.operation === "takeover" ? "Atención reasignada." : "Atención tomada." };
   } catch (error) { return failure(error); }
 }

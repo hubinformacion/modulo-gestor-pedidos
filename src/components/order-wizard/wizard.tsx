@@ -2,7 +2,7 @@
 import { scrollWizardTo } from "@/lib/ui/wizard-scroll";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
-import { ArrowLeft, ArrowRight, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createOrderAction, reviewPricingAction } from "@/app/pedido/actions";
 import { sileo } from "sileo";
@@ -151,7 +151,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>
             <button type="button" disabled={index > step || submitting} onClick={() => goTo(index)} aria-current={index === step ? "step" : undefined} className={cn("-mb-px flex min-h-16 w-full flex-col items-center justify-center gap-1.5 border-b-2 px-1 pb-3 text-[10px] font-medium sm:flex-row sm:gap-2 sm:text-xs", index === step ? "border-primary text-primary" : "border-transparent text-muted-foreground", index > step && "opacity-50")}>
-              <span className={cn("flex size-6 items-center justify-center rounded-full text-[10px] tabular-nums", index === step ? "bg-primary text-white" : index < step ? "bg-secondary text-primary" : "bg-muted")}>{index < step ? <Check className="size-3" aria-hidden="true" /> : index + 1}</span>{item.name}
+              <span className={cn("flex size-6 items-center justify-center rounded-full text-[10px] tabular-nums", index === step ? "bg-primary text-white" : index < step ? "bg-secondary text-primary" : "bg-muted")}>{index + 1}</span>{item.name}
             </button>
           </li>)}
         </ol>
