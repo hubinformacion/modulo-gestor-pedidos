@@ -49,11 +49,11 @@ function WorkspaceHeadingBones() {
   return <div className="flex flex-wrap justify-between gap-5"><div className="w-full max-w-xl"><Bones kind="heading" /></div><div className="w-28 pt-5"><Bones kind="action" /></div></div>;
 }
 export function OrdersSkeleton({ cashier = false }: { cashier?: boolean }) {
-  return <LoadingRegion label={cashier ? "Cargando solicitudes de emisión" : "Cargando pedidos"}><WorkspaceHeadingBones /><Filters count={cashier ? 4 : 3} boxed={!cashier} compact={cashier} /><Table compact={cashier} orders={!cashier} /><div className="mt-5 flex justify-between"><div className="w-32"><Bones kind="action" /></div><div className="w-40"><Bones kind="action" /></div></div></LoadingRegion>;
+  return <LoadingRegion label={cashier ? "Cargando solicitudes de emisión" : "Cargando pedidos"}><WorkspaceHeadingBones /><Filters count={cashier ? 4 : 3} compact /><Table compact={cashier} orders={!cashier} /><div className="mt-5 flex justify-between"><div className="w-32"><Bones kind="action" /></div><div className="w-40"><Bones kind="action" /></div></div></LoadingRegion>;
 }
 function SectionTabsBones({ count = 4 }: { count?: number }) { return <div className={count === 5 ? "workspace-settings-tabs mt-7" : "workspace-attention-tabs mt-6"}>{Array.from({ length: count }, (_, i) => <div key={i} className="rounded-xl border border-border p-5"><Bones kind="back" /><div className="mt-3"><Bones kind="back" /></div></div>)}</div>; }
 export function InventorySkeleton() {
-  return <LoadingRegion label="Cargando inventario"><WorkspaceHeadingBones /><div className="workspace-stock-metrics mt-6">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><Filters boxed /><div className="mt-5 w-48"><Bones kind="back" /></div><Table inventory /></LoadingRegion>;
+  return <LoadingRegion label="Cargando inventario"><WorkspaceHeadingBones /><div className="workspace-stock-metrics mt-6">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><Filters compact /><div className="mt-5 w-48"><Bones kind="back" /></div><Table inventory /></LoadingRegion>;
 }
 export function SettingsSkeleton() {
   return <LoadingRegion label="Cargando configuración"><WorkspaceHeadingBones /><SectionTabsBones count={5} /><div className="mt-7"><Bones kind="heading" /><div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]"><Card><Bones kind="lines" /><Bones kind="lines" /></Card><Card><Bones kind="field" /><div className="mt-4"><Bones kind="action" /></div></Card></div></div></LoadingRegion>;
@@ -91,7 +91,7 @@ export function DiscountsSkeleton({ coupons = false }: { coupons?: boolean }) {
 }
 
 export function DashboardSkeleton() {
-  return <LoadingRegion label="Cargando indicadores"><WorkspaceHeadingBones /><div className="workspace-dashboard-sections mt-6">{Array.from({ length: 3 }, (_, i) => <Card key={i}><Bones kind="back" /><div className="mt-3"><Bones kind="back" /></div></Card>)}</div><div className="workspace-filters grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]">{Array.from({length: 4}, (_, i) => <Bones key={i} kind="field" />)}<div className="w-24"><Bones kind="action" /></div></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({length: 4}, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><div className="mt-6 grid gap-5 lg:grid-cols-2">{Array.from({length: 2}, (_, i) => <Card key={i}><Bones kind="preview" /></Card>)}</div><div className="mt-6"><Card><Bones kind="preview" /></Card></div></LoadingRegion>;
+  return <LoadingRegion label="Cargando resumen"><WorkspaceHeadingBones /><div className="workspace-dashboard-sections mt-6">{Array.from({ length: 3 }, (_, i) => <Card key={i}><Bones kind="back" /><div className="mt-3"><Bones kind="back" /></div></Card>)}</div><div className="workspace-compact-filters grid items-end gap-3 sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]">{Array.from({length: 4}, (_, i) => <Bones key={i} kind="field" />)}<div className="w-24"><Bones kind="action" /></div></div><div className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{Array.from({length: 4}, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><div className="mt-6 grid gap-5 lg:grid-cols-2">{Array.from({length: 2}, (_, i) => <Card key={i}><Bones kind="preview" /></Card>)}</div><div className="mt-6"><Card><Bones kind="preview" /></Card></div></LoadingRegion>;
 }
 
 export function TreasurySummarySkeleton() {

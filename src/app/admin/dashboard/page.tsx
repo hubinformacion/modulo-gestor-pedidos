@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { TrendChart, StockRanking } from "@/components/dashboard/charts";
 import { OrderLiveRefresh } from "@/components/order-live-refresh";
 import { Button } from "@/components/ui/button";
-export const metadata = { title: "Dashboard", robots: { index: false, follow: false } };
+export const metadata = { title: "Resumen", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
 const number = new Intl.NumberFormat("es-PE");
 function duration(metric: DurationMetric) {
@@ -43,11 +43,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   ];
   const states = [{ title: "Esperando pago", value: live.waiting }, { title: "En revisión", value: live.review }, { title: "En distribución", value: live.distribution }, { title: "Despachados / listos para recojo", value: live.dispatched }];
   return <div className="space-y-7">
-    <WorkspacePageHeading eyebrow="Resumen operativo" title="Dashboard" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
-    <nav aria-label="Secciones del dashboard" className="workspace-dashboard-sections">
+    <WorkspacePageHeading eyebrow="Resumen operativo" title="Resumen" description="Pedidos, atención e inventario en un solo espacio." actions={<><span className="text-right text-[10px] leading-5 text-muted-foreground">Actualizado<br />{new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", dateStyle: "short", timeStyle: "short" }).format(new Date(data.asOf))}</span><OrderLiveRefresh finished /></>} />
+    <nav aria-label="Secciones del resumen" className="workspace-dashboard-sections">
       {tabs.map((item) => <Link key={item.value} id={`dashboard-${item.value}`} href={tabHref(item.value)} scroll={false} prefetch={false} aria-current={tab === item.value ? "page" : undefined} className={`inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 text-sm font-medium transition-colors focus-visible:outline-primary ${tab === item.value ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}><item.Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0"><span className="block font-semibold">{item.label}</span><span className="mt-1 block text-[10px] font-normal text-muted-foreground">{item.detail}</span></span></Link>)}
     </nav>
-    <form action="/admin/dashboard" className={`workspace-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
+    <form action="/admin/dashboard" className={`workspace-compact-filters grid items-end gap-3 ${tab === "inventario" ? "sm:grid-cols-[minmax(0,20rem)_auto] sm:justify-start" : "sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1.3fr_auto]"}`}>
       <input type="hidden" name="tab" value={tab} />
       {tab !== "inventario" ? <>
       <label className="space-y-2 text-xs font-medium">Desde<DatePicker aria-label="Desde" name="from"  required defaultValue={filters.from} className={fieldClass} /></label>

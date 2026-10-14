@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 const managerItems = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList, group: "Operación" },
-  { href: "/admin/dashboard", label: "Dashboard", icon: ChartNoAxesCombined, group: "Operación" },
+  { href: "/admin/dashboard", label: "Resumen", icon: ChartNoAxesCombined, group: "Operación" },
   { href: "/admin/inventario", label: "Inventario", icon: Package, group: "Catálogo" },
   { href: "/admin/promociones", label: "Promociones", icon: Tags, group: "Catálogo" },
   { href: "/admin/cupones", label: "Cupones", icon: TicketPercent, group: "Catálogo" },
