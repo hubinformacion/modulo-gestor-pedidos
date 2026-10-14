@@ -7,6 +7,7 @@ const patterns = {
   back: { height: 16, bones: [[0, 0, 600, 12, 3]] },
   fiveTabs: { height: 56, bones: [[12, 14, 155, 26, 5], [192, 14, 155, 26, 5], [372, 14, 135, 26, 5], [532, 14, 180, 26, 5], [742, 14, 140, 26, 5]] },
   inventoryTable: { height: 554, bones: [[0, 0, 1120, 48, 0, true], ...Array.from({ length: 9 }, (_, i) => [12 + i * 123, 18, 90, 11, 3]), ...Array.from({ length: 5 }, (_, i) => [[12, 85 + i * 100, 90, 12, 3], [135, 76 + i * 100, 180, 16, 4], [350, 85 + i * 100, 120, 13, 3], [505, 78 + i * 100, 100, 25, 6], [640, 85 + i * 100, 70, 13, 3], [745, 85 + i * 100, 70, 13, 3], [845, 85 + i * 100, 40, 13, 3], [910, 78 + i * 100, 70, 25, 6], [1005, 75 + i * 100, 95, 32, 7]]).flat()] },
+  loginHeading: { height: 128, bones: [[200, 0, 200, 10, 3], [145, 30, 310, 28, 5], [50, 82, 500, 12, 3], [130, 107, 340, 12, 3]] },
   heading: { height: 96, bones: [[0, 0, 120, 10, 3], [0, 24, 280, 30, 5], [0, 73, 480, 12, 3]] },
   field: { height: 64, bones: [[0, 0, 170, 9, 3], [0, 21, 600, 43, 8]] },
   action: { height: 40, bones: [[0, 0, 600, 40, 8]] },
@@ -38,8 +39,8 @@ function LoadingRegion({ label, children }: { label: string; children: ReactNode
 function Card({ children, lilac = false }: { children: ReactNode; lilac?: boolean }) {
   return <div className={`min-w-0 rounded-xl border p-5 ${lilac ? "border-primary/15 bg-secondary/50" : "border-border bg-white"}`}>{children}</div>;
 }
-function Filters({ count = 3, boxed = false }: { count?: number; boxed?: boolean }) {
-  return <div className={`mt-5 grid items-end gap-4 sm:grid-cols-2 ${count === 2 ? "xl:grid-cols-[minmax(0,1fr)_11rem_auto]" : count === 4 ? "xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto_auto]" : "xl:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]"} ${boxed ? "workspace-filters" : ""}`}>{Array.from({ length: count }, (_, i) => <Bones key={i} kind="field" />)}<div className="w-28"><Bones kind="action" /></div></div>;
+function Filters({ count = 3, boxed = false, compact = false }: { count?: number; boxed?: boolean; compact?: boolean }) {
+  return <div className={`mt-5 grid items-end gap-4 sm:grid-cols-2 ${count === 2 ? "xl:grid-cols-[minmax(0,1fr)_11rem_auto]" : count === 4 ? "xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto_auto]" : "xl:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]"} ${compact ? "workspace-compact-filters" : boxed ? "workspace-filters" : ""}`}>{Array.from({ length: count }, (_, i) => <Bones key={i} kind="field" />)}<div className="w-28"><Bones kind="action" /></div></div>;
 }
 function Table({ inventory = false, compact = false, orders = false }: { inventory?: boolean; compact?: boolean; orders?: boolean }) { return <div className="mt-5 overflow-x-auto rounded-xl border border-border"><div className={orders ? "min-w-[1200px]" : inventory ? "min-w-[1120px]" : compact ? "min-w-[1120px]" : "min-w-[850px]"}><Bones kind={orders ? "ordersTable" : inventory ? "inventoryTable" : compact ? "requestsTable" : "table"} /></div></div>; }
 function SidePanel() { return <aside className="space-y-5"><Card><Bones kind="summary" /></Card><Card><Bones kind="lines" /></Card></aside>; }
@@ -48,7 +49,7 @@ function WorkspaceHeadingBones() {
   return <div className="flex flex-wrap justify-between gap-5"><div className="w-full max-w-xl"><Bones kind="heading" /></div><div className="w-28 pt-5"><Bones kind="action" /></div></div>;
 }
 export function OrdersSkeleton({ cashier = false }: { cashier?: boolean }) {
-  return <LoadingRegion label={cashier ? "Cargando solicitudes de emisión" : "Cargando pedidos"}><WorkspaceHeadingBones /><Filters count={cashier ? 4 : 3} boxed /><Table compact={cashier} orders={!cashier} /><div className="mt-5 flex justify-between"><div className="w-32"><Bones kind="action" /></div><div className="w-40"><Bones kind="action" /></div></div></LoadingRegion>;
+  return <LoadingRegion label={cashier ? "Cargando solicitudes de emisión" : "Cargando pedidos"}><WorkspaceHeadingBones /><Filters count={cashier ? 4 : 3} boxed={!cashier} compact={cashier} /><Table compact={cashier} orders={!cashier} /><div className="mt-5 flex justify-between"><div className="w-32"><Bones kind="action" /></div><div className="w-40"><Bones kind="action" /></div></div></LoadingRegion>;
 }
 function SectionTabsBones({ count = 4 }: { count?: number }) { return <div className={count === 5 ? "workspace-settings-tabs mt-7" : "workspace-attention-tabs mt-6"}>{Array.from({ length: count }, (_, i) => <div key={i} className="rounded-xl border border-border p-5"><Bones kind="back" /><div className="mt-3"><Bones kind="back" /></div></div>)}</div>; }
 export function InventorySkeleton() {
@@ -58,7 +59,7 @@ export function SettingsSkeleton() {
   return <LoadingRegion label="Cargando configuración"><WorkspaceHeadingBones /><SectionTabsBones count={5} /><div className="mt-7"><Bones kind="heading" /><div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]"><Card><Bones kind="lines" /><Bones kind="lines" /></Card><Card><Bones kind="field" /><div className="mt-4"><Bones kind="action" /></div></Card></div></div></LoadingRegion>;
 }
 export function AdminOrderSkeleton() {
-  return <LoadingRegion label="Cargando atención del pedido"><div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones /><SectionTabsBones /><div className="mt-6 space-y-5"><Bones kind="back" /><div className="grid gap-5 xl:grid-cols-2">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind={i === 3 ? "summary" : "lines"} /></Card>)}</div></div></LoadingRegion>;
+  return <LoadingRegion label="Cargando atención del pedido"><div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones /><SectionTabsBones /><div className="mt-6 space-y-5"><Bones kind="back" /><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"><Card><Bones kind="heading" /><Bones kind="lines" /></Card><Card><Bones kind="heading" /><Bones kind="lines" /></Card><Card><Bones kind="heading" /><Bones kind="lines" /></Card><div className="purchase-detail"><div className="detail-card-heading"><div className="w-full"><Bones kind="heading" /></div></div><div className="px-6"><Bones kind="summary" /></div><div className="purchase-detail-footer"><div className="ml-auto w-64"><Bones kind="lines" /></div></div></div></div></div></LoadingRegion>;
 }
 export function CashierOrderSkeleton() {
   return <LoadingRegion label="Cargando solicitud de Tesorería Recaudación">
@@ -68,7 +69,7 @@ export function CashierOrderSkeleton() {
     <div className="treasury-case-workspace">
       <div className="min-w-0 space-y-5">
         <div className="treasury-recipient"><div className="treasury-recipient-heading"><div className="w-48"><Bones kind="back" /></div></div><div className="treasury-recipient-content"><div className="treasury-billing-identity"><Bones kind="heading" /><div className="mt-5"><Bones kind="lines" /></div></div><div className="treasury-buyer-contact"><Bones kind="lines" /><Bones kind="back" /></div></div></div>
-        <div className="treasury-purchase"><div className="treasury-section-heading"><div className="w-48"><Bones kind="back" /></div></div><div className="px-6"><Bones kind="summary" /></div><div className="treasury-purchase-footer"><div className="ml-auto w-64"><Bones kind="lines" /></div></div></div>
+        <div className="purchase-detail"><div className="detail-card-heading"><div className="w-48"><Bones kind="back" /></div></div><div className="px-6"><Bones kind="summary" /></div><div className="purchase-detail-footer"><div className="ml-auto w-64"><Bones kind="lines" /></div></div></div>
         <div className="treasury-review-columns"><Card><Bones kind="back" /><div className="mt-5"><Bones kind="lines" /></div></Card><Card><Bones kind="lines" /><Bones kind="field" /></Card></div>
       </div>
       <aside className="treasury-issue-panel"><div className="treasury-issue-heading"><Bones kind="heading" /></div><div className="treasury-issue-body"><Bones kind="preview" /><div className="mt-5"><Bones kind="action" /></div></div></aside>
@@ -82,7 +83,7 @@ export function PublicationSkeleton() {
   return <main id="contenido" className="public-order-surface mx-auto w-full max-w-6xl px-5 py-6 sm:px-10 sm:py-10"><LoadingRegion label="Cargando publicaciones"><header className="mb-7 border-b border-border pb-6 sm:mb-9 sm:pb-8"><Bones kind="heading" /></header><div className="mb-8 border-b border-border"><Bones kind="fourTabs" /></div><div className="grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-10"><div><Bones kind="heading" /><div className="my-5"><Bones kind="field" /></div><div className="space-y-3">{Array.from({ length: 3 }, (_, i) => <Card key={i}><Bones kind="publication" /></Card>)}</div><div className="mt-6 w-32"><Bones kind="action" /></div></div><aside><Card><Bones kind="summary" /></Card></aside></div></LoadingRegion></main>;
 }
 export function LoginSkeleton({ checking = false }: { checking?: boolean }) {
-  return <main id="contenido" className="login-surface"><div className="login-card"><LoadingRegion label={checking ? "Comprobando acceso" : "Cargando inicio de sesión"}><div className="login-brand"><div className="w-12"><Bones kind="action" /></div><div className="w-36"><Bones kind="back" /></div></div><div className="mt-7"><Bones kind="heading" /></div><div className="mt-8"><Bones kind="action" /></div><div className="login-access-note"><div className="w-full space-y-3"><Bones kind="back" /><Bones kind="back" /></div></div></LoadingRegion></div></main>;
+  return <main id="contenido" className="login-surface"><div className="login-card"><LoadingRegion label={checking ? "Comprobando acceso" : "Cargando inicio de sesión"}><div className="login-brand"><div className="w-12"><Bones kind="action" /></div></div><div className="mt-7"><Bones kind="loginHeading" /></div><div className="mt-8"><Bones kind="action" /></div><div className="login-access-note"><div className="w-full space-y-3"><Bones kind="back" /><Bones kind="back" /></div></div></LoadingRegion></div></main>;
 }
 
 export function DiscountsSkeleton({ coupons = false }: { coupons?: boolean }) {
@@ -94,7 +95,7 @@ export function DashboardSkeleton() {
 }
 
 export function TreasurySummarySkeleton() {
-  return <LoadingRegion label="Cargando resumen de Tesorería Recaudación"><WorkspaceHeadingBones /><div className="workspace-inline-filters mt-6"><div className="w-48"><Bones kind="action" /></div><div className="w-48"><Bones kind="action" /></div><div className="w-48"><Bones kind="action" /></div><div className="w-20"><Bones kind="action" /></div></div><div className="mt-6 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><div className="workspace-panel-grid mt-6"><Card><Bones kind="preview" /></Card><div className="space-y-5"><Card><Bones kind="summary" /></Card><Card><Bones kind="lines" /></Card></div></div><div className="mt-6"><Card><Bones kind="lines" /></Card></div></LoadingRegion>;
+  return <LoadingRegion label="Cargando resumen de Tesorería Recaudación"><WorkspaceHeadingBones /><div className="workspace-inline-filters mt-6"><div className="w-48"><Bones kind="action" /></div><div className="w-48"><Bones kind="action" /></div><div className="w-48"><Bones kind="action" /></div><div className="w-20"><Bones kind="action" /></div></div><div className="mt-6 grid gap-4 sm:grid-cols-2 2xl:grid-cols-4">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><div className="treasury-summary-panels mt-6"><Card><Bones kind="heading" /><Bones kind="preview" /></Card><Card><Bones kind="heading" /><Bones kind="summary" /><div className="mt-5"><Bones kind="action" /></div></Card></div><div className="mt-6"><Card><Bones kind="lines" /></Card></div></LoadingRegion>;
 }
 export function GuideSkeleton({ treasury = false }: { treasury?: boolean }) {
   return <LoadingRegion label="Cargando guía de uso"><WorkspaceHeadingBones /><div className="workspace-guide-flow mt-7"><Bones kind="back" /><div className="workspace-flow-nodes mt-6" style={{ "--flow-count": treasury ? 7 : 5 } as CSSProperties}>{Array.from({ length: treasury ? 7 : 5 }, (_, i) => <div key={i} className="rounded-xl border border-border p-4"><Bones kind="lines" /></div>)}</div></div><div className="workspace-panel-grid mt-6"><Card><Bones kind="heading" /><Bones kind="lines" /><Bones kind="lines" /></Card><div className="space-y-5"><Card><Bones kind="lines" /></Card><Card><Bones kind="lines" /></Card></div></div></LoadingRegion>;

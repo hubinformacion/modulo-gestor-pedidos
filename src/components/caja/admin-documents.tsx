@@ -1,4 +1,5 @@
 import "server-only";
+import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
 import { ResolveTreasuryObservation, TreasurySupportingUpload } from "@/components/treasury/observations-fe";
 import { previousSaleDocuments } from "@/lib/caja/document-history";
 import { BillingBadge } from "./billing-badge";
@@ -23,7 +24,7 @@ export async function AdminSaleDocuments({ orderId, canReturn, invoice }: { orde
     const supporting = requests.length ? await db.select().from(treasurySupportingFiles).where(sql`${treasurySupportingFiles.requestId} IN (SELECT id FROM ${cajaRequests} WHERE order_id = ${orderId}) AND ${treasurySupportingFiles.uploadedAt} IS NOT NULL`) : [];
     return { requests, documents, batches, observations, supporting, order };
   });
-  return <section className="rounded-xl border border-border p-4 sm:p-5"><div className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-sm font-semibold"><ReceiptText className="size-4 text-primary" />Boletas y facturas</h2><BillingBadge invoice={invoice} /></div><p className="mt-2 text-xs leading-6 text-muted-foreground">Emisión por Tesorería Recaudación, independiente de la entrega del pedido.</p>{!requests.length ? <p className="mt-4 text-xs text-muted-foreground">Las solicitudes se generan al verificar cada pago.</p> : <div className={`mt-4 grid gap-3 ${requests.length > 1 ? "xl:grid-cols-2" : ""}`}>{requests.map((request) => {
+  return <section className="rounded-xl border border-border p-4 sm:p-5"><DetailCardHeading icon={ReceiptText} title="Boletas y facturas" description="Emisión por Tesorería Recaudación, independiente de la entrega del pedido." aside={<BillingBadge invoice={invoice} />} />{!requests.length ? <p className="mt-4 text-xs text-muted-foreground">Las solicitudes se generan al verificar cada pago.</p> : <div className={`mt-4 grid gap-3 ${requests.length > 1 ? "xl:grid-cols-2" : ""}`}>{requests.map((request) => {
     const issues = observations.filter((o) => o.requestId === request.id);
     const correction = issues.filter((o) => o.resolvedAt && o.correction).sort((a, b) => a.resolvedAt!.getTime() - b.resolvedAt!.getTime()).reduce((data, o) => ({ ...data, ...o.correction }), { name: order.customerName, document: order.customerDocument, phone: order.customerPhone, billingRuc: order.billingRuc ?? "", billingBusinessName: order.billingBusinessName ?? "", billingAddress: order.billingAddress ?? "" });
     const files = documents.filter((row) => row.requestId === request.id).map((row) => row.document);
