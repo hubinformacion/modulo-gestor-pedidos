@@ -5,7 +5,7 @@ export const initialBankAccounts = [
   {
     "publisherImprint": "universidad",
     "bank": "BBVA",
-    "holder": "Universidad Continental",
+    "holder": "UNIVERSIDAD CONTINENTAL SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "0011-0235-0100038518",
     "cci": "01123500010003851895",
@@ -14,7 +14,7 @@ export const initialBankAccounts = [
   {
     "publisherImprint": "universidad",
     "bank": "BCP",
-    "holder": "Universidad Continental",
+    "holder": "UNIVERSIDAD CONTINENTAL SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "355-1144183-0-61",
     "cci": "00235500114418306616",
@@ -23,7 +23,7 @@ export const initialBankAccounts = [
   {
     "publisherImprint": "instituto",
     "bank": "BBVA",
-    "holder": "Corporación APEC SAC",
+    "holder": "CORPORACIÓN APEC SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "011-0235-0100038682",
     "cci": "01123500010003868299",
@@ -32,7 +32,7 @@ export const initialBankAccounts = [
   {
     "publisherImprint": "instituto",
     "bank": "BCP",
-    "holder": "Corporación APEC SAC",
+    "holder": "CORPORACIÓN APEC SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "355-1737857-0-67",
     "cci": "00235500173785706769",
@@ -40,15 +40,16 @@ export const initialBankAccounts = [
   }
 ] satisfies BankForm[];
 
-// Direcciones y punto de recojo facilitados por el responsable del proyecto.
-// Las coordenadas y el enlace exacto del mapa se configuran después por interfaz.
+// Direcciones, ubicación interna y coordenadas proporcionadas por el responsable.
+// Se conservan los nombres existentes: Real = Instituto, San Carlos = Universidad.
+// Coordenadas redondeadas a los siete decimales admitidos por el esquema.
 export const initialCampuses = [
-  { name: "Arequipa", libraryAddress: "La Canseco II / Sector: Valle Chili, José Luis Bustamante y Rivero - Arequipa" },
-  { name: "Ayacucho", libraryAddress: "Av. Javier Pérez de Cuéllar 725, Ayacucho" },
-  { name: "Cusco", libraryAddress: "Sector Angostura Km. 10, carretera Cusco - Saylla, San Jerónimo, Cusco" },
-  { name: "Huancayo - Instituto", libraryAddress: "Calle Real 125, Huancayo - Junín" },
-  { name: "Huancayo - Universidad", libraryAddress: "Av. San Carlos 1980, Huancayo" },
-  { name: "Ica", libraryAddress: "Calle C N.° 201 - Parque Industrial, Ica" },
-  { name: "Lima - Los Olivos", libraryAddress: "Av. Alfredo Mendiola 5210 - Los Olivos" },
-  { name: "Lima - Miraflores", libraryAddress: "Calle Junín 355, Miraflores - Lima" },
-].map((campus) => ({ ...campus, libraryLocation: "Biblioteca", latitude: "", longitude: "", googleMapsEmbedUrl: "", status: "ACTIVO" as const }));
+  { name: "Arequipa", libraryAddress: "La Canseco II / Sector: Valle Chili, José Luis Bustamante y Rivero - Arequipa", libraryLocation: "Pabellón A, sexto piso", latitude: "-16.4123129", longitude: "-71.5243502" },
+  { name: "Ayacucho", libraryAddress: "Av. Javier Pérez de Cuéllar 725, Ayacucho", libraryLocation: "En el mezzanine", latitude: "-13.1384770", longitude: "-74.2292635" },
+  { name: "Cusco", libraryAddress: "Sector Angostura Km. 10, carretera Cusco - Saylla, San Jerónimo, Cusco", libraryLocation: "Pabellón A, tercer piso frente al FabLab", latitude: "-13.5560403", longitude: "-71.8563818" },
+  { name: "Huancayo - Instituto", libraryAddress: "Calle Real 125, Huancayo - Junín", libraryLocation: "Primer piso, a la izquierda de la entrada principal de Jr. Arequipa, al frente del taller de diseño", latitude: "-12.0658095", longitude: "-75.2124669" },
+  { name: "Huancayo - Universidad", libraryAddress: "Av. San Carlos 1980, Huancayo", libraryLocation: "Pabellón F, cuarto piso", latitude: "-12.0474963", longitude: "-75.1990642" },
+  { name: "Ica", libraryAddress: "Calle C N.° 201 - Parque Industrial, Ica", libraryLocation: "Pabellón F", latitude: "-14.0500360", longitude: "-75.7506181" },
+  { name: "Lima - Los Olivos", libraryAddress: "Av. Alfredo Mendiola 5210 - Los Olivos", libraryLocation: "Pabellón A, sexto piso", latitude: "-11.9739082", longitude: "-77.0658227" },
+  { name: "Lima - Miraflores", libraryAddress: "Calle Junín 355, Miraflores - Lima", libraryLocation: "Segundo piso", latitude: "-12.1101961", longitude: "-77.0279912" },
+].map((campus) => ({ ...campus, googleMapsEmbedUrl: "", status: "ACTIVO" as const }));

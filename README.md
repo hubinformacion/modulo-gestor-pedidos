@@ -1,273 +1,102 @@
 # Gestor de pedidos · Fondo Editorial Continental
 
-Catálogo y pedidos de publicaciones de Universidad Continental e Instituto Continental, con pagos por sello, seguimiento del comprador y atención del equipo. La aplicación se aloja en Vercel y se integra en WordPress mediante un iframe responsivo.
+Aplicación para comprar publicaciones, validar depósitos, coordinar distribución y gestionar boletas/facturas con Tesorería Recaudación. Compra y seguimiento se integran en WordPress; los equipos internos usan la aplicación directamente.
 
-**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Administración](https://modulo-gestor-pedidos.vercel.app/admin/pedidos)**
+**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Fondo Editorial](https://modulo-gestor-pedidos.vercel.app/admin/pedidos)** · **[Tesorería Recaudación](https://modulo-gestor-pedidos.vercel.app/tesoreria-recaudacion)**
 
-## Funcionalidades
+## Documentación
 
-- Compra en cuatro pasos con precios por tipo de comprador, ubigeo nacional y recojo en bibliotecas.
-- Cancelación previa al pago verificado y anulación del gestor antes del despacho, con restitución de stock e historial.
-- Stock y numeración anual transaccionales; importes y datos de compra conservados como snapshots.
-- Promociones por temporada y cupones con límites de uso, sin acumulación de descuentos.
-- Pagos independientes por sello y carga automática de comprobantes en Drive.
-- Tesorería Recaudación por sello: solicitudes de boleta/factura, PDF como borrador, finalización y correcciones.
-- Gestores autoasignados, revisión de pagos, distribución, despacho, entrega y notas internas.
-- Inventario editable en tabla; configuración de autorizados, campus, ubicaciones y cuentas.
-- Correos inmediatos de avance en un mismo hilo y guías PDF, sin cola de envíos diferidos.
-- Seguimiento por Pago/Distribución/Entrega, consultable después del cierre, con descarga de boletas/facturas.
-- Evidencia opcional de entrega o recojo mediante FilePond.
-- Seguimiento dentro de WordPress, altura adaptable, ilustraciones estáticas y tema claro.
+El [expediente técnico y las guías](docs/README.md) contienen arquitectura, tecnologías, modelo de datos, accesos, seguridad, instalación, respaldo, casos de uso y manuales por rol. [AGENTS.md](AGENTS.md) conserva las reglas de trabajo para próximas sesiones.
 
-## Tecnología
+## Funciones principales
 
-Next.js App Router y Server Actions, React, TypeScript estricto, pnpm, Tailwind CSS y Base UI. Better Auth con Google OAuth y adaptador Drizzle; PostgreSQL en Neon. FilePond, Sileo, `boneyard-js` y las APIs de Google Drive/Gmail completan el flujo.
+- Compra en cuatro pasos, precios comunidad/externos, promociones y cupones sin acumulación.
+- Stock y numeración anual transaccionales; creación idempotente y snapshots de compra.
+- Pagos por unidad; mixtos con dos depósitos, carga automática y revisión independiente.
+- Atención asignada, distribución, despacho/entrega, evidencia opcional y cancelación permitida según estado.
+- Tesorería por una/ambas unidades: observaciones, subsanación, notas privadas, PDF como borrador y finalización; en mixtos un correo al comprador con ambos PDF.
+- Inventario en tabla, configuración de campus/cuentas/accesos, reportes e historial.
+- Correos inmediatos en hilos separados por audiencia, sin cola ni reenvío posterior de fallos.
 
-## Desarrollo local
+## Stack
 
-Node.js 22 o superior —24 recomendado— y pnpm 11.3.0.
+Next.js App Router/Server Actions, React, TypeScript estricto, Tailwind y Base UI/shadcn. Better Auth/Google OAuth, Drizzle/PostgreSQL en Neon, Drive/Gmail, FilePond, Sileo, boneyard-js y Recharts. Versiones exactas en `package.json` y `pnpm-lock.yaml`.
+
+## Instalación inicial
+
+Requiere Node.js 24, pnpm 11.3.0 y una BD Neon destinada a la aplicación.
 
 ```bash
 pnpm install --frozen-lockfile
 cp .env.example .env.local
 ```
 
-Completa las variables privadas de `.env.local`. Para desarrollo, utiliza `http://localhost:3000` en `APP_URL` y `BETTER_AUTH_URL`, y registra en Google el callback `http://localhost:3000/api/auth/callback/google`.
+Completar las variables privadas y ejecutar:
 
 ```bash
-pnpm db:migrate
-pnpm db:seed
-pnpm dev
+pnpm db:setup
+pnpm build
+pnpm start
 ```
 
-El seed incorpora el correo maestro `distribucionfe@continental.edu.pe`, las cuatro cuentas bancarias confirmadas y los ocho campus con sus direcciones y recojo en biblioteca. Es idempotente: inserta lo que falta sin sobrescribir registros existentes. Los datos iniciales están en `src/db/seed-data.ts`; la configuración vigente se edita por interfaz. Las coordenadas, el mapa exacto y la ubicación interna específica de cada biblioteca se completan en Configuración → Campus. No crea libros, pedidos ni usuarios OAuth ni realiza operaciones en Drive/Gmail.
+Para desarrollo local usar `pnpm dev`. `db:setup` instala un único esquema inicial sobre una BD vacía y ejecuta el seed en la misma transacción. En una BD compatible conserva la estructura/datos y siembra solo faltantes; ante diferencias aborta. No modifica automáticamente esquemas existentes ni llama a Google. Requiere permisos de instalación; el runtime debe usar un rol SQL restringido distinto. `DATABASE_SETUP_URL` permite una credencial temporal de instalación que no se debe desplegar al runtime.
 
-| Ruta | Uso |
+Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `src/db/schema.sql`. No hay historial de migraciones/snapshots de desarrollo ni comandos de borrado. **Un futuro cambio de esquema con datos operativos requiere una actualización explícita y un respaldo**, fuera del build.
+
+## Datos iniciales
+
+`pnpm db:seed` incorpora el maestro `distribucionfe@continental.edu.pe`, cuatro cuentas receptoras confirmadas y ocho campus con dirección, ubicación interna y coordenadas. Omite conflictos y conserva registros existentes; no crea libros, pedidos, identidades OAuth ni mensajes.
+
+La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se sincronizan automáticamente con ese archivo. Ver [datos iniciales](docs/datos-iniciales.md) para mantener configuración recuperable en nuevas instalaciones; un seed no reemplaza el respaldo operativo.
+
+## Configuración y despliegue
+
+Vercel instala/construye con pnpm; no ejecuta instalación de BD durante el build.
+
+| Variable | Producción |
 | --- | --- |
-| `/pedido` | Catálogo y creación del pedido |
-| `/seguimiento/[token]` | Seguimiento público mediante enlace privado |
-| `/admin` | Redirige a Pedidos |
-| `/admin/pedidos` | Bandeja y atención de pedidos |
-| `/admin/reporte` | Reporte de pedidos, importes, atención y stock |
-| `/admin/inventario` | Publicaciones, stock y precios |
-| `/admin/promociones` | Campañas, fechas, públicos y títulos |
-| `/admin/cupones` | Códigos, vigencia y límites de uso |
-| `/tesoreria-recaudacion` | Bandeja de solicitudes por unidad autorizada |
-| `/tesoreria-recaudacion/reporte` | Reporte de carga de trabajo y evolución de emisión |
-| `/tesoreria-recaudacion/[id]` | Emisión y finalización de boleta/factura |
-| `/admin/configuracion` | Correos, campus, cuentas e integraciones |
-| `/admin/guia` | Guía interactiva de atención para gestores |
-| `/tesoreria-recaudacion/guia` | Guía interactiva de emisión y correcciones |
-
-Administración requiere sesión Google y correo vigente en `authorized_emails`. Solo `distribucionfe@continental.edu.pe` gestiona autorizados; los demás gestores comparten funciones operativas. Las personas de Tesorería Recaudación acceden a uno o ambos sellos autorizados en `/tesoreria-recaudacion`, configurado desde la pestaña Tesorería Recaudación. El ingreso Google redirige a Pedidos para gestores y a Solicitudes para Tesorería, según el acceso autorizado. Cada pedido tiene un gestor responsable de sus cambios de estado.
-
-Los módulos internos reutilizan el SVG local del favicon como identificador en el sidebar y usan navegación lateral: en escritorio puedes plegarla para ampliar el área de trabajo y en móvil se abre desde el botón de menú. La preferencia de plegado se guarda en ese navegador. El perfil muestra nombre y foto de la cuenta Google; si no hay foto, aparecen las iniciales. El cierre de sesión permanece visible también con el menú plegado. Tesorería mantiene visibles sus unidades habilitadas y la condición de solo consulta de los buzones de servicio. La compra y el seguimiento públicos conservan su navegación propia. El login muestra el isotipo y títulos centrados, sin nombre de área, y un botón con el icono de Google. Las rutas anteriores `/admin/dashboard`, `/admin/configuración`, `/tesoreria-recaudacion/solicitudes` y `/tesoreria-recaudacion/resumen` fueron retiradas; usa las rutas de la tabla.
-
-## Producción en Vercel
-
-Importa `main`, utiliza Node.js 24 y configura las variables de `.env.example` en **Production**. Vercel instala y construye exclusivamente con pnpm mediante `vercel.json`.
-
-| Variable | Valor de producción |
-| --- | --- |
-| `BETTER_AUTH_URL` | `https://modulo-gestor-pedidos.vercel.app` |
-| `APP_URL` | `https://modulo-gestor-pedidos.vercel.app` |
+| `APP_URL`, `BETTER_AUTH_URL` | `https://modulo-gestor-pedidos.vercel.app` |
 | `WORDPRESS_ORIGINS` | `https://fondoeditorial.continental.edu.pe` |
 | `WORDPRESS_ORDER_URL` | `https://fondoeditorial.continental.edu.pe/pedido/` |
 | `ENABLE_EXPERIMENTAL_COREPACK` | `1` |
 
-Configura también `DATABASE_URL`, `BETTER_AUTH_SECRET`, las credenciales de Google, el correo/carpeta propietario y `CRON_SECRET`. No publiques `.env.local` ni pongas secretos en WordPress. Guarda las variables y vuelve a desplegar para aplicar cambios; la CSP se construye con los orígenes configurados.
+Configurar además conexión SQL, secreto Better Auth y credenciales Google/cron según `.env.example`. No versionar valores privados ni ponerlos en WordPress.
 
-`CRON_SECRET` protege `/api/internal/jobs`. Usa una cadena aleatoria de al menos 32 caracteres, sin prefijo `Bearer`; Vercel añade ese encabezado automáticamente. El cron diario está programado a las 12:00 UTC, 07:00 de Perú, exclusivamente para sincronizar permisos privados de Drive. Las operaciones normales intentan enviar el aviso nuevo durante la misma solicitud, después de guardar el cambio. El cron nunca envía correos.
+Google: cliente Web, callback `<BETTER_AUTH_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/operacion.md).
 
-La instalación aplica la base `src/db/migrations/0000_initial.sql` y las migraciones incrementales siguientes mediante `pnpm db:migrate`, fuera del build. Conserva los SQL, snapshots y journal de Drizzle: permiten instalar y evolucionar el sistema sin borrar datos. No reescribas migraciones aplicadas en un entorno operativo.
+`CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos privados de Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
 
-Las migraciones se aplican explícitamente contra la BD destino, **fuera del build**. Cuando existan datos operativos, los cambios se harán mediante nuevas migraciones incrementales, sin borrar ni reescribir las ya aplicadas. Implementar o publicar un feature no reinicia la BD.
+## WordPress y rutas
 
-## Google OAuth, Drive y Gmail
-
-Utiliza un cliente OAuth de tipo **Web application**. Registra:
-
-- Origen autorizado: `https://modulo-gestor-pedidos.vercel.app`.
-- Callback: `https://modulo-gestor-pedidos.vercel.app/api/auth/callback/google`.
-
-Conserva los callbacks de localhost y OAuth Playground si aún se usan. Habilita **Google Drive API** y **Gmail API** en el proyecto del cliente. El login de gestores solo solicita identidad; la cuenta propietaria usa un refresh token independiente con estos scopes:
-
-```text
-https://www.googleapis.com/auth/drive
-https://www.googleapis.com/auth/gmail.send
-https://www.googleapis.com/auth/gmail.metadata
-```
-
-Revisa Audience: Internal cuando corresponda a la organización, o Production para uso externo. Los tokens de Drive/Gmail emitidos en External/Testing expiran a los siete días. Guarda tokens y secretos únicamente en variables privadas.
-
-Comprobantes y evidencia fotográfica permanecen privados en Drive; la carpeta comparte lectores nominados según autorizados. El comprador recibe confirmaciones, sin enlaces a esos archivos. Gmail metadata permite conservar las referencias reales del hilo.
-
-## WordPress
-
-Pega el contenido completo de [wordpress-pedido.html](src/iframe/wordpress-pedido.html) en un bloque HTML de la página de pedidos. Al continuar un wizard, el bloque desplaza la página al inicio de la etapa con espacio para el header (`--fec-scroll-offset`: 128 px mobile / 112 px desktop). El bloque añade 80 px de espacio superior en móviles para el header de WordPress (configurable con `--fec-mobile-top-space`), usa el ancho de su contenedor y ajusta la altura y abre los enlaces de seguimiento `#seguimiento/TOKEN` dentro del iframe.
-
-Para regenerarlo:
+Copiar el bloque completo [wordpress-pedido.html](src/iframe/wordpress-pedido.html). Valida origen/source, ajusta altura y desplaza etapas con espacio para el header móvil. Tras cambiar el receptor, regenerar y reemplazar el bloque real:
 
 ```bash
 pnpm iframe:snippet --url https://modulo-gestor-pedidos.vercel.app/pedido --output src/iframe/wordpress-pedido.html
 ```
 
-Si WordPress elimina scripts, carga [wordpress-embed.js](src/iframe/wordpress-embed.js) desde el tema o plugin y conserva el atributo `data-fec-iframe`. Reemplaza también el receptor al actualizar su protocolo. Configura `WORDPRESS_ORIGINS` sin rutas ni comodines; no añadas un `X-Frame-Options` contradictorio.
+Administración se abre en una pestaña propia, con sesión Google y autorización vigente en BD.
 
-Administración se opera en una pestaña propia de Vercel para evitar restricciones de cookies de terceros. `APP_URL` y `BETTER_AUTH_URL` siempre identifican la aplicación Next, no WordPress. El token de seguimiento es una credencial: evita recopilar el fragmento de URL en analítica.
+| Ruta | Finalidad |
+| --- | --- |
+| `/pedido` | Compra pública |
+| `/seguimiento/[token]` | Seguimiento por enlace privado |
+| `/admin` | Redirige a Pedidos |
+| `/admin/pedidos`, `/admin/pedidos/[id]` | Bandeja y atención |
+| `/admin/reporte`, `/admin/inventario` | Indicadores y catálogo |
+| `/admin/promociones`, `/admin/cupones` | Descuentos |
+| `/admin/configuracion` | Accesos, campus, cuentas e integraciones |
+| `/tesoreria-recaudacion`, `/tesoreria-recaudacion/[id]` | Solicitudes y emisión |
+| `/tesoreria-recaudacion/reporte` | Indicadores del área |
+| `/admin/guia`, `/tesoreria-recaudacion/guia` | Guías interactivas |
 
-## Mantenimiento
+## Mantenimiento y seguridad
 
 ```bash
 pnpm lint
 pnpm typecheck
 pnpm build
-pnpm start
 ```
 
-Ante cambios de esquema, genera una migración con `pnpm db:generate` y aplícala con `pnpm db:migrate`. Las tablas de Better Auth se generan mediante `pnpm db:auth:generate`, no se editan a mano.
+`pnpm db:schema:export` regenera **solo el SQL inicial** desde Drizzle; revisar su diff, no usarlo como actualización de una BD con datos. `pnpm db:auth:generate` mantiene las tablas Better Auth por CLI. Los PDF de pago y PNG de correo bajo `src/assets` son recursos de producción; no eliminarlos como archivos temporales.
 
-Las guías viven en `src/assets/pdfs`, fuera de `public`:
-
-- `guia_pago_universidad.pdf`
-- `guia_pago_instituto.pdf`
-- `guia_pago_mixta.pdf`
-
-Mantén su contenido alineado con las cuentas vigentes y los dos depósitos de un pedido mixto. Los pedidos anteriores conservan su guía y datos de pago originales. Las ilustraciones de correo son SVG/PNG transparentes; modifica [generate.ts](src/assets/email/generate.ts) y regenera con `pnpm email:assets`.
-
-No hay consultas periódicas del navegador: las pantallas actualizan tras operaciones, al volver a la pestaña o mediante el icono de actualizar. Un fallo temporal de BD no cierra la sesión. Los avisos de correo fallidos se registran sin recuperación ni reenvío posterior; consultar pantallas no provoca envíos. Revisa consumo de Neon, logs Vercel y vencimiento/revocación del token propietario ante incidentes.
-
-[AGENTS.md](AGENTS.md) conserva el contexto técnico y las reglas de trabajo para próximas sesiones.
-
-## Emisión por Tesorería Recaudación
-
-Configura los buzones de servicio y los accesos personales desde **Configuración → Tesorería Recaudación**, usando el maestro. Cada pago verificado genera automáticamente una solicitud para su sello; no espera al otro ni bloquea distribución o entrega. Las solicitudes sin buzón configurado permanecen en bandeja, pero su correo se omite y no se enviará al configurar el buzón después. Caja consulta solo su bandeja, datos de emisión, códigos de publicaciones y comprobantes verificados por Fondo Editorial. Los enlaces abren Drive con permisos individuales de lectura; no recibe acceso a la carpeta completa.
-
-Tesorería Recaudación adjunta un PDF de hasta 3 MB, consulta su vista previa o retira el borrador y pulsa **Finalizar solicitud**. Esto confirma el archivo y avisa al gestor en el hilo interno del pedido/sello. El nombre original del PDF se conserva en Drive, correos y descargas. El comprador recibe el PDF en su hilo existente; en pedidos mixtos recibe **un solo correo con ambos PDF**, cuando las dos solicitudes estén finalizadas. El gestor asignado puede devolver un documento con un motivo y Tesorería Recaudación lo corrige en una nueva revisión. El historial muestra únicamente documentos anteriores cuando hay correcciones, sin repetir el PDF actual ni los intentos de carga. El correo de corrección reúne los documentos vigentes. En el gestor, la emisión se consulta en el paso Pagos; el comprador descarga los documentos desde ese mismo paso en su seguimiento.
-
-Para validar cambios futuros, utiliza una BD separada de producción. Los pedidos anteriores no generan solicitudes ni correos retroactivos por aplicar la migración.
-
-El comprador puede cancelar mientras ningún pago esté verificado, con motivo opcional. El gestor asignado puede anular antes del despacho, con motivo obligatorio. Se restituye el stock una única vez y se conserva el pedido, su numeración, pagos y documentos. Las solicitudes de caja se cierran y se envían avisos en los hilos existentes. La devolución de depósitos y la corrección de documentos emitidos se coordinan manualmente; la plataforma no ejecuta transferencias.
-
-
-## Promociones por temporada
-
-En `/admin/promociones`, los gestores registran campañas activas/inactivas, porcentajes separados para comunidad y público general y las publicaciones participantes (o todo el catálogo). Las fechas y horas se ingresan en horario de Perú. Usa 0 si un público no participa; los descuentos adicionales admiten porcentajes enteros del 1 al 99. La mayor promoción vigente por título se aplica automáticamente al precio correspondiente; el envío conserva su costo.
-
-El comprador revisa precios actualizados en confirmación; la creación vuelve a calcularlos en servidor y detiene el envío si cambió el resumen aceptado. Los pedidos guardan descuentos y precios aplicados, incluso al editar o desactivar campañas. Las campañas con pedidos asociados no se eliminan.
-
-
-## Cupones
-
-En `/admin/cupones`, los gestores crean o generan un código, porcentaje de 1–99%, público destinatario, vigencia opcional y cantidad máxima de usos o ilimitados. El comprador lo aplica en confirmación. No se combinan promociones y cupones: se comparan ambas alternativas completas y se conserva el mayor ahorro. En empate se conservan las promociones; no se consume el cupón. El envío mantiene su importe.
-
-Un cupón aplicado consume un uso en la misma transacción de creación/stock/pedido. Reintentos no duplican usos; dos compradores simultáneos no pueden superar el límite. Al cancelar o anular sin pagos verificados se libera el uso una sola vez. Con un pago verificado se conserva consumido. Código/porcentaje/precios quedan guardados en el pedido; el contador no se edita manualmente y los cupones con historial no se eliminan ni se renombra su código.
-
-Promociones y cupones están integrados. Las migraciones conservan datos existentes y no crean campañas/códigos de ejemplo.
-
-## Puesta en operación
-
-1. Ingresa con el correo maestro en Administración y registra gestores y responsables de caja.
-2. Carga las publicaciones reales en Inventario con precios y stock; revisa campus, ubicaciones y cuentas bancarias en Configuración.
-3. Verifica el contenido de las tres guías PDF y su correspondencia con las cuentas vigentes. Configuración → Integraciones comprueba presencia/formato de configuración; no confirma que el token Google siga autorizado.
-4. Pega el bloque HTML completo del iframe en WordPress y revisa ancho/altura en móvil y escritorio. La aplicación desplegada no actualiza automáticamente el bloque de WordPress.
-
-El reinicio previo a producción dejó vacíos catálogo, campus, pedidos, descuentos, buzones, avisos y usuarios/sesiones OAuth. Se conservaron únicamente las cuatro cuentas bancarias y la autorización del correo maestro `distribucionfe@continental.edu.pe`. Inicia sesión con esa cuenta, ejecuta `pnpm db:seed` para incorporar los campus y cuentas iniciales faltantes, incorpora gestores y personal/buzones de Tesorería y carga el catálogo real. Los permisos privados gestionados se reconciliaron; archivos y correos físicos de Google permanecen. No hay reinicios automáticos ni se debe repetir este borrado sobre datos operativos.
-
-### Vaciar únicamente pedidos al terminar las demos
-
-`src/db/clear-orders.ts` elimina **todos los pedidos** de la BD indicada por `DATABASE_URL`, incluidos entregados y cancelados. No distingue pruebas de pedidos reales. Úsalo únicamente al cerrar las demos antes de recibir pedidos operativos y conserva un respaldo recuperable. Lee `.env.local` y después `.env`, sin reemplazar variables ya definidas en el entorno; verifica que apunten a la BD deseada.
-
-Vista previa de solo lectura (no modifica la BD ni consulta Google):
-
-```bash
-pnpm db:orders:clear
-```
-
-Antes del borrado, detén temporalmente el acceso público y administrativo a la aplicación y la ejecución del cron; espera a que terminen solicitudes, cargas y trabajos en curso. `--maintenance` confirma que hiciste esto, **no pone Vercel ni WordPress en mantenimiento**. Un lease de correo activo bloquea el comando. Los locks y la comparación de datos detectan cambios durante la limpieza, pero no pueden detener un envío o una carga que ya esté en Google.
-
-Para ejecutar el borrado explícitamente:
-
-```bash
-pnpm db:orders:clear --execute --maintenance --confirm=ELIMINAR_TODOS_LOS_PEDIDOS
-```
-
-Elimina pedidos, partidas, comprobantes e intentos de carga, evidencias de entrega, historial/notas, auditoría y referencias de correo, solicitudes/historial de caja, PDF de venta y sus lotes, registros de permisos individuales de caja, usos de cupones, snapshots de guías y contadores anuales. Los enlaces de seguimiento y descargas antiguas dejan de resolver; el siguiente pedido comienza en `1-AÑO`. Las guías PDF fuente bajo `src/assets/pdfs` se conservan.
-
-Conserva publicaciones, códigos, precios y demás datos del catálogo, bancos/cuentas, campus, promociones y su selección de títulos, configuración de cupones, gestores/tesoreria-recaudacion/autorizaciones, usuarios/sesiones, permisos de la carpeta Drive, esquema y migraciones. Restituye el stock de todos los pedidos cuyo stock no se había devuelto, incluso entregados de demo; los cancelados con `stock_restored_at` no lo duplican. Resta únicamente usos de cupones aún no liberados. Si ya corregiste manualmente las existencias tras las demos y deseas conservar el stock actual, añade `--keep-stock` tanto en vista previa como en ejecución.
-
-Para un reinicio completo **solo bajo petición expresa, antes de tener datos operativos**, el mismo comando admite:
-
-```bash
-pnpm db:orders:clear --reset-all-except-bank-accounts
-pnpm db:orders:clear --reset-all-except-bank-accounts --execute --maintenance --confirm=REINICIAR_BD_CONSERVAR_CUENTAS
-```
-
-La primera línea es una vista previa. La segunda elimina usuarios, accesos, sesiones, catálogo, campus, buzones e historial, además de pedidos; conserva las cuentas bancarias sin alterar sus filas, el esquema/migraciones y habilita solo el correo maestro. Requiere pausar Vercel, desactivar el cron, cerrar pruebas y dejar terminar las cargas antes de ejecutarla. El comando comprueba las huellas de las cuentas y reconcilia los permisos privados registrados en archivos/carpetas antes de borrar. No elimina archivos ni correos físicos de Google.
-
-
-Los archivos físicos en Drive y los mensajes ya enviados en Gmail **se conservan**, también las copias recibidas por compradores/gestores. El script no envía correos ni borra archivos. Antes de eliminar los registros de permisos individuales, usa las credenciales Google del propietario para retirar únicamente lectores directos gestionados de caja; conserva owners, writers y permisos heredados o no gestionados. Si no hay permisos gestionados, no requiere credenciales Google. Si falla la reconciliación, no borra los pedidos. Si falla después, las revocaciones Google ya realizadas no se revierten: mantén el mantenimiento, resuelve el error y repite. Un fallo de confirmación de `COMMIT` requiere revisar primero la vista previa.
-
-La restitución de stock, liberación de usos y eliminación se ejecutan en una sola transacción. Se enumeran las tablas con `RESTRICT`, sin `CASCADE` abierto; nuevas dependencias ajenas al alcance bloquean la limpieza para revisar el script. Una vez verificado el resultado, vuelve a habilitar el acceso y cron. No ejecutes este comando como parte del build, despliegue o cron.
-
-## Diagnóstico y continuidad
-
-- **Acceso:** comprobar autorización/rol en Configuración. Un 503 indica fallo temporal del servicio; no eliminar cookies ni cambiar permisos como solución.
-- **Archivos:** revisar credenciales del propietario, carpeta Drive y permisos. El usuario conserva la selección ante errores; reintentar el mismo archivo evita duplicados.
-- **Correos:** revisar errores `order.mail`, `caja.mail` y `jobs` en Vercel y autorización del token propietario. No hay cola ni reintentos de Gmail send: un timeout puede haber entregado el mensaje aunque no haya confirmación. El cambio del pedido se conserva y las acciones del gestor muestran advertencia si el envío no pudo confirmarse. Corregir credenciales no reenvía avisos antiguos; no reenviar manualmente registros ENVIADO ni repetir estados para provocar correos.
-- **Precios:** actualizar el resumen si cambió una campaña o cupón; el stock y los usos se confirman únicamente al crear el pedido.
-- **Dependencias:** ejecutar `pnpm audit --prod` al actualizar el stack. `pnpm-workspace.yaml` contiene un override puntual para el esbuild transitivo del loader de Drizzle; conservarlo hasta que la dependencia de origen incorpore una versión corregida.
-
-Conserva migraciones, snapshots, journal, guías y la atribución de los datos de ubigeo. Mantén desarrollo/validación en una BD separada y acuerda respaldos/restauración de la BD y conservación de archivos Drive antes de operar con datos reales. Las comprobaciones locales de código no sustituyen la validación real de Google OAuth, Drive/Gmail y el bloque WordPress.
-
-## Dashboard y seguimiento del equipo
-
-Todos los gestores pueden consultar `/admin/reporte`, organizado en **Pedidos e importes**, **Atención** e **Inventario**. Las pestañas conservan los filtros y pueden compartirse mediante su URL; Inventario solo muestra el filtro de sello. En el menú, Pedidos aparece antes de Dashboard. El período se refiere a la **fecha de registro del pedido**, con mes actual por defecto y rangos de hasta 366 días en horario de Perú. Los estados mostrados son los actuales de esos pedidos. Filtra por sello y responsable; el stock actual ignora fechas/gestor y los pendientes actuales ignoran fechas, con etiquetas explícitas.
-
-El importe solicitado excluye cancelados; el importe verificado suma únicamente los pagos aprobados por sello, incluso si el otro sello de un pedido mixto sigue pendiente. Los importes incluyen el envío correspondiente y los descuentos aplicados. No son un reporte de conciliación bancaria ni de devoluciones. Los tiempos muestran la mediana y su muestra, en horas/días calendario, incluyendo esperas del comprador. Primera asignación se obtiene del historial, despacho/entrega desde el registro y emisión desde la solicitud a caja.
-
-Gráficas shadcn/ui con Recharts y tablas complementarias muestran evolución y títulos más solicitados; tarjetas resumen estados, stock bajo/agotado y atención por responsable. El botón de actualizar consulta nuevamente, sin refresco periódico. Sin pedidos, aparecen valores cero o «Sin datos», nunca datos de ejemplo.
-
-Los correos al comprador incluyen CC a los gestores vigentes cuyo acceso sea anterior al evento. Los avisos de Tesorería Recaudación se dirigen exclusivamente al buzón de servicio del sello, sin CC. Un alta o reincorporación solo recibe eventos posteriores; no se reenvían conversaciones históricas. Los avisos fallidos no se recuperan ni se reenvían después. No se requiere autorización manual para enviar avisos y los mensajes ENVIADO nunca se reenvían por un cambio de acceso.
-
-
-## Equipo de Tesorería Recaudación
-
-El maestro añade o revoca cuentas personales y configura buzones de servicio por sello en Configuración → Tesorería Recaudación. Cada cuenta utiliza Google y puede habilitarse para Universidad, Instituto o ambos sellos. Los buzones de servicio tienen acceso de consulta y no pueden atender solicitudes. Todas las personas del mismo sello pueden consultar su bandeja; filtra por Todas, Por asignar o Mis solicitudes.
-
-En el detalle, pulsa **Tomar atención** antes de cargar el PDF. Solo la persona asignada puede cargar, retirar o finalizar el documento; el resto consulta datos, vista previa e historial. **Liberar solicitud** permite el relevo conservando el borrador. Revocar un acceso cierra sus sesiones y libera sus solicitudes abiertas; los registros cerrados conservan su responsable. Una devolución a caja abre un nuevo ciclo disponible para el equipo.
-
-El correo interno de cada evento se envía una sola vez al buzón de servicio del sello, sin CC a personas ni gestores. Altas/reincorporaciones no reciben eventos históricos y no generan reenvíos; los fallos de envío quedan registrados sin recuperación posterior. Universidad e Instituto mantienen bandejas e hilos separados.
-
-## Revisión en Tesorería Recaudación
-
-La migración incremental `0001_hot_red_shift.sql` añade el número propio de solicitud y elimina el tipo de observación; se aplica con `pnpm db:migrate` sin reiniciar datos. La base inicial permanece conservada.
-
-En `/tesoreria-recaudacion`, filtra solicitudes por sello autorizado, estado y atención; ordena las columnas desde sus encabezados. La bandeja muestra número y fecha propios de solicitud, solicitante de Fondo Editorial, unidad de negocio, tipo de comprobante, importe, estado y responsable de emisión. Solicitante es el gestor asignado al pedido, no el comprador. En el detalle del gestor, la facturación se despliega desde los datos del comprador y la card del responsable reúne las acciones de atención y el botón pequeño para abrir el seguimiento del comprador en la cabecera de esa card. Las cards del gestor y Tesorería comparten iconos y jerarquía de títulos; el detalle de compra usa la misma tabla y distribución de importes en ambos roles. El detalle de Tesorería separa el destinatario fiscal y su contacto, el detalle de compra con totales y, en dos columnas, los pagos verificados y las observaciones/correcciones. El panel para adjuntar y finalizar el PDF permanece a la derecha en escritorio y se apila en móvil, sin wizard. Notas e historial se consultan desde botones en la cabecera. Puedes consultar antes de tomar atención; modificar o finalizar requiere estar asignado. Para facturas, el comprador completa en Confirmación la solicitud, RUC, razón social y dirección fiscal, eligiendo dirección de envío u otra; recojo exige una dirección fiscal propia.
-
-El responsable describe la observación en texto libre, sin escoger un tipo. Fondo Editorial las recibe en Pagos del pedido: el gestor asignado coordina la subsanación, puede adjuntar documentos adicionales y registrar datos corregidos de emisión y una respuesta. La respuesta puede actualizar datos fiscales o adjuntar documentos; los originales e importes verificados se conservan. No se podrá finalizar la emisión con observaciones abiertas; la distribución/entrega no se bloquea por ese trámite.
-
-Las notas privadas del equipo están separadas y no aparecen para Fondo Editorial ni compradores. Cualquier persona operadora del sello puede añadirlas, sin necesidad de estar asignada. El historial registra autor, fechas y cambios de atención; liberar o reasignar la solicitud de otra persona exige un motivo. El relevo no valida cargas iniciadas bajo una asignación anterior.
-
-Antes de recibir solicitudes, configura un buzón de servicio por sello y los accesos personales en Configuración. El buzón recibe los avisos internos y puede consultar, pero no operar. Personas con ambos sellos siguen viendo solo los documentos del sello de cada solicitud. Nuevos buzones/accesos no disparan reenvíos históricos.
-
-
-## Resumen y guías de trabajo
-
-Tesorería Recaudación dispone de Solicitudes, Reporte y Guía de uso en su menú lateral. Reporte permite elegir un período en un único calendario de rango y una unidad autorizada. Por defecto muestra el mes actual y admite hasta 366 días en horario de Perú. Por asignar (libres sin observaciones), En atención (asignadas sin observaciones) y Observadas son grupos separados de solicitudes abiertas actuales, independientes del período. La emisión del período cuenta solicitudes actualmente finalizadas según finalized_at; si se devuelve un PDF, deja de contar hasta completar su corrección. No representa una auditoría contable de todas las emisiones/revisiones históricas. El tiempo mediano incluye espera y correcciones desde el registro y muestra su cantidad de muestras. Recibidas se agrupa por fecha de registro; finalizadas, por fecha de finalización vigente. Fechas en Perú. No hay polling ni tareas programadas para obtener estos datos.
-
-Las guías de gestores y Tesorería incluyen un flujo seleccionable, acciones por etapa, condiciones de excepción y preguntas frecuentes. Son ayuda contextual dentro de las rutas protegidas, no ejecutan cambios sobre pedidos ni consultan datos operativos adicionales. SVG y estilos locales usan la identidad de la aplicación; no dependen de visores externos. Mantener su contenido alineado con los cambios de negocio.
-
-
-Al tomar o reasignar una solicitud de Tesorería Recaudación, se genera un aviso en su hilo al buzón de servicio de la unidad, con el nombre del operador. Liberar no envía correo. La asignación queda guardada aunque el aviso falle; el sistema muestra la advertencia y no reenvía posteriormente. No se envían estos cambios al comprador ni a las cuentas personales.
-
-Los hilos nuevos usan los asuntos «Solicitud de emisión de comprobante #000 - Fondo Editorial» para Tesorería Recaudación y «Hemos recibido tu orden #000-año» para compradores. Las respuestas de hilos existentes conservan su asunto para mantener la conversación. La secuencia guardada no cambia; tablas y detalles muestran el número con tres dígitos como mínimo, por ejemplo 001-2026; números mayores no se recortan.
-
-Si aparece caja.drive.access.pending con ETIMEDOUT, se agotó una espera preparando el permiso privado de un archivo. El archivo no se elimina. La pantalla conserva el enlace de recuperación, que vuelve a preparar el acceso al abrirlo. Los permisos ya registrados no disparan consultas nuevas a Google en cada visita; las validaciones de autorización siguen siendo obligatorias.
-
-
-Los selectores usan Base UI con el estilo de la aplicación. Los calendarios usan react-day-picker y Popover, siguiendo el patrón de shadcn, en español; las horas de promociones y cupones se eligen como hora de Perú. Se conservan los valores ISO de fecha y fecha/hora que valida el servidor. El catálogo público no carga el calendario de administración para usar sus selectores.
-
-En la bandeja de pedidos, fecha y tipo de comprador tienen columnas y ordenación independientes. Los códigos pueden buscarse con o sin ceros iniciales. El botón Cancelar pedido del comprador aparece junto a actualizar; al pulsarlo, la confirmación se muestra debajo del encabezado, dentro del iframe.
-
-Los filtros de reportes y la vigencia de promociones/cupones comparten un selector de rango. Las campañas conservan horas de inicio y fin de Perú; los cupones permiten solo inicio, solo fin o ninguna fecha. Un error `DB_WEBSOCKET_ERROR` indica fallo del canal de conexión. Solo se reintenta una apertura fallida antes del trabajo, o la lectura de sesión sin renovación con una conexión nueva; no se repiten transacciones, renovaciones OAuth ni avisos operativos. Si persiste, se devuelve el error de disponibilidad y se requiere reintentar la operación desde la interfaz.
+El [documento de seguridad](docs/seguridad.md) distingue controles implementados, riesgos pendientes de validación y evidencias de Neon/Vercel/Workspace que TI debe acreditar. La revisión de código no certifica backups, cifrado efectivo, WAF o permisos reales. Consultar antes de operar con datos sensibles; no probar mediante pedidos/envíos ficticios en producción.

@@ -9,12 +9,11 @@
     "lint": "eslint",
     "typecheck": "next typegen && tsc --noEmit",
     "db:auth:generate": "auth generate --config src/db/auth-schema.config.ts --output src/db/auth-schema.ts --yes",
-    "db:generate": "drizzle-kit generate --config src/db/drizzle.config.ts",
-    "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
-    "db:orders:clear": "tsx src/db/clear-orders.ts",
     "iframe:snippet": "tsx src/iframe/generate-snippet.ts",
-    "email:assets": "tsx src/assets/email/generate.ts"
+    "email:assets": "tsx src/assets/email/generate.ts",
+    "db:setup": "tsx src/db/setup.ts",
+    "db:schema:export": "drizzle-kit export --dialect=postgresql --schema=./src/db/schema.ts > src/db/schema.sql"
   },
   "dependencies": {
     "@base-ui/react": "1.8.0",

@@ -1,3 +1,0 @@
-ALTER TABLE "caja_requests" ADD COLUMN "request_number" integer NOT NULL GENERATED ALWAYS AS IDENTITY (sequence name "caja_requests_request_number_seq" INCREMENT BY 1 MINVALUE 1 MAXVALUE 2147483647 START WITH 1 CACHE 1);--> statement-breakpoint
-ALTER TABLE "treasury_observations" DROP COLUMN "category";--> statement-breakpoint
-ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_request_number_unique" UNIQUE("request_number");
