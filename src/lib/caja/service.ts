@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { and, asc, count, eq, gt, inArray, sql } from "drizzle-orm";
 import { withDatabase, withReadDatabase, type Database } from "@/db";
 import { cajaNotifications, cajaRequests, treasuryActivity, treasuryObservations, orderActivity, orderEmails, orderNotifications, orders, saleDocumentBatches, saleDocuments } from "@/db/schema";
-import { assertTreasuryOperator, assertAuthorized } from "@/lib/transaction-access";
+import { assertTreasuryOperator, assertOrderOperator } from "@/lib/transaction-access";
 import type { AuthorizedActor } from "@/lib/access-policy";
 import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
 import { validateReceipt } from "@/lib/payments/inspect";
@@ -111,7 +111,7 @@ export async function finalizeSaleDocument(actor: AuthorizedActor, input: { id: 
 }
 export async function returnSaleDocument(actor: AuthorizedActor, input: { id: string; version: string; reason: string }) {
   return withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor);
+    await assertOrderOperator(tx, actor);
     const { order, request } = await lockRequest(tx, input.id);
     if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido fue anulado.");
     if (order.assignedTo !== actor.userId) throw new CajaError("Solo el gestor responsable puede devolver una solicitud.");

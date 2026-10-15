@@ -3,7 +3,7 @@ import { treasuryScopes } from "./treasury/scope";
 import { and, eq, gt } from "drizzle-orm";
 import type { Database } from "@/db";
 import { authorizedEmails, session, user } from "@/db/schema";
-import { AccessError, type AuthorizedActor } from "@/lib/access-policy";
+import { AccessError, canAttendOrders, type AuthorizedActor } from "@/lib/access-policy";
 
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
@@ -22,4 +22,9 @@ export async function assertAuthorized(tx: Transaction, actor: AuthorizedActor) 
 export async function assertTreasuryOperator(tx: Transaction, actor: AuthorizedActor) {
   await assertAccessRole(tx, actor, "caja");
   if (actor.treasuryService) throw new AccessError("FORBIDDEN");
+}
+
+export async function assertOrderOperator(tx: Transaction, actor: AuthorizedActor) {
+  await assertAuthorized(tx, actor);
+  if (!canAttendOrders(actor)) throw new AccessError("FORBIDDEN");
 }

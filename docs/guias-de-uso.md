@@ -46,13 +46,13 @@ Notas internas solo se comparten con el equipo de Tesorería de la unidad; cualq
 
 ## Maestro y configuración
 
-Ingresar como `distribucionfe@continental.edu.pe` en Configuración. Registrar correos personales para gestores y operadores; seleccionar las unidades de Tesorería y configurar un buzón de servicio por unidad. Los demás gestores consultan accesos pero no pueden añadir/revocar.
+Ingresar como `distribucionfe@continental.edu.pe` en Configuración. La cuenta maestra consulta pedidos pero no los atiende ni añade notas; para operar se usa un correo personal autorizado. Registrar correos personales para gestores y operadores; seleccionar las unidades de Tesorería y configurar un buzón de servicio por unidad. Los demás gestores consultan accesos pero no pueden añadir/revocar.
 
 Al revocar, se cierran sesiones y liberan atenciones abiertas; el historial cerrado se conserva. El retiro en Drive es una operación externa: consultar al responsable técnico si falla su reconciliación, sin suponer que el cierre de sesión prueba que el permiso de Google ya se retiró.
 
 Mantener cuentas, campus y guías vigentes. Una modificación por interfaz no se copia al seed: informar al responsable técnico si también debe formar parte de futuras instalaciones. No escribir claves bancarias, contraseñas, tokens ni datos personales innecesarios en notas o campos de configuración.
 
-En la pestaña **Seguridad**, el maestro puede ajustar cuotas por correo, conexión, día y pedidos pendientes. Revisar los cinco valores y pulsar **Guardar límites**; el cambio queda auditado y se aplica a pedidos nuevos, sin redeploy. Los demás gestores solo consultan. Considerar que varios compradores de un campus pueden compartir IP. Si aparece un conflicto, actualizar antes de volver a guardar.
+En la pestaña **Seguridad**, el maestro puede ajustar cuotas por correo, conexión, día y pedidos pendientes. Revisar los cinco valores y pulsar **Guardar límites**; el cambio queda auditado y se aplica a pedidos nuevos, sin redeploy. Los demás gestores solo consultan. El maestro dispone además del **Registro de administración**, con los últimos 30 eventos; el historial completo queda en BD. Considerar que varios compradores de un campus pueden compartir IP. Si aparece un conflicto, actualizar antes de volver a guardar.
 
 ## Dudas e incidencias
 

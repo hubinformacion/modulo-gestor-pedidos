@@ -45,6 +45,7 @@ Las versiones exactas se fijan en `package.json` y `pnpm-lock.yaml`; no debe usa
 
 | Módulo | Ubicación principal | Función |
 | --- | --- | --- |
+| Auditoría administrativa | `src/lib/audit`, `management_audit` | Registro transaccional de accesos/configuración/correcciones y consulta maestra; sin cola ni tareas propias |
 | Identidad y permisos | `src/lib/access*`, `auth.ts`, `transaction-access.ts` | Sesión, roles, unidades, maestro y revocación |
 | Pedidos | `src/lib/orders` | Cotización, creación idempotente, estados, cancelación, seguimiento y correo |
 | Pagos | `src/lib/payments` | Cuentas, guías, validación y carga de recibos |
@@ -96,3 +97,11 @@ La emisión tributaria y la logística son independientes: una boleta/factura pu
 Producción: `https://modulo-gestor-pedidos.vercel.app`. Página institucional: `https://fondoeditorial.continental.edu.pe/pedido/`. Administración se abre directamente en Vercel, fuera del iframe. Los enlaces de correo públicos usan un fragmento WordPress; el receptor construye la ruta del iframe con origen fijo. No transmite información personal mediante `postMessage`.
 
 El bridge permite altura y desplazamiento tras handshake válido. No comparte cookies de administración con WordPress ni relaja la política de autenticación para incrustarla.
+
+## Herramientas de programación y entrega a TI
+
+Lenguaje: TypeScript estricto sobre Node.js. Desarrollo con Next.js App Router/React; estilos Tailwind y componentes Base UI/shadcn; validación Zod; persistencia Drizzle/PostgreSQL; pnpm y lockfile para dependencias. El esquema Better Auth procede de su CLI; el resto del esquema es tipado y se distribuye como un único SQL inicial con seed idempotente. No se ejecuta DDL en el build ni desde pantallas.
+
+Git/GitHub mantienen control de versiones y ramas revisables. Vercel realiza el build/despliegue de Next.js; Neon aloja PostgreSQL; Google Cloud configura OAuth/APIs y Workspace proporciona identidad/Drive/Gmail; WordPress contiene la página padre. Herramientas de comprobación: ESLint y compilación TypeScript/Next; no hay framework de suites automatizadas por decisión del proyecto. El editor personal no es una dependencia de la arquitectura.
+
+Instalación: `pnpm install --frozen-lockfile` y `pnpm db:setup` solo sobre BD vacía o esquema compatible; comprobaciones `pnpm lint`, `pnpm typecheck`, `pnpm build`. No entregar tokens ni `.env.local` con el expediente. Versiones exactas y trazabilidad de dependencias se consultan en package.json/pnpm-lock.yaml. Los controles y evidencias de aceptación están en la matriz de Seguridad de la Información.

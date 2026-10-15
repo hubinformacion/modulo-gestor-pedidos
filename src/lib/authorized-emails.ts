@@ -1,4 +1,5 @@
 import "server-only";
+import { writeManagementAudit, accessSnapshot } from "./audit/management";
 import { releaseCajaAssignments } from "./caja/release-assignments";
 import { and, eq, gt, inArray, notInArray } from "drizzle-orm";
 import type { Database } from "@/db";
@@ -35,6 +36,7 @@ export async function addAuthorizedEmail(db: Database, actor: AuthorizedActor, i
     await assertCurrentMaster(tx, actor);
     const inserted = await tx.insert(authorizedEmails).values({ email: email.data, addedBy: actor.email })
       .onConflictDoNothing().returning({ email: authorizedEmails.email });
+    if (inserted.length) await writeManagementAudit(tx, actor, "ACCESS_CREATED", "access", email.data, { previous: null, next: { role: "gestor", units: [], service: false } });
     return inserted.length
       ? { success: true, message: "Correo autorizado correctamente." }
       : { success: false, message: "Este correo ya está autorizado." };
@@ -51,8 +53,9 @@ export async function removeAuthorizedEmail(db: Database, actor: AuthorizedActor
   return db.transaction(async (tx) => {
     await assertCurrentMaster(tx, actor);
     const deleted = await tx.delete(authorizedEmails).where(and(eq(authorizedEmails.email, email.data), eq(authorizedEmails.role, "gestor")))
-      .returning({ email: authorizedEmails.email });
+      .returning();
     if (!deleted.length) return { success: false, message: "El correo ya no está autorizado." };
+    await writeManagementAudit(tx, actor, "ACCESS_REVOKED", "access", email.data, { previous: accessSnapshot(deleted[0]), next: null });
     const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, email.data));
     if (owners.length) {
       await releaseCajaAssignments(tx, owners.map((owner) => owner.id), actor);

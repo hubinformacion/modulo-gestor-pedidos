@@ -42,3 +42,8 @@ export type AccessActionResult = {
   success: boolean;
   message: string;
 };
+
+// Shared mailboxes identify a service, not the person attending a case.
+export function canAttendOrders(actor: Pick<AuthorizedActor, "role" | "email" | "treasuryService">): boolean {
+  return actor.role === "gestor" && !isMasterEmail(actor.email) && !actor.treasuryService;
+}

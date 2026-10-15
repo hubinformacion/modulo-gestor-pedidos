@@ -1,4 +1,5 @@
 "use server";
+import { writeManagementAudit } from "@/lib/audit/management";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
@@ -28,7 +29,8 @@ export async function saveCouponAction(input: unknown) {
           if (used && current.code !== fields.code) throw new CouponError("Un cupón con pedidos conserva su código. Crea otro si necesitas cambiarlo.");
         }
         const values = { ...fields, startsAt: fields.startsAt ? new Date(fields.startsAt) : null, endsAt: fields.endsAt ? new Date(fields.endsAt) : null };
-        if (id) await tx.update(coupons).set(values).where(eq(coupons.id, id)); else await tx.insert(coupons).values(values);
+        const [saved] = id ? await tx.update(coupons).set(values).where(eq(coupons.id, id)).returning({ id: coupons.id }) : await tx.insert(coupons).values(values).returning({ id: coupons.id });
+        await writeManagementAudit(tx, actor, "COUPON_SAVED", "coupon", saved.id, { created: !id, fields: Object.keys(values), next: values });
       });
     });
     revalidatePath("/admin/cupones"); return { success: true, message: "Cupón guardado." };
@@ -49,6 +51,7 @@ export async function deleteCouponAction(input: unknown) {
         // The locked row was checked above. Dates exposed to JS omit PG microseconds.
         const [deleted] = await tx.delete(coupons).where(eq(coupons.id, current.id)).returning();
         if (!deleted) throw new CouponError("El cupón cambió. Actualiza la página.");
+        await writeManagementAudit(tx, actor, "COUPON_DELETED", "coupon", current.id);
       });
     });
     revalidatePath("/admin/cupones"); return { success: true, message: "Cupón eliminado." };

@@ -2,7 +2,7 @@ import "server-only";
 import { eq, count } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { treasurySupportingFiles, treasuryActivity } from "@/db/schema";
-import { assertAuthorized } from "@/lib/transaction-access";
+import { assertOrderOperator } from "@/lib/transaction-access";
 import type { AuthorizedActor } from "@/lib/access-policy";
 import { lockRequest, CajaError } from "@/lib/caja/service";
 import { validateReceipt } from "@/lib/payments/inspect";
@@ -10,13 +10,13 @@ import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
 export async function uploadSupportingFile(actor: AuthorizedActor, requestId: string, uploadId: string, file: File) {
   const { bytes, hash, filename } = await validateReceipt(file);
   const previous = await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor); const { order } = await lockRequest(tx, requestId);
+    await assertOrderOperator(tx, actor); const { order } = await lockRequest(tx, requestId);
     if (order.assignedTo !== actor.userId || order.orderStatus === "CANCELADO") throw new CajaError("Solo el gestor responsable puede añadir documentos de subsanación.");
     const [stored] = await tx.select().from(treasurySupportingFiles).where(eq(treasurySupportingFiles.id, uploadId)); return stored;
   }));
   const driveId = previous?.driveFileId ?? await reserveDriveFileId();
   const intent = await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor); const { order } = await lockRequest(tx, requestId);
+    await assertOrderOperator(tx, actor); const { order } = await lockRequest(tx, requestId);
     if (order.assignedTo !== actor.userId || order.orderStatus === "CANCELADO") throw new CajaError("La atención del pedido cambió.");
     const [stored] = await tx.select().from(treasurySupportingFiles).where(eq(treasurySupportingFiles.id, uploadId));
     if (stored) { if (stored.requestId !== requestId || stored.actorId !== actor.userId || stored.contentHash !== hash) throw new CajaError("Este intento corresponde a otro archivo."); return stored; }
@@ -26,7 +26,7 @@ export async function uploadSupportingFile(actor: AuthorizedActor, requestId: st
   }));
   const uploaded = await uploadFileToDrive({ id: intent.driveFileId, name: intent.fileName, mimeType: intent.mimeType, bytes });
   await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor); const { order } = await lockRequest(tx, requestId);
+    await assertOrderOperator(tx, actor); const { order } = await lockRequest(tx, requestId);
     if (order.assignedTo !== actor.userId || order.orderStatus === "CANCELADO") throw new CajaError("La atención del pedido cambió durante la carga.");
     const [ready] = await tx.select().from(treasurySupportingFiles).where(eq(treasurySupportingFiles.id, intent.id)).for("update");
     if (ready.uploadedAt) return;

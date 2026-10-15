@@ -3,7 +3,7 @@ import { count, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { orders, pickupEvidence } from "@/db/schema";
 import type { AuthorizedActor } from "@/lib/access-policy";
-import { assertAuthorized } from "@/lib/transaction-access";
+import { assertOrderOperator } from "@/lib/transaction-access";
 import { pickupImageSchema } from "@/lib/admin/validation";
 import { validateReceipt } from "@/lib/payments/inspect";
 import { reserveDriveFileId, uploadFileToDrive } from "@/lib/google";
@@ -27,7 +27,7 @@ export async function preparePickupEvidence(actor: AuthorizedActor, orderId: str
   catch { throw new PickupEvidenceError("La imagen no es un JPG o PNG válido."); }
   const { bytes, filename, hash } = inspected;
   const existing = await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor);
+    await assertOrderOperator(tx, actor);
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("share");
     checkOrder(order, actor, version);
     const [intent] = await tx.select().from(pickupEvidence).where(eq(pickupEvidence.id, uploadId));
@@ -36,7 +36,7 @@ export async function preparePickupEvidence(actor: AuthorizedActor, orderId: str
   }));
   const driveId = existing.intent?.driveFileId ?? await reserveDriveFileId();
   const intent = await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor);
+    await assertOrderOperator(tx, actor);
     const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("update");
     checkOrder(order, actor, version);
     const [stored] = await tx.select().from(pickupEvidence).where(eq(pickupEvidence.id, uploadId));
@@ -49,7 +49,7 @@ export async function preparePickupEvidence(actor: AuthorizedActor, orderId: str
   if (!intent.driveViewUrl) {
     const uploaded = await uploadFileToDrive({ id: intent.driveFileId, name: `${existing.number}-evidencia-entrega-${filename}`, mimeType: intent.mimeType, bytes });
     await withDatabase((db) => db.transaction(async (tx) => {
-      await assertAuthorized(tx, actor);
+      await assertOrderOperator(tx, actor);
       const [order] = await tx.select().from(orders).where(eq(orders.id, orderId)).for("share");
       checkOrder(order, actor, version);
       await tx.update(pickupEvidence).set({ driveViewUrl: uploaded.driveViewUrl, uploadedAt: new Date() }).where(eq(pickupEvidence.id, intent.id));

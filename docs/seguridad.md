@@ -13,6 +13,8 @@ Revisión de código guiada por [Cloudflare security-audit-skill](https://github
 
 Estado: **tratamiento en código, sin afirmar verificación completa en producción**. El expediente inicial externo conserva sus conclusiones originales; no se ha convertido una hipótesis en un incidente demostrado. No eliminar permisos manuales desconocidos como parte de una revisión.
 
+La [matriz de los 12 requisitos de TI](requisitos-seguridad-ti.md) desarrolla autenticación, sesiones, accesos, auditoría, cifrado, consentimiento e integraciones. El [procedimiento de validación y continuidad](validacion-y-continuidad.md) define las evidencias y el respaldo cifrado en Drive.
+
 ## Controles implementados en fuente
 
 | Control | Implementación | Límite |
@@ -60,7 +62,7 @@ No compartir valores secretos para completar esta revisión. Bastan evidencia re
 ## Mejoras preventivas recomendadas
 
 1. Validar en entorno controlado los tratamientos de la tabla inicial y documentar protecciones efectivas de Vercel y permisos de Google.
-2. Proteger cambios de campus/cuentas contra formularios obsoletos y registrar actor/cambio de configuración financiera.
+2. Proteger cambios de campus/cuentas contra formularios obsoletos. Sus cambios administrativos ya registran actor/fecha/configuración en management_audit; falta comparar la versión del formulario.
 3. Separar consulta pública de seguimiento de metadatos internos de correo para reducir una futura serialización accidental; hoy las props públicas revisadas se proyectan explícitamente.
 4. Validar institucionalmente la conservación indefinida aprobada operativamente y definir política de enlace privado (expiración/rotación/revocación si corresponde), y considerar inspección de PDFs según exigencia de TI.
 5. Evaluar una CSP de scripts y una política de frame más restrictiva para rutas internas/login. No desplegar directivas que rompan Next, Maps o WordPress sin validación de compatibilidad.

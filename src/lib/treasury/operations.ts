@@ -1,9 +1,10 @@
 import "server-only";
+import { writeManagementAudit } from "@/lib/audit/management";
 import { randomUUID } from "node:crypto";
 import { and, eq, isNull } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { treasuryNotes, treasuryActivity, treasuryObservations, cajaRequests } from "@/db/schema";
-import { assertAuthorized, assertTreasuryOperator } from "@/lib/transaction-access";
+import { assertOrderOperator, assertTreasuryOperator } from "@/lib/transaction-access";
 import type { AuthorizedActor } from "@/lib/access-policy";
 import { CajaError, lockRequest } from "@/lib/caja/service";
 import type { z } from "zod";
@@ -29,11 +30,12 @@ export async function addObservation(actor: AuthorizedActor, input: z.infer<type
 }
 export async function resolveObservation(actor: AuthorizedActor, input: z.infer<typeof resolveSchema>) {
   await withDatabase((db) => db.transaction(async (tx) => {
-    await assertAuthorized(tx, actor); const { order, request } = await lockRequest(tx, input.id);
+    await assertOrderOperator(tx, actor); const { order, request } = await lockRequest(tx, input.id);
     if (order.assignedTo !== actor.userId) throw new CajaError("Solo el gestor responsable del pedido puede resolver observaciones.");
     if (order.orderStatus === "CANCELADO") throw new CajaError("El pedido está anulado.");
     const [observation] = await tx.select().from(treasuryObservations).where(and(eq(treasuryObservations.id, input.observationId), eq(treasuryObservations.requestId, request.id), isNull(treasuryObservations.resolvedAt))).for("update");
     if (!observation) throw new CajaError("La observación ya fue resuelta o no corresponde a la solicitud.");
+    if (input.correction) await writeManagementAudit(tx, actor, "PERSONAL_DATA_CORRECTED", "treasury_request", request.id, { orderId: order.id, observationId: observation.id, fields: Object.keys(input.correction) });
     await tx.update(treasuryObservations).set({ resolvedAt: new Date(), resolvedBy: actor.name, response: input.response, correction: input.correction ?? null }).where(eq(treasuryObservations.id, observation.id));
     await tx.update(cajaRequests).set({ draftDocumentId: null, assignmentToken: request.assignedTo ? randomUUID() : null, updatedAt: new Date() }).where(eq(cajaRequests.id, request.id));
     await tx.insert(treasuryActivity).values({ requestId: request.id, actorId: actor.userId, actorName: actor.name, event: "SUBSANACION", detail: "Fondo Editorial resolvió la observación." });

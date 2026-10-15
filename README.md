@@ -6,6 +6,8 @@ Aplicación para comprar publicaciones, validar depósitos, coordinar distribuci
 
 ## Documentación
 
+La [matriz de los 12 requisitos de Seguridad](docs/requisitos-seguridad-ti.md) y el [procedimiento de validación y respaldo](docs/validacion-y-continuidad.md) están preparados para trasladarse al formato Word institucional.
+
 El [expediente técnico y las guías](docs/README.md) contienen arquitectura, tecnologías, modelo de datos, accesos, seguridad, instalación, respaldo, casos de uso y manuales por rol. [AGENTS.md](AGENTS.md) conserva las reglas de trabajo para próximas sesiones.
 
 ## Funciones principales

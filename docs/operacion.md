@@ -74,7 +74,7 @@ El plan Free de Neon ofrece una ventana de restauración instantánea de hasta s
 
 1. El responsable técnico registra fecha, proyecto/rama, versión de aplicación y resultado del respaldo, sin credenciales ni datos personales.
 2. Exporta PostgreSQL con `pg_dump` en formato custom, usando cliente compatible con la versión del servidor y conexión directa segura. Las credenciales se suministran mediante un archivo de servicio/credenciales protegido; no se copian al historial de terminal, README ni tickets. `pg_dump` obtiene una copia consistente sin vaciar tablas.
-3. Cifra el archivo y lo guarda en almacenamiento institucional privado aprobado, separado de Git, del equipo público y de la carpeta de comprobantes. Restringe los permisos a custodios autorizados y conserva registro de integridad. La ubicación institucional y el mecanismo de cifrado deben quedar registrados en el expediente privado de TI.
+3. Cifra el archivo y lo guarda en almacenamiento institucional privado aprobado, separado de Git, del equipo público y de la carpeta de comprobantes. Restringe los permisos a custodios autorizados y conserva registro de integridad. Puede usarse Google Drive en una carpeta privada separada de comprobantes, sin permisos heredados al equipo de atención. La clave de cifrado debe custodiarse por separado. La ubicación institucional y el mecanismo de cifrado deben quedar registrados en el expediente privado de TI.
 4. Si se utiliza el snapshot manual de Neon como complemento, comprueba su fecha y disponibilidad. No borrar una copia anterior automáticamente ni asumir una retención/versionado que el plan Free no ofrece.
 5. Registra tamaño, integridad y éxito; ante fallo, realiza la copia manualmente y avisa al responsable funcional si se supera el RPO. No programa reintentos ni añade procesos al runtime.
 
@@ -121,3 +121,11 @@ Estos límites acotan pedidos aceptados y sus efectos; no evitan que peticiones 
 Carpeta exclusiva del sistema. Los accesos manuales quedan bajo supervisión del responsable técnico; no son adoptados ni retirados automáticamente por el sistema. Registrar a quién se añade, motivo y fecha, y revisar permisos públicos/heredados. Evitar modificar manualmente el mismo usuario/permisión mientras la aplicación lo gestiona: Google no distingue dos concesiones del mismo principal ni ofrece borrado condicional. Los registros previos a esta corrección requieren revisión del propietario porque no es posible reconstruir su procedencia con certeza.
 
 La aplicación guarda la intención antes de pedir el permiso a Google. Una respuesta perdida conserva esa intención y permite recuperarla aun después de revocar el acceso de aplicación. Solo retira lectores directos gestionados, releyendo rol/tipo/herencia antes del borrado; nunca owners/writers/heredados. Esta recuperación técnica de ACL no es una cola de correo.
+
+## Aceptación de TI y auditoría de administración
+
+La [matriz de Seguridad de la Información](requisitos-seguridad-ti.md) cubre los 12 requisitos recibidos y distingue controles de código/proveedor. [Validación y continuidad](validacion-y-continuidad.md) detalla cómo cerrar las verificaciones y realizar copias manuales cifradas a Drive. No se habilitó automatización de respaldo ni se reutilizó la carpeta operativa.
+
+`management_audit` conserva cambios de accesos, unidades/buzones, configuración, inventario/descuentos y metadatos de correcciones, dentro de la misma transacción de negocio. Solo el maestro consulta los últimos 30 eventos desde Seguridad; la totalidad permanece en BD. No existe UI de edición/borrado. TI debe conceder al runtime únicamente SELECT/INSERT sobre auditorías append-only y retirar privilegios de UPDATE/DELETE/TRUNCATE y propiedad del esquema; verificar privilegios heredados, no solo grants directos. Los datos anteriores al registro no se reconstruyen.
+
+La cuenta maestra no puede atender pedidos ni registrar notas/correcciones/documentos; conserva configuración/accesos. Los buzones de Tesorería solo consultan sus solicitudes; la operación requiere una cuenta personal autorizada. No retirar accesos ni eliminar identidades para cambiar esta política.

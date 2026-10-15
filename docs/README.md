@@ -6,6 +6,8 @@ Documentación mantenida junto al código para la evaluación de TI y el uso del
 | --- | --- |
 | [Arquitectura](arquitectura.md) | TI: componentes, tecnologías, límites de confianza, flujos y decisiones |
 | [Datos y accesos](datos-y-accesos.md) | TI/seguridad: información tratada, modelo, permisos, almacenamiento y minimización |
+| [Requisitos de Seguridad de la Información](requisitos-seguridad-ti.md) | TI: matriz de los 12 requisitos, controles, límites y evidencias para Word |
+| [Validación y continuidad](validacion-y-continuidad.md) | TI/operación: aceptación por rol, copia cifrada en Drive y restauración medida |
 | [Seguridad](seguridad.md) | TI/seguridad: controles implementados, límites de revisión, riesgos y evidencias pendientes |
 | [Operación e instalación](operacion.md) | Operadores técnicos: instalación, configuración, respaldo, recuperación e incidentes |
 | [Calidad y mantenimiento](calidad-y-mantenimiento.md) | TI/desarrollo: limpieza y mejoras de consistencia |

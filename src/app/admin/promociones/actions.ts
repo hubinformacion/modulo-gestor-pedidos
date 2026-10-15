@@ -1,4 +1,5 @@
 "use server";
+import { writeManagementAudit } from "@/lib/audit/management";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { asc, eq, inArray } from "drizzle-orm";
@@ -31,6 +32,7 @@ export async function savePromotionAction(input: unknown) {
         const [saved] = id ? await tx.update(promotions).set(values).where(eq(promotions.id, id)).returning() : await tx.insert(promotions).values(values).returning();
         await tx.delete(promotionBooks).where(eq(promotionBooks.promotionId, saved.id));
         if (ids.length) await tx.insert(promotionBooks).values(ids.map((bookId) => ({ promotionId: saved.id, bookId })));
+        await writeManagementAudit(tx, actor, "PROMOTION_SAVED", "promotion", saved.id, { created: !id, fields: Object.keys(values), selectedBookIds: ids, next: values });
       });
     });
     revalidatePath("/admin/promociones"); revalidatePath("/pedido");
@@ -50,6 +52,7 @@ export async function deletePromotionAction(input: unknown) {
         // Match by ID after the lock/version check; preserve PostgreSQL microseconds.
         const [deleted] = await tx.delete(promotions).where(eq(promotions.id, current.id)).returning();
         if (!deleted) throw new PromotionError("La campaña cambió. Actualiza la página.");
+        await writeManagementAudit(tx, actor, "PROMOTION_DELETED", "promotion", current.id, { name: current.name });
       });
     });
     revalidatePath("/admin/promociones"); revalidatePath("/pedido"); return { success: true, message: "Campaña eliminada." };

@@ -1,4 +1,5 @@
 "use server";
+import { writeManagementAudit } from "@/lib/audit/management";
 
 import { createCajaRequest } from "@/lib/caja/service";
 import { deliverCajaEmail } from "@/lib/caja/email";
@@ -14,7 +15,7 @@ import { deliverOrderEmail } from "@/lib/orders/email";
 import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
 import { AccessError } from "@/lib/access-policy";
-import { assertAuthorized } from "@/lib/transaction-access";
+import { assertAuthorized, assertOrderOperator } from "@/lib/transaction-access";
 import { pickupImageSchema, pickupUploadSchema, internalNoteSchema, assignmentSchema, deleteBookSchema, dispatchSchema, reviewSchema, saveBookSchema, type ActionResult } from "@/lib/admin/validation";
 
 function code(error: unknown): string | undefined {
@@ -38,7 +39,7 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
     const outcome = await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, requestHeaders);
       return db.transaction(async (tx) => {
-        await assertAuthorized(tx, actor);
+        await assertOrderOperator(tx, actor);
         const data = parsed.data;
         const [order] = await tx.select().from(orders).where(eq(orders.id, data.id)).for("update");
         if (!order) throw new OperationError("El pedido no existe.");
@@ -95,7 +96,7 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const outcome = await withDatabase(async (db) => {
       return db.transaction(async (tx) => {
-        await assertAuthorized(tx, actor);
+        await assertOrderOperator(tx, actor);
         const data = parsed.data;
         const [order] = await tx.select().from(orders).where(eq(orders.id, data.id)).for("update");
         if (!order) throw new OperationError("El pedido no existe.");
@@ -139,13 +140,14 @@ export async function saveBookAction(input: unknown): Promise<ActionResult> {
       await db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
         const { id, version, book } = parsed.data;
-        if (!id) { await tx.insert(books).values(book); return; }
+        if (!id) { const [created] = await tx.insert(books).values(book).returning({ id: books.id }); await writeManagementAudit(tx, actor, "BOOK_CREATED", "book", created.id, { next: book }); return; }
         const [current] = await tx.select().from(books).where(eq(books.id, id)).for("update");
         if (!current) throw new OperationError("La publicación no existe.");
         checkVersion(current.updatedAt, version!);
         const [used] = await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.bookId, id)).limit(1);
         if (used && current.publisherImprint !== book.publisherImprint) throw new OperationError("Una publicación con pedidos asociados no puede cambiar de sello.");
         await tx.update(books).set(book).where(eq(books.id, id));
+        await writeManagementAudit(tx, actor, "BOOK_CHANGED", "book", id, { previous: Object.fromEntries(Object.keys(book).map((field) => [field, current[field as keyof typeof current]])), next: book });
       });
     });
     revalidatePath("/admin/inventario"); revalidatePath("/pedido");
@@ -168,6 +170,7 @@ export async function deleteBookAction(input: unknown): Promise<ActionResult> {
         const [used] = await tx.select({ id: orderItems.id }).from(orderItems).where(eq(orderItems.bookId, current.id)).limit(1);
         if (used) throw new OperationError("La publicación tiene pedidos asociados. Desactívala para conservar el historial.");
         await tx.delete(books).where(eq(books.id, current.id));
+        await writeManagementAudit(tx, actor, "BOOK_DELETED", "book", current.id, { inventoryCode: current.inventoryCode, title: current.title });
       });
     });
     revalidatePath("/admin/inventario"); revalidatePath("/pedido");
@@ -184,7 +187,7 @@ export async function assignOrderAction(input: unknown): Promise<ActionResult> {
     const outcome = await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, requestHeaders);
       return db.transaction(async (tx) => {
-        await assertAuthorized(tx, actor);
+        await assertOrderOperator(tx, actor);
         const [order] = await tx.select().from(orders).where(eq(orders.id, parsed.data.id)).for("update");
         if (!order) throw new OperationError("El pedido no existe.");
         if (["ENTREGADO", "CANCELADO"].includes(order.orderStatus)) throw new OperationError("Este pedido ya está cerrado.");
@@ -215,7 +218,7 @@ export async function addInternalNoteAction(input: unknown): Promise<ActionResul
     await withDatabase(async (db) => {
       const actor = await getAuthorizedSession(db, requestHeaders);
       await db.transaction(async (tx) => {
-        await assertAuthorized(tx, actor);
+        await assertOrderOperator(tx, actor);
         const [order] = await tx.select({ id: orders.id }).from(orders).where(eq(orders.id, parsed.data.id)).for("share");
         if (!order) throw new OperationError("El pedido no existe.");
         await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "NOTA_INTERNA", detail: parsed.data.content });

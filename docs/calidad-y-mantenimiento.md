@@ -16,7 +16,7 @@ No se borraron datos para limpiar código. Un archivo ignorado local como `.next
 | --- | --- | --- |
 | Alta para coherencia de emisión | `src/lib/caja/data.ts` | El detalle aplica correcciones fiscales resueltas, pero la bandeja deriva Boleta/Factura del RUC original. Unificar un snapshot fiscal efectivo para presentación, conservando la compra original. |
 | Media para concurrencia administrativa | `src/lib/payments/banks-service.ts`, `src/lib/campuses/service.ts` | Comparar versión del formulario bajo lock para impedir sobrescribir cambios de otro gestor. |
-| Media para trazabilidad | Configuración bancaria | Registro append-only de actor, fecha y operación; nunca imprimir valores bancarios/secretos en logs. |
+| Implementado en esta versión | Administración/accesos | management_audit conserva actor, fecha, recurso y cambios explícitos en la misma transacción; no se imprimen snapshots en logs. |
 | Preventiva | `src/lib/orders/tracking.ts` | Separar DTO público de metadatos internos de correo; conservar proyecciones mínimas de cliente. |
 
 Estas observaciones de calidad no se presentan como vulnerabilidades explotadas. Los riesgos de seguridad y verificaciones pendientes están en [seguridad](seguridad.md).

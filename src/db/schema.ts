@@ -526,3 +526,18 @@ export const orderAdmissionChanges = pgTable("order_admission_changes", {
   next: jsonb("next").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// Append-only through application code; the runtime SQL role must additionally
+// have SELECT/INSERT only on this table. No FK that erases audit on revocation.
+export const managementAudit = pgTable("management_audit", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  actorUserId: text("actor_user_id").notNull(),
+  actorEmail: text("actor_email").notNull(),
+  actorName: text("actor_name").notNull(),
+  actorRole: text("actor_role").notNull(),
+  event: text("event").notNull(),
+  resource: text("resource").notNull(),
+  target: text("target").notNull(),
+  details: jsonb("details").$type<Record<string, unknown>>().default({}).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [index("management_audit_created_at_idx").on(table.createdAt), index("management_audit_target_idx").on(table.resource, table.target)]);

@@ -1,4 +1,5 @@
 "use server";
+import { writeManagementAudit, accessSnapshot } from "@/lib/audit/management";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
@@ -43,6 +44,8 @@ export async function saveTreasuryTeamAction(input: unknown) {
           if (JSON.stringify(treasuryScopes(current).sort()) === JSON.stringify(imprints)) return;
           await tx.update(authorizedEmails).set({ publisherImprint: imprints[0], publisherImprints: imprints }).where(eq(authorizedEmails.email, email));
         } else await tx.insert(authorizedEmails).values({ email, role: "caja", publisherImprint: imprints[0], publisherImprints: imprints, addedBy: actor.email });
+        const [updatedAccess] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, email));
+        await writeManagementAudit(tx, actor, operation === "remove" ? "ACCESS_REVOKED" : current ? "ACCESS_CHANGED" : "ACCESS_CREATED", "access", email, { previous: accessSnapshot(current), next: accessSnapshot(updatedAccess) });
         await releaseCajaAssignments(tx, owners.map((owner) => owner.id), actor);
         for (const owner of owners) await tx.delete(session).where(eq(session.userId, owner.id));
       });
@@ -79,12 +82,18 @@ export async function saveTreasuryMailboxAction(input: unknown) {
           }
           if (member) await tx.update(authorizedEmails).set({ publisherImprint: scopes[0], publisherImprints: scopes, treasuryService: true }).where(eq(authorizedEmails.email, email));
           else await tx.insert(authorizedEmails).values({ email, role: "caja", publisherImprint: imprint, publisherImprints: [imprint], treasuryService: true, addedBy: actor.email });
+          const [serviceAccess] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, email));
+          await writeManagementAudit(tx, actor, member ? "ACCESS_CHANGED" : "ACCESS_CREATED", "access", email, { previous: accessSnapshot(member), next: accessSnapshot(serviceAccess) });
           await tx.insert(treasuryMailboxes).values({ publisherImprint: imprint, email }).onConflictDoUpdate({ target: treasuryMailboxes.publisherImprint, set: { email, createdAt: new Date() } });
         } else await tx.delete(treasuryMailboxes).where(eq(treasuryMailboxes.publisherImprint, imprint));
+        await writeManagementAudit(tx, actor, "MAILBOX_CHANGED", "treasury_mailbox", imprint, { previousEmail, email });
         if (previousEmail) {
+          const [previousAccess] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, previousEmail));
           const others = await tx.select().from(treasuryMailboxes).where(eq(treasuryMailboxes.email, previousEmail));
           if (!others.length) await tx.delete(authorizedEmails).where(and(eq(authorizedEmails.email, previousEmail), eq(authorizedEmails.treasuryService, true)));
           else await tx.update(authorizedEmails).set({ publisherImprint: others[0].publisherImprint, publisherImprints: others.map((row) => row.publisherImprint) }).where(eq(authorizedEmails.email, previousEmail));
+          const [remainingAccess] = await tx.select().from(authorizedEmails).where(eq(authorizedEmails.email, previousEmail));
+          await writeManagementAudit(tx, actor, remainingAccess ? "ACCESS_CHANGED" : "ACCESS_REVOKED", "access", previousEmail, { previous: accessSnapshot(previousAccess), next: accessSnapshot(remainingAccess) });
           const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, previousEmail));
           for (const owner of owners) await tx.delete(session).where(eq(session.userId, owner.id));
         }

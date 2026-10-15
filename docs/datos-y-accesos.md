@@ -22,12 +22,13 @@ Los datos operativos se almacenan en columnas PostgreSQL legibles para el rol SQ
 | Capacidad | Comprador con enlace | Gestor | Maestro | Operador Tesorería | Buzón servicio Tesorería |
 | --- | --- | --- | --- | --- | --- |
 | Consultar pedido | Solo el pedido del token | Pedidos operativos | Igual que gestor | Solo solicitud y unidad autorizada | Solo consulta de su unidad |
-| Adjuntar depósito | Sello pendiente/rechazado del pedido | Consulta/revisión según asignación | Igual que gestor | Consulta por unidad | Consulta por unidad |
-| Revisar pagos y logística | No | Solo responsable asignado | Requiere asignación | No | No |
+| Adjuntar depósito | Sello pendiente/rechazado del pedido | Solo consulta | Solo consulta | Consulta por unidad | Consulta por unidad |
+| Revisar pagos y logística | No | Solo responsable personal asignado | Solo consulta | No | No |
 | Gestionar inventario/descuentos | No | Sí | Sí | No | No |
 | Alta/revocación de accesos | No | Consulta | Sí | No | No |
 | Tomar solicitud/emitir PDF | No | No | No | Según unidad y responsable | No |
-| Observación de emisión | No | Resuelve el responsable del pedido | Igual que gestor | Registra el asignado | No |
+| Observación de emisión | No | Resuelve el responsable del pedido | Solo consulta | Registra el asignado | No |
+| Notas internas Fondo Editorial | No | Añade/consulta con cuenta personal | Solo consulta | No | No |
 | Notas internas de Tesorería | No | No | No por rol gestor | Equipo de la unidad | Solo consulta según vista |
 | Descargar documento de venta | Vigente y finalizado | Documentos del pedido | Igual que gestor | Documentos de su solicitud | Consulta de su unidad |
 
@@ -60,9 +61,11 @@ La última relación es **lógica por correo**, no una FK. El maestro se puede a
 | Descuentos | `promotions`, `promotion_books`, `coupons`, `coupon_redemptions` |
 | Comprobantes y evidencias | `payment_uploads`, `payment_receipts`, `pickup_evidence`, `treasury_supporting_files` |
 | Tesorería | `caja_requests`, `sale_documents`, `sale_document_batches`, `treasury_observations`, `treasury_notes`, `treasury_activity` |
-| Auditoría y permisos | `order_activity`, `order_emails`, `order_notifications`, `caja_notifications`, `drive_reader_grants`, `drive_file_reader_grants`, `order_admission_changes` |
+| Auditoría y permisos | `order_activity`, `order_emails`, `order_notifications`, `caja_notifications`, `drive_reader_grants`, `drive_file_reader_grants`, `order_admission_changes`, `management_audit` |
 
 Los nombres y precios de compra, cuentas, guía, consentimiento y destino se conservan como snapshots. Los importes usan `numeric(12,2)` y cálculo en céntimos. Las revisiones de documentos se conservan; cargar una corrección no borra el documento finalizado anterior.
+
+El maestro conserva configuración/accesos pero no atiende pedidos; los buzones de Tesorería solo consultan. La operación identifica siempre una cuenta personal. `management_audit` registra cambios administrativos de acceso/configuración y metadatos de correcciones; solo el maestro consulta su vista y TI custodia la BD.
 
 ## Minimización y enmascaramiento
 

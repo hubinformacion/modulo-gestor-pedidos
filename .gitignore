@@ -17,3 +17,18 @@ next-env.d.ts
 
 # Local debug logs
 *.log
+
+# Private database backups and encryption material (store outside the repo)
+/backups/
+/respaldos/
+*.dump
+*.dump.*
+*.backup
+*.bak
+*.sql.gz
+*.age
+*.gpg
+*.enc
+*.key
+*.p12
+*.pfx

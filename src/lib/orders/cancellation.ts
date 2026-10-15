@@ -2,13 +2,13 @@ import "server-only";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { books, coupons, couponRedemptions, cajaNotifications, cajaRequests, orderActivity, orderEmails, orderItems, orderNotifications, orders } from "@/db/schema";
-import { assertAuthorized } from "@/lib/transaction-access";
+import { assertOrderOperator } from "@/lib/transaction-access";
 import type { AuthorizedActor } from "@/lib/access-policy";
 import { canBuyerCancel } from "./cancellation-validation";
 export class CancellationError extends Error {}
 export async function cancelPurchase(input: { token?: string; id?: string; version: string; reason: string }, actor?: AuthorizedActor) {
   return withDatabase((db) => db.transaction(async (tx) => {
-    if (actor) await assertAuthorized(tx, actor);
+    if (actor) await assertOrderOperator(tx, actor);
     const [order] = await tx.select().from(orders).where(actor ? eq(orders.id, input.id!) : eq(orders.trackingToken, input.token!)).for("update");
     if (!order) throw new CancellationError("No encontramos el pedido.");
     if (actor && order.assignedTo !== actor.userId) throw new CancellationError("Toma la atención del pedido antes de anularlo.");

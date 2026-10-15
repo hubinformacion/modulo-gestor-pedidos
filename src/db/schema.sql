@@ -166,6 +166,19 @@ CREATE TABLE "drive_reader_grants" (
 	CONSTRAINT "drive_reader_grants_folder_id_email_pk" PRIMARY KEY("folder_id","email")
 );
 
+CREATE TABLE "management_audit" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"actor_user_id" text NOT NULL,
+	"actor_email" text NOT NULL,
+	"actor_name" text NOT NULL,
+	"actor_role" text NOT NULL,
+	"event" text NOT NULL,
+	"resource" text NOT NULL,
+	"target" text NOT NULL,
+	"details" jsonb DEFAULT '{}'::jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
 CREATE TABLE "order_activity" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"order_id" uuid NOT NULL,
@@ -628,6 +641,8 @@ CREATE INDEX "caja_requests_inbox_idx" ON "caja_requests" USING btree ("publishe
 CREATE UNIQUE INDEX "campuses_name_unique" ON "campuses" USING btree (lower(btrim("name")));
 CREATE INDEX "coupon_redemptions_coupon_idx" ON "coupon_redemptions" USING btree ("coupon_id");
 CREATE UNIQUE INDEX "drive_reader_grants_permission_unique" ON "drive_reader_grants" USING btree ("folder_id","permission_id");
+CREATE INDEX "management_audit_created_at_idx" ON "management_audit" USING btree ("created_at");
+CREATE INDEX "management_audit_target_idx" ON "management_audit" USING btree ("resource","target");
 CREATE INDEX "order_activity_order_idx" ON "order_activity" USING btree ("order_id","created_at");
 CREATE INDEX "order_activity_actor_idx" ON "order_activity" USING btree ("actor_user_id","created_at");
 CREATE INDEX "order_items_order_id_idx" ON "order_items" USING btree ("order_id");
