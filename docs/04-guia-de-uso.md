@@ -1,4 +1,6 @@
-# Guías de uso
+# 04 · Guía de uso y flujo
+
+[← Operación](03-operacion-y-cierre.md) · [Inicio](00-inicio.md)
 
 ## Comprador
 
@@ -57,3 +59,36 @@ En la pestaña **Seguridad**, el maestro puede ajustar cuotas por correo, conexi
 ## Dudas e incidencias
 
 Contactar a Jullisa del Pilar Falla Aguirre (funcional, jfalla@continental.edu.pe) o a Fredy Paolo Romero Espinoza (técnico, fromeror@continental.edu.pe). Reportar pantalla, hora, acción y código seguro si aparece. No adjuntar secretos, documentos de identidad completos, enlaces privados de compradores ni comprobantes sin autorización. No crear pedidos adicionales ni repetir depósitos para diagnosticar un problema.
+
+## Estados del pedido
+
+Leyenda: cajas = estados, flechas = cambios permitidos y su condición. El punto inicial/final marca el proceso, no el borrado del pedido. Véase la [leyenda general](01-arquitectura.md#leyenda-común).
+
+```mermaid
+stateDiagram-v2
+  state "Pendiente de pago" as Pendiente
+  state "Distribución" as Distribucion
+  state "Enviado / listo para recojo" as Despachado
+  state "Entregado" as Entregado
+  state "Cancelado / anulado" as Cancelado
+  [*] --> Pendiente
+  Pendiente --> Distribucion: Todos los pagos aplicables verificados
+  Distribucion --> Despachado: Courier o disponibilidad en biblioteca
+  Despachado --> Entregado: Recepción confirmada
+  Pendiente --> Cancelado: Cancelación o anulación válida
+  Distribucion --> Cancelado: Anulación del gestor antes del despacho
+  Entregado --> [*]
+  Cancelado --> [*]
+```
+
+`EN_PREPARACION` es el estado interno presentado como Distribución. El PDF tributario avanza en paralelo: una entrega no exige que Tesorería ya finalice. Observación abierta bloquea finalizar emisión, no la logística; devolución abre un nuevo ciclo con el documento anterior conservado.
+
+## Reglas para la demostración
+
+- Universidad e Instituto tienen cuentas propias. En mixtos son dos depósitos; el flete va solo a Universidad. Recojo S/0, Lima/Callao S/15 y provincia S/25; costos visibles en resumen.
+- Comunidad exige campus y correo institucional, pero declarar ese correo no verifica pertenencia mediante OAuth del comprador. Precios/stock/cupones se recalculan en servidor.
+- Promociones y cupones no se combinan; gana el mayor ahorro y el empate conserva promociones. El envío no recibe descuento; aplicar cupón en pantalla no reserva su uso.
+- Stock insuficiente o datos/precio cambiados abortan sin pedido parcial. Repetir el mismo intento recupera la compra; no crear otro para comprobar si llegó el correo.
+- Cancelación conserva historial/documentos y restituye stock una vez. No hay devolución automática de dinero. Desde despacho no se cancela por UI.
+- El comprador tiene un hilo; cada unidad de emisión otro, solo a su buzón. Gestores reciben CC de avisos nuevos del comprador; altas de usuarios no reenvían históricos. Mixto recibe un único acuse/aprobación y un lote con ambos PDF cuando corresponda.
+- Refresco manual cuando no hay carga/borrador; no hay polling periódico ni botón de reenviar correo.

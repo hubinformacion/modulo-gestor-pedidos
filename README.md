@@ -6,9 +6,7 @@ Aplicación para comprar publicaciones, validar depósitos, coordinar distribuci
 
 ## Documentación
 
-La [matriz de los 12 requisitos de Seguridad](docs/requisitos-seguridad-ti.md) y el [procedimiento de validación y respaldo](docs/validacion-y-continuidad.md) están preparados para trasladarse al formato Word institucional.
-
-El [expediente técnico y las guías](docs/README.md) contienen arquitectura, tecnologías, modelo de datos, accesos, seguridad, instalación, respaldo, casos de uso y manuales por rol. [AGENTS.md](AGENTS.md) conserva las reglas de trabajo para próximas sesiones.
+Empieza por [00 · Inicio](docs/00-inicio.md). La documentación está resumida en cinco archivos numerados: arquitectura, seguridad, operación/cierre y guía de uso. El [diagrama completo](docs/diagramas/01-arquitectura.png) está listo para Word, con [fuente SVG](docs/diagramas/01-arquitectura.svg) y leyenda. [AGENTS.md](AGENTS.md) conserva el contexto para futuras sesiones.
 
 ## Funciones principales
 
@@ -49,7 +47,7 @@ Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `sr
 
 `pnpm db:seed` incorpora el maestro `distribucionfe@continental.edu.pe`, cuatro cuentas receptoras confirmadas y ocho campus con dirección, ubicación interna y coordenadas. Omite conflictos y conserva registros existentes; no crea libros, pedidos, identidades OAuth ni mensajes.
 
-La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se sincronizan automáticamente con ese archivo. Ver [datos iniciales](docs/datos-iniciales.md) para mantener configuración recuperable en nuevas instalaciones; un seed no reemplaza el respaldo operativo.
+La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se sincronizan automáticamente con ese archivo. Ver [datos iniciales](docs/03-operacion-y-cierre.md) para mantener configuración recuperable en nuevas instalaciones; un seed no reemplaza el respaldo operativo.
 
 ## Configuración y despliegue
 
@@ -64,7 +62,7 @@ Vercel instala/construye con pnpm; no ejecuta instalación de BD durante el buil
 
 Configurar además conexión SQL, secreto Better Auth y credenciales Google/cron según `.env.example`. No versionar valores privados ni ponerlos en WordPress.
 
-Google: cliente Web, callback `<BETTER_AUTH_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/operacion.md).
+Google: cliente Web, callback `<BETTER_AUTH_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/03-operacion-y-cierre.md).
 
 `CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos privados de Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
 
@@ -101,6 +99,6 @@ pnpm build
 
 `pnpm db:schema:export` regenera **solo el SQL inicial** desde Drizzle; revisar su diff, no usarlo como actualización de una BD con datos. `pnpm db:auth:generate` mantiene las tablas Better Auth por CLI. Los PDF de pago y PNG de correo bajo `src/assets` son recursos de producción; no eliminarlos como archivos temporales.
 
-El [documento de seguridad](docs/seguridad.md) distingue controles implementados, riesgos pendientes de validación y evidencias de Neon/Vercel/Workspace que TI debe acreditar. La revisión de código no certifica backups, cifrado efectivo, WAF o permisos reales. Consultar antes de operar con datos sensibles; no probar mediante pedidos/envíos ficticios en producción.
+El [documento de seguridad](docs/02-seguridad.md) distingue controles implementados, riesgos pendientes de validación y evidencias de Neon/Vercel/Workspace que TI debe acreditar. La revisión de código no certifica backups, cifrado efectivo, WAF o permisos reales. Consultar antes de operar con datos sensibles; no probar mediante pedidos/envíos ficticios en producción.
 
-Los límites de creación se administran en **Configuración → Seguridad**, exclusivamente por el correo maestro, con historial de cambios. Son compartidos en BD y no requieren redeploy. El seed conserva la configuración personalizada. Responsables, conservación indefinida y respaldo manual semanal (RPO objetivo siete días, RTO objetivo cuatro horas) están en [el expediente técnico](docs/README.md).
+Los límites de creación se administran en **Configuración → Seguridad**, exclusivamente por el correo maestro, con historial de cambios. Son compartidos en BD y no requieren redeploy. El seed conserva la configuración personalizada. Responsables, conservación indefinida y respaldo manual semanal (RPO objetivo siete días, RTO objetivo cuatro horas) están en [el expediente técnico](docs/00-inicio.md).

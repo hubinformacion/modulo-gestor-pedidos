@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title desc">
+<title id="title">Arquitectura completa · Fondo Editorial Continental</title>
+<desc id="desc">El comprador usa compra y seguimiento Next.js embebidos en WordPress. Gestores y Tesorería entran directamente a Vercel, con identidad Google y autorización en PostgreSQL Neon. Los servicios de servidor gestionan pedidos, pagos, emisión y auditoría, archivos privados Drive y correo Gmail por evento. Google Maps se consulta desde compra. GitHub entrega código a Vercel. El cron diario solo reconcilia permisos Drive; el respaldo semanal es manual, cifrado y separado del runtime.</desc>
+<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#777083" stroke-width="1.5"/></marker></defs>
+<style>text{font-family:Inter,Arial,sans-serif;fill:#24212b} .muted{fill:#706979}.eyebrow{font-size:14px;font-weight:700;letter-spacing:1.5px;fill:#6802c1}.zone{fill:#fcfbfd;stroke:#d7d1df;stroke-width:1.2;stroke-dasharray:7 6}.node{fill:white;stroke:#cbc3d5;stroke-width:1.5}.focus{fill:#f7f0fd;stroke:#6802c1;stroke-width:1.8}.line{fill:none;stroke:#777083;stroke-width:1.6;marker-end:url(#arrow)}.dash{stroke-dasharray:5 5}.title{font-size:20px;font-weight:700}.body{font-size:16px}.small{font-size:15px}.label{font-size:14px;fill:#625b6e}.zone-label{font-size:14px;font-weight:700;letter-spacing:1.2px;fill:#625b6e}</style>
+<rect width="1600" height="1180" fill="white"/>
+
+<text x="60" y="57" class="eyebrow">FONDO EDITORIAL · SISTEMA DE PEDIDOS</text>
+<text x="60" y="105" font-size="38" font-weight="700">Arquitectura de la solución</text>
+<text x="60" y="140" class="muted" font-size="20">Componentes, límites de confianza e integraciones. Compra pública y operación interna separadas.</text>
+<rect x="60" y="280" width="350" height="575" rx="10" class="zone"/>
+<text x="80" y="308" class="zone-label">ACCESO / NAVEGADOR</text>
+<rect x="430" y="280" width="650" height="575" rx="10" class="zone"/>
+<text x="450" y="308" class="zone-label">APLICACIÓN · VERCEL</text>
+<rect x="1130" y="280" width="410" height="575" rx="10" class="zone"/>
+<text x="1150" y="308" class="zone-label">DATOS Y SERVICIOS</text>
+<path d="M575 330 V267 Q575 255 587 255 H1308 Q1320 255 1320 243 V240" class="line"/>
+<path d="M1000 240 V247 a8 8 0 0 0 0 16 V320" class="line dash"/>
+<path d="M380 395 H465" class="line"/>
+<path d="M685 395 H775" class="line"/>
+<path d="M380 655 H465" class="line"/>
+<path d="M685 655 H775" class="line"/>
+<path d="M1035 365 H1160" class="line"/>
+<path d="M1035 500 H1160" class="line"/>
+<path d="M1035 635 H1160" class="line"/>
+<path d="M1035 765 H1160" class="line"/>
+<rect x="470" y="180" width="610" height="60" rx="8" class="node"/>
+<text x="492" y="215" class="title">Código versionado · GitHub</text>
+<text x="810" y="218" class="small muted">Build con pnpm → Vercel</text>
+<rect x="871.0" y="273" width="98" height="22" fill="white"/>
+<text x="920" y="288" class="label" text-anchor="middle">despliegue</text>
+<rect x="1160" y="180" width="320" height="60" rx="8" class="node"/>
+<text x="1182" y="215" class="title">Google Maps</text>
+<text x="1390" y="218" class="small muted">Campus</text>
+<rect x="90" y="330" width="290" height="130" rx="8" class="node"/>
+<text x="112" y="365" class="title">WordPress · comprador</text>
+<text x="112" y="395" class="body muted">Página /pedido/</text>
+<text x="112" y="420" class="body muted">Contiene el iframe público</text>
+<rect x="90" y="590" width="290" height="130" rx="8" class="node"/>
+<text x="112" y="625" class="title">Equipos internos</text>
+<text x="112" y="655" class="body muted">Fondo Editorial</text>
+<text x="112" y="680" class="body muted">Tesorería Recaudación</text>
+<text x="112" y="705" class="small muted">Maestro y buzones: consulta</text>
+<rect x="465" y="330" width="220" height="130" rx="8" class="node"/>
+<text x="487" y="365" class="title">Compra pública</text>
+<text x="487" y="395" class="body muted">/pedido</text>
+<text x="487" y="420" class="body muted">Seguimiento privado</text>
+<rect x="465" y="590" width="220" height="130" rx="8" class="node"/>
+<text x="487" y="625" class="title">Gestión interna</text>
+<text x="487" y="655" class="body muted">/admin</text>
+<text x="487" y="680" class="muted" style="font-size:13px">/tesoreria-recaudacion</text>
+<rect x="775" y="320" width="260" height="490" rx="8" class="focus"/>
+<text x="795" y="356" class="title">Servicios Next.js</text>
+<text x="795" y="384" class="small muted">Servidor · Server Actions</text>
+<text x="795" y="426" font-size="17" font-weight="650">Acceso y sesiones</text>
+<text x="795" y="451" class="small muted">Better Auth · rol / unidad</text>
+<text x="795" y="494" font-size="17" font-weight="650">Pedidos y pagos</text>
+<text x="795" y="519" class="small muted">Precios · stock · cuotas</text>
+<text x="795" y="562" font-size="17" font-weight="650">Tesorería Recaudación</text>
+<text x="795" y="587" class="small muted">Observaciones · PDF</text>
+<text x="795" y="630" font-size="17" font-weight="650">Auditoría / Google</text>
+<text x="795" y="655" class="small muted">Historial · Drive / Gmail</text>
+<path d="M795 688H1015" stroke="#dfcfef"/>
+<text x="795" y="717" font-size="17" font-weight="650">Cron diario protegido</text>
+<text x="795" y="743" class="small muted">Solo permisos Drive</text>
+<text x="795" y="783" class="small muted">Google fuera de locks</text>
+<rect x="1160" y="320" width="320" height="90" rx="8" class="node"/>
+<text x="1182" y="355" class="title">Google OAuth</text>
+<text x="1182" y="385" class="body muted">Solo identidad del personal</text>
+<path d="M1160 468 C1160 446 1480 446 1480 468 V537 C1480 559 1160 559 1160 537 Z" class="focus"/><ellipse cx="1320" cy="468" rx="160" ry="17" fill="#f7f0fd" stroke="#6802c1" stroke-width="1.5"/>
+<text x="1182" y="503" class="title">PostgreSQL · Neon</text>
+<text x="1182" y="531" class="body muted">Negocio · usuarios · auditoría</text>
+<rect x="1160" y="590" width="320" height="90" rx="8" class="node"/>
+<text x="1182" y="625" class="title">Google Drive privado</text>
+<text x="1182" y="655" class="body muted">Recibos · PDF · evidencias</text>
+<rect x="1160" y="720" width="320" height="90" rx="8" class="node"/>
+<text x="1182" y="755" class="title">Gmail</text>
+<text x="1182" y="785" class="body muted">Evento nuevo · sin cola</text>
+<rect x="387.0" y="362" width="66" height="22" fill="white"/>
+<text x="420" y="377" class="label" text-anchor="middle">iframe</text>
+<rect x="391.0" y="622" width="58" height="22" fill="white"/>
+<text x="420" y="637" class="label" text-anchor="middle">HTTPS</text>
+<rect x="697.0" y="362" width="66" height="22" fill="white"/>
+<text x="730" y="377" class="label" text-anchor="middle">acción</text>
+<rect x="697.0" y="622" width="66" height="22" fill="white"/>
+<text x="730" y="637" class="label" text-anchor="middle">acción</text>
+<rect x="1052.0" y="332" width="90" height="22" fill="white"/>
+<text x="1097" y="347" class="label" text-anchor="middle">Identidad</text>
+<rect x="1052.0" y="467" width="90" height="22" fill="white"/>
+<text x="1097" y="482" class="label" text-anchor="middle">SQL / TLS</text>
+<rect x="1052.0" y="602" width="90" height="22" fill="white"/>
+<text x="1097" y="617" class="label" text-anchor="middle">API / ACL</text>
+<rect x="1048.0" y="732" width="98" height="22" fill="white"/>
+<text x="1097" y="747" class="label" text-anchor="middle">API / MIME</text>
+<rect x="60" y="895" width="1480" height="105" rx="8" class="node"/>
+<text x="84" y="926" class="eyebrow">RESPALDO MANUAL SEMANAL · FUERA DEL RUNTIME</text>
+<text x="84" y="957" font-size="20" font-weight="550">PostgreSQL → exportación local cifrada → carpeta Drive exclusiva de respaldos. Clave custodiada aparte.</text>
+<text x="84" y="983" class="small muted">Procedimiento definido; destino, cifrado y restauración por validar. No hay backup automático desplegado.</text>
+<text x="60" y="1044" class="zone-label">CÓMO LEER EL DIAGRAMA</text>
+<rect x="60" y="1065" width="27" height="20" rx="3" class="node"/>
+<text x="100" y="1081" class="small muted">Componente</text>
+<path d="M275 1075H330" class="line"/>
+<text x="345" y="1081" class="small muted">Utiliza / invoca</text>
+<path d="M545 1075H600" class="line dash"/>
+<text x="615" y="1081" class="small muted">Despliegue</text>
+<rect x="790" y="1065" width="27" height="20" rx="3" class="zone"/>
+<text x="830" y="1081" class="small muted">Límite de proveedor</text>
+<rect x="1135" y="1065" width="27" height="20" rx="3" class="focus"/>
+<text x="1175" y="1081" class="small muted">Componente central</text>
+<text x="60" y="1128" class="small muted">Las respuestas se omiten para facilitar la lectura. Un límite de proveedor no implica una VPC privada.</text>
+<text x="60" y="1154" class="small muted">APIs Drive/Gmail: OAuth propietario separado del login. Documentación: 01 Arquitectura / 04 Guía de uso.</text>
+</svg>

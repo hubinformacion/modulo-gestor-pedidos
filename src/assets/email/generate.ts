@@ -1,7 +1,8 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import sharp from "sharp";
 
-// Vector sources and transparent PNGs; generation is local, never during send.
+// SVG source stays in this generator; only used transparent PNGs are exported.
+// Generation is local, never during send.
 const book = '<path d="M48 66c12-5 22-5 32 0 10-5 20-5 32 0V34c-12-5-22-5-32 0-10-5-20-5-32 0v32Zm32-32v32m-24-22 16 2m-16 8 16 2m16-10 16-2m-16 12 16-2"/>';
 const check = '<circle cx="106" cy="34" r="14"/><path d="m99 34 5 5 9-11"/>';
 const checkCutout = '<circle cx="106" cy="34" r="15" fill="black"/>';
@@ -22,7 +23,6 @@ for (const [state, icon] of Object.entries(icons)) {
   // A mask cuts out overlapped strokes without painting a white badge backing.
   const mask = icon.cutout ? `<defs><mask id="cutout" maskUnits="userSpaceOnUse" x="0" y="0" width="160" height="96"><rect width="160" height="96" fill="white"/>${icon.cutout}</mask></defs>` : "";
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="96" viewBox="0 0 160 96">${mask}<g stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"><g${icon.cutout ? ' mask="url(#cutout)"' : ""}>${icon.body}</g>${icon.overlay ?? ""}</g></svg>`;
-  await writeFile(new URL(`${state}.svg`, folder), svg);
   await sharp(Buffer.from(svg)).png().toFile(new URL(`${state}.png`, folder).pathname);
   console.log(`Ilustración generada: ${state}`);
 }
