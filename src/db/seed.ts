@@ -4,7 +4,7 @@ import { drizzle } from "drizzle-orm/neon-serverless";
 import { sql } from "drizzle-orm";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
-import { authorizedEmails, bankAccounts, campuses } from "./schema";
+import { authorizedEmails, bankAccounts, campuses, orderAdmissionPolicy } from "./schema";
 import { initialBankAccounts, initialCampuses } from "./seed-data";
 import { MASTER_EMAIL } from "../lib/access-policy";
 import { getDatabaseUrl } from "../lib/env";
@@ -25,6 +25,7 @@ export async function seedConfiguration(tx: SeedConnection) {
   }));
   await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
   await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('gestor-pedidos-seed'))`);
+  await tx.insert(orderAdmissionPolicy).values({ id: "orders" }).onConflictDoNothing();
   const master = await tx.insert(authorizedEmails).values({ email: MASTER_EMAIL, addedBy: MASTER_EMAIL }).onConflictDoNothing({ target: authorizedEmails.email }).returning({ email: authorizedEmails.email });
   const accounts = await tx.insert(bankAccounts).values(banks).onConflictDoNothing().returning({ id: bankAccounts.id });
   const sites = await tx.insert(campuses).values(locations).onConflictDoNothing().returning({ id: campuses.id });

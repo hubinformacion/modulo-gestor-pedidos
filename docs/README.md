@@ -22,3 +22,14 @@ Documentación mantenida junto al código para la evaluación de TI y el uso del
 5. Demostración de los casos de uso con información autorizada, evitando datos personales en capturas.
 
 El responsable técnico debe actualizar los documentos al cambiar rutas, autorización, estructura o proveedores. Las guías interactivas existentes en `/admin/guia` y `/tesoreria-recaudacion/guia` complementan estos manuales.
+
+## Responsables designados
+
+| Función | Responsable | Contacto institucional |
+| --- | --- | --- |
+| Funcional | Jullisa del Pilar Falla Aguirre, Coordinadora de Fondo Editorial | jfalla@continental.edu.pe |
+| Técnica | Fredy Paolo Romero Espinoza, Asistente de Plataformas de Hub de Información y Fondo Editorial | fromeror@continental.edu.pe |
+
+La responsable funcional valida procedimientos y tratamiento de información; el responsable técnico coordina configuración, accesos de infraestructura, respaldos e incidentes. Esta designación documental no concede acceso a la aplicación ni a los proveedores.
+
+Política operativa indicada: conservación indefinida de información de negocio, copia manual semanal, RPO objetivo de siete días y RTO objetivo de cuatro horas. Véanse los límites y el procedimiento en [operación](operacion.md); el cumplimiento del RTO requiere una restauración medida.

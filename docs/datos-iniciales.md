@@ -33,6 +33,8 @@ La fuente versionada es [src/db/seed-data.ts](../src/db/seed-data.ts); el correo
 
 Nunca enviar secretos OAuth, credenciales SQL ni tokens de seguimiento para completar este inventario. Las cuentas bancarias son destinos de depósito; no se requieren claves bancarias.
 
+La configuración inicial también incluye los cinco límites de admisión aprobados: 3/correo/15 min, 10/correo/día, 20/IP/15 min, 200 globales/día y 3 pedidos impagos/correo. Son editables por el maestro en Seguridad; el seed no sobrescribe los valores configurados.
+
 ## Comportamiento de instalación y seed
 
 `pnpm db:setup` instala el esquema en una BD vacía y siembra la configuración en la misma transacción. En una BD existente compara su estructura con el esquema inicial usando un esquema de referencia que se revierte; solo si coincide siembra faltantes, sin sobrescribir filas. Ante discrepancias aborta sin actualizar estructura ni datos.

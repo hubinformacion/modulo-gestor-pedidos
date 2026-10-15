@@ -161,7 +161,7 @@ CREATE TABLE "drive_file_reader_grants" (
 CREATE TABLE "drive_reader_grants" (
 	"folder_id" text NOT NULL,
 	"email" text NOT NULL,
-	"permission_id" text NOT NULL,
+	"permission_id" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "drive_reader_grants_folder_id_email_pk" PRIMARY KEY("folder_id","email")
 );
@@ -174,6 +174,35 @@ CREATE TABLE "order_activity" (
 	"event_type" text NOT NULL,
 	"detail" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "order_admission_changes" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"actor_email" text NOT NULL,
+	"previous" jsonb NOT NULL,
+	"next" jsonb NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "order_admission_counters" (
+	"key" text PRIMARY KEY NOT NULL,
+	"window_start" timestamp with time zone NOT NULL,
+	"count" integer NOT NULL,
+	CONSTRAINT "order_admission_counter_positive" CHECK ("order_admission_counters"."count" > 0)
+);
+
+CREATE TABLE "order_admission_policy" (
+	"id" text PRIMARY KEY DEFAULT 'orders' NOT NULL,
+	"email_quarter_hour" integer DEFAULT 3 NOT NULL,
+	"email_day" integer DEFAULT 10 NOT NULL,
+	"ip_quarter_hour" integer DEFAULT 20 NOT NULL,
+	"global_day" integer DEFAULT 200 NOT NULL,
+	"pending_email" integer DEFAULT 3 NOT NULL,
+	"updated_by" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "order_admission_singleton" CHECK ("order_admission_policy"."id" = 'orders'),
+	CONSTRAINT "order_admission_positive_limits" CHECK ("order_admission_policy"."email_quarter_hour" BETWEEN 1 AND 100000 AND "order_admission_policy"."email_day" BETWEEN 1 AND 100000 AND "order_admission_policy"."ip_quarter_hour" BETWEEN 1 AND 100000 AND "order_admission_policy"."global_day" BETWEEN 1 AND 100000 AND "order_admission_policy"."pending_email" BETWEEN 1 AND 100000)
 );
 
 CREATE TABLE "order_counters" (
@@ -606,6 +635,7 @@ CREATE INDEX "order_items_book_id_idx" ON "order_items" USING btree ("book_id");
 CREATE INDEX "order_notifications_order_idx" ON "order_notifications" USING btree ("order_id","created_at");
 CREATE INDEX "orders_assigned_status_idx" ON "orders" USING btree ("assigned_to","order_status");
 CREATE INDEX "orders_created_at_idx" ON "orders" USING btree ("created_at");
+CREATE INDEX "orders_email_status_idx" ON "orders" USING btree ("customer_email","order_status");
 CREATE INDEX "orders_status_created_at_idx" ON "orders" USING btree ("order_status","created_at");
 CREATE INDEX "orders_payment_status_idx" ON "orders" USING btree ("payment_status_universidad","payment_status_instituto");
 CREATE INDEX "orders_customer_campus_idx" ON "orders" USING btree ("customer_campus");

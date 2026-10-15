@@ -210,7 +210,7 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
   .workspace-flow-nodes, .workspace-flow-nodes:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .workspace-metric-card { padding: 20px; }
 }
-.workspace-settings-tabs { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 10px; border-bottom: 1px solid var(--workspace-line); padding-bottom: 20px; }
+.workspace-settings-tabs { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 10px; border-bottom: 1px solid var(--workspace-line); padding-bottom: 20px; }
 .workspace-settings-tab { display: flex; min-height: 78px; align-items: center; gap: 12px; padding: 14px; border: 1px solid var(--workspace-line); border-radius: 12px; color: #81748b; }
 .workspace-settings-tab:hover { background: #fcfaff; color: var(--primary); }
 .workspace-settings-tab[data-active] { border-color: #d8b5f0; background: #f6effc; color: var(--primary); }

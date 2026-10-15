@@ -140,6 +140,7 @@ export const orders = pgTable("orders", {
 }, (table) => [
   index("orders_assigned_status_idx").on(table.assignedTo, table.orderStatus),
   index("orders_created_at_idx").on(table.createdAt),
+  index("orders_email_status_idx").on(table.customerEmail, table.orderStatus),
   index("orders_status_created_at_idx").on(table.orderStatus, table.createdAt),
   index("orders_payment_status_idx").on(table.paymentStatusUniversidad, table.paymentStatusInstituto),
   index("orders_customer_campus_idx").on(table.customerCampus),
@@ -318,7 +319,7 @@ export const paymentGuides = pgTable("payment_guides", {
 export const driveReaderGrants = pgTable("drive_reader_grants", {
   folderId: text("folder_id").notNull(),
   email: text("email").notNull(),
-  permissionId: text("permission_id").notNull(),
+  permissionId: text("permission_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [primaryKey({ columns: [table.folderId, table.email] }), uniqueIndex("drive_reader_grants_permission_unique").on(table.folderId, table.permissionId)]);
 
@@ -501,3 +502,27 @@ export const treasurySupportingFiles = pgTable("treasury_supporting_files", {
   actorId: text("actor_id").notNull().references(() => authUser.id, { onDelete: "restrict" }),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("treasury_supporting_request_idx").on(table.requestId), check("treasury_supporting_size", sql`${table.size} BETWEEN 1 AND 3145728`)]);
+
+// Operational admission policy, independent of business pricing and stock.
+export const orderAdmissionPolicy = pgTable("order_admission_policy", {
+  id: text("id").primaryKey().default("orders"),
+  emailQuarterHour: integer("email_quarter_hour").notNull().default(3),
+  emailDay: integer("email_day").notNull().default(10),
+  ipQuarterHour: integer("ip_quarter_hour").notNull().default(20),
+  globalDay: integer("global_day").notNull().default(200),
+  pendingEmail: integer("pending_email").notNull().default(3),
+  updatedBy: text("updated_by"),
+  ...timestamps(),
+}, (t) => [check("order_admission_singleton", sql`${t.id} = 'orders'`), check("order_admission_positive_limits", sql`${t.emailQuarterHour} BETWEEN 1 AND 100000 AND ${t.emailDay} BETWEEN 1 AND 100000 AND ${t.ipQuarterHour} BETWEEN 1 AND 100000 AND ${t.globalDay} BETWEEN 1 AND 100000 AND ${t.pendingEmail} BETWEEN 1 AND 100000`)]);
+export const orderAdmissionCounters = pgTable("order_admission_counters", {
+  key: text("key").primaryKey(),
+  windowStart: timestamp("window_start", { withTimezone: true }).notNull(),
+  count: integer("count").notNull(),
+}, (t) => [check("order_admission_counter_positive", sql`${t.count} > 0`)]);
+export const orderAdmissionChanges = pgTable("order_admission_changes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  actorEmail: text("actor_email").notNull(),
+  previous: jsonb("previous").notNull(),
+  next: jsonb("next").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});

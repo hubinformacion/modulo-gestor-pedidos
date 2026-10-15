@@ -100,3 +100,5 @@ pnpm build
 `pnpm db:schema:export` regenera **solo el SQL inicial** desde Drizzle; revisar su diff, no usarlo como actualización de una BD con datos. `pnpm db:auth:generate` mantiene las tablas Better Auth por CLI. Los PDF de pago y PNG de correo bajo `src/assets` son recursos de producción; no eliminarlos como archivos temporales.
 
 El [documento de seguridad](docs/seguridad.md) distingue controles implementados, riesgos pendientes de validación y evidencias de Neon/Vercel/Workspace que TI debe acreditar. La revisión de código no certifica backups, cifrado efectivo, WAF o permisos reales. Consultar antes de operar con datos sensibles; no probar mediante pedidos/envíos ficticios en producción.
+
+Los límites de creación se administran en **Configuración → Seguridad**, exclusivamente por el correo maestro, con historial de cambios. Son compartidos en BD y no requieren redeploy. El seed conserva la configuración personalizada. Responsables, conservación indefinida y respaldo manual semanal (RPO objetivo siete días, RTO objetivo cuatro horas) están en [el expediente técnico](docs/README.md).

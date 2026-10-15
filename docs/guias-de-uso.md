@@ -52,6 +52,8 @@ Al revocar, se cierran sesiones y liberan atenciones abiertas; el historial cerr
 
 Mantener cuentas, campus y guías vigentes. Una modificación por interfaz no se copia al seed: informar al responsable técnico si también debe formar parte de futuras instalaciones. No escribir claves bancarias, contraseñas, tokens ni datos personales innecesarios en notas o campos de configuración.
 
+En la pestaña **Seguridad**, el maestro puede ajustar cuotas por correo, conexión, día y pedidos pendientes. Revisar los cinco valores y pulsar **Guardar límites**; el cambio queda auditado y se aplica a pedidos nuevos, sin redeploy. Los demás gestores solo consultan. Considerar que varios compradores de un campus pueden compartir IP. Si aparece un conflicto, actualizar antes de volver a guardar.
+
 ## Dudas e incidencias
 
-Contactar al responsable funcional o técnico designado por la institución; sus datos están pendientes de incorporar al expediente. Reportar pantalla, hora, acción y código seguro si aparece. No adjuntar secretos, documentos de identidad completos, enlaces privados de compradores ni comprobantes sin autorización. No crear pedidos adicionales ni repetir depósitos para diagnosticar un problema.
+Contactar a Jullisa del Pilar Falla Aguirre (funcional, jfalla@continental.edu.pe) o a Fredy Paolo Romero Espinoza (técnico, fromeror@continental.edu.pe). Reportar pantalla, hora, acción y código seguro si aparece. No adjuntar secretos, documentos de identidad completos, enlaces privados de compradores ni comprobantes sin autorización. No crear pedidos adicionales ni repetir depósitos para diagnosticar un problema.

@@ -1,4 +1,5 @@
 import "server-only";
+import { admitOrder } from "./admission";
 import { decoratePromotions, loadPromotionRules } from "@/lib/discounts/catalog";
 import { assertCoupon } from "@/lib/discounts/coupons";
 import { createHash } from "node:crypto";
@@ -15,7 +16,7 @@ import { centsToDecimal } from "./money";
 import { resolveLocation } from "./geography";
 import { consentVersion, OrderInputError, submissionSchema } from "./submission";
 
-export async function createOrder(input: unknown) {
+export async function createOrder(input: unknown, requestHeaders: Pick<Headers, "get">) {
   const parsed = submissionSchema.safeParse(input);
   if (!parsed.success) throw new OrderInputError("Revisa tus datos y acepta la política para continuar.");
   const data = parsed.data;
@@ -50,6 +51,7 @@ export async function createOrder(input: unknown) {
     const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), coupon ? { code: coupon.code, percent: coupon.percent } : null);
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
     if (data.expectedQuote && data.expectedQuote !== quoteStamp(quote)) throw new OrderInputError("Los precios o promociones cambiaron. Actualiza los precios y revisa el resumen antes de enviar.");
+    await admitOrder(tx, buyer.email, requestHeaders);
     const { rows: [clock] } = await tx.execute<{ year: number }>(sql`SELECT extract(year FROM current_timestamp AT TIME ZONE 'America/Lima')::int AS year`);
     const year = clock.year;
     // UPSERT acquires the year's row lock. Rollback also rolls back its increment.

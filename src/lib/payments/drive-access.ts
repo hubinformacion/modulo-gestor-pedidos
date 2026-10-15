@@ -11,43 +11,72 @@ export async function synchronizeDriveReaders(): Promise<void> {
   if (!folderId) return;
   const owner = process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase();
   const api = drive({ version: "v3", auth: ownerAuth() });
-  // A service-only advisory lock orders concurrent reconciliation jobs. Google
-  // calls never lock orders/stock/auth rows. Individual ACL records commit as
-  // each Google operation succeeds, preserving recovery after partial failure.
+  // Serializes application ACL operations only. Administrators must coordinate
+  // manual edits of the same principal; Google offers no conditional ACL delete.
   await withDatabase((db) => db.transaction(async (tx) => {
     await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
     await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`drive-readers:${folderId}`}))`);
-    const allowed = new Set((await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.role, "gestor"))).map((row) => row.email));
-    const managed = await tx.select().from(driveReaderGrants).where(eq(driveReaderGrants.folderId, folderId));
+    const members = await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(eq(authorizedEmails.role, "gestor"));
+    const grants = await tx.select().from(driveReaderGrants).where(eq(driveReaderGrants.folderId, folderId));
     const permissions: drive_v3.Schema$Permission[] = [];
     let pageToken: string | undefined;
     do {
       const response = await api.permissions.list({ fileId: folderId, supportsAllDrives: true, pageSize: 100, pageToken, fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails)" }, { timeout: 15_000, retry: false });
       permissions.push(...(response.data.permissions ?? [])); pageToken = response.data.nextPageToken ?? undefined;
     } while (pageToken);
-    for (const grant of managed) {
-      if (allowed.has(grant.email) && grant.email !== owner) continue;
-      const effective = permissions.find((item) => item.id === grant.permissionId);
-      // A reader may have become an organizational writer/owner or inherited
-      // permission after creation. Never revoke those grants using stale state.
-      if (effective?.role === "reader" && !effective.permissionDetails?.some((detail) => detail.inherited)) {
-        try { await api.permissions.delete({ fileId: folderId, permissionId: grant.permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
+    const allowed = async (email: string) => email !== owner && (await tx.select({ email: authorizedEmails.email }).from(authorizedEmails).where(and(eq(authorizedEmails.email, email), eq(authorizedEmails.role, "gestor")))).length > 0;
+    const condition = (email: string) => and(eq(driveReaderGrants.folderId, folderId), eq(driveReaderGrants.email, email));
+    const forget = (email: string) => withDatabase((writer) => writer.delete(driveReaderGrants).where(condition(email)));
+    const remember = (email: string, permissionId: string | null) => withDatabase((writer) => writer.insert(driveReaderGrants).values({ folderId, email, permissionId }).onConflictDoUpdate({ target: [driveReaderGrants.folderId, driveReaderGrants.email], set: { permissionId } }));
+    const directReader = (permission: drive_v3.Schema$Permission, email: string) => permission.type === "user" && permission.emailAddress?.toLowerCase() === email && permission.role === "reader" && !permission.permissionDetails?.some((detail) => detail.inherited);
+    const readCurrent = async (permissionId: string) => {
+      try { return (await api.permissions.get({ fileId: folderId, permissionId, supportsAllDrives: true, fields: "id,type,role,emailAddress,permissionDetails" }, { timeout: 15_000, retry: false })).data; }
+      catch (error) { if (safeErrorDetails(error).status === 404) return null; throw error; }
+    };
+    const revoke = async (email: string, permissionId: string) => {
+      // Inspect current role/inheritance immediately before deleting, rather
+      // than trusting the original list or a historical database role.
+      const current = await readCurrent(permissionId);
+      if (current && directReader(current, email)) {
+        try { await api.permissions.delete({ fileId: folderId, permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
         catch (error) { if (safeErrorDetails(error).status !== 404) throw error; }
       }
-      await withDatabase((writer) => writer.delete(driveReaderGrants).where(and(eq(driveReaderGrants.folderId, folderId), eq(driveReaderGrants.email, grant.email))));
-    }
-    for (const email of allowed) {
-      if (email === owner) continue;
-      const existing = permissions.find((item) => item.type === "user" && item.emailAddress?.toLowerCase() === email);
-      // Only direct reader grants belong to this application.
-      if (existing && (existing.role !== "reader" || existing.permissionDetails?.some((detail) => detail.inherited))) continue;
-      let permissionId = existing?.id;
-      if (!permissionId) {
-        const granted = await api.permissions.create({ fileId: folderId, supportsAllDrives: true, sendNotificationEmail: false, requestBody: { type: "user", role: "reader", emailAddress: email }, fields: "id" }, { timeout: 15_000, retry: false });
-        permissionId = granted.data.id;
+      await forget(email);
+    };
+    const emails = [...new Set([...members.map((row) => row.email), ...grants.map((row) => row.email)])].sort();
+    for (const email of emails) {
+      const grant = grants.find((row) => row.email === email);
+      const existing = grant?.permissionId
+        ? await readCurrent(grant.permissionId)
+        : permissions.find((permission) => permission.type === "user" && permission.emailAddress?.toLowerCase() === email);
+      if (grant?.permissionId && !existing && permissions.some((permission) => permission.type === "user" && permission.emailAddress?.toLowerCase() === email)) {
+        await forget(email); // Replaced outside the application: preserve that permission.
+        continue;
       }
-      if (!permissionId) throw new Error("DRIVE_READER_ID_MISSING");
-      await withDatabase((writer) => writer.insert(driveReaderGrants).values({ folderId, email, permissionId }).onConflictDoUpdate({ target: [driveReaderGrants.folderId, driveReaderGrants.email], set: { permissionId } }));
+      if (!grant && existing) continue; // Preexisting manual permissions are never adopted.
+      if (grant && existing && !directReader(existing, email)) {
+        await forget(email); // Owner/writer/inherited/manual replacement is not ours.
+        continue;
+      }
+      if (grant && existing?.id) {
+        if (!grant.permissionId) await remember(email, existing.id); // Recover lost create response.
+        if (!await allowed(email)) await revoke(email, existing.id);
+        continue;
+      }
+      if (!await allowed(email)) {
+        // A null intent may correspond to an accepted but not yet visible
+        // provider write. Keep it for bounded ACL reconciliation after revocation.
+        if (grant?.permissionId) await forget(email);
+        continue;
+      }
+      // Commit provenance BEFORE contacting Google. A timeout or failed ACK
+      // leaves an identifiable intent, including if authorization is revoked.
+      await remember(email, null);
+      if (!await allowed(email)) continue;
+      const created = await api.permissions.create({ fileId: folderId, supportsAllDrives: true, sendNotificationEmail: false, requestBody: { type: "user", role: "reader", emailAddress: email }, fields: "id" }, { timeout: 15_000, retry: false });
+      if (!created.data.id) throw new Error("DRIVE_READER_ID_MISSING");
+      await remember(email, created.data.id);
+      if (!await allowed(email)) await revoke(email, created.data.id);
     }
   }));
   const { synchronizeCajaFileReaders } = await import("@/lib/caja/drive-access");

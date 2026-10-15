@@ -55,12 +55,12 @@ La última relación es **lógica por correo**, no una FK. El maestro se puede a
 | Grupo | Tablas principales |
 | --- | --- |
 | Identidad | `user`, `session`, `account`, `verification`, `authorized_emails` |
-| Configuración | `campuses`, `bank_accounts`, `treasury_mailboxes` |
+| Configuración | `campuses`, `bank_accounts`, `treasury_mailboxes`, `order_admission_policy` |
 | Comercio | `books`, `orders`, `order_items`, `order_counters`, `payment_guides` |
 | Descuentos | `promotions`, `promotion_books`, `coupons`, `coupon_redemptions` |
 | Comprobantes y evidencias | `payment_uploads`, `payment_receipts`, `pickup_evidence`, `treasury_supporting_files` |
 | Tesorería | `caja_requests`, `sale_documents`, `sale_document_batches`, `treasury_observations`, `treasury_notes`, `treasury_activity` |
-| Auditoría y permisos | `order_activity`, `order_emails`, `order_notifications`, `caja_notifications`, `drive_reader_grants`, `drive_file_reader_grants` |
+| Auditoría y permisos | `order_activity`, `order_emails`, `order_notifications`, `caja_notifications`, `drive_reader_grants`, `drive_file_reader_grants`, `order_admission_changes` |
 
 Los nombres y precios de compra, cuentas, guía, consentimiento y destino se conservan como snapshots. Los importes usan `numeric(12,2)` y cálculo en céntimos. Las revisiones de documentos se conservan; cargar una corrección no borra el documento finalizado anterior.
 
@@ -74,6 +74,8 @@ No incluir datos reales en documentación, capturas, tickets, mensajes de error 
 
 ## Retención y eliminación
 
-**Pendiente de aprobación institucional:** plazo de conservación de pedidos, documentos tributarios, depósitos, evidencias fotográficas, notas, correo y backups; responsable que autoriza eliminación; atención de solicitudes del titular y suspensión por obligaciones de conservación.
+**Decisión operativa comunicada:** conservar indefinidamente pedidos, documentos, comprobantes, evidencias e historial; no implementar borrado automático. Retención significa cuánto se conserva la información de negocio, no la frecuencia de respaldo. Esta decisión no sustituye la validación de TI/legal sobre finalidad, obligaciones y atención de solicitudes de titulares. Las excepciones deben resolverse institucionalmente, sin introducir purgas automáticas.
+
+Los contadores de admisión son estado técnico: conservan claves HMAC y el último intervalo por identidad, sin IP/correo en texto claro; su cuenta se reinicia al cambiar el intervalo. No constituyen historial de compras ni sustituyen la auditoría. Los cambios de límites guardan actor, fecha y valores anteriores/nuevos. Rotar BETTER_AUTH_SECRET cambia claves de correo/IP y reinicia su asociación técnica; la cuota global y los pendientes de negocio se conservan.
 
 La plataforma no tiene una política automática de purga/anonimización. Una copia en Gmail o Drive no desaparece al eliminar una fila de BD. La recuperación de respaldos puede reintroducir autorizaciones revocadas y referencias antiguas; reconciliar accesos antes de reabrir tráfico. El seed restaura configuración inicial, no reemplaza un respaldo.

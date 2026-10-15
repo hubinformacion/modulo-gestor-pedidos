@@ -4,14 +4,14 @@
 
 Revisión de código guiada por [Cloudflare security-audit-skill](https://github.com/cloudflare/security-audit-skill/tree/main/skills/security-audit), con reconocimiento, búsqueda por límites de confianza, crítica de cobertura y verificación independiente de candidatos. Se revisó la base `67a0bd0` y se añadió revisión del instalador propuesto. El inventario exacto y las limitaciones de cobertura se conservan en el expediente de auditoría externo al repositorio; este documento mantiene la conclusión y el tratamiento recomendado.
 
-**No se demostraron vulnerabilidades mediante ejecución en esta revisión. Se retuvieron dos riesgos sustentados en fuente que requieren validación.** Esto no equivale a que el sistema esté libre de vulnerabilidades, ni a certificación de seguridad, pentest o verificación del despliegue. No se realizaron ataques, envíos, descargas ni cambios de permisos contra los servicios operativos. La actualización de advisories del registro de dependencias no formó parte de esta revisión de fuente.
+**La revisión inicial no demostró vulnerabilidades mediante ejecución y retuvo dos riesgos sustentados en fuente.** Ambos tienen ahora correcciones de código en esta propuesta. La validación del despliegue, proveedores y recuperación sigue pendiente; esto no equivale a certificación ni pentest. No se ejecutaron ataques, correos ni cambios de permisos contra Google operativo.
 
-| Riesgo pendiente de validación | Evidencia de código | Hecho por resolver y tratamiento propuesto |
+| Riesgo revisado | Tratamiento implementado | Evidencia todavía necesaria |
 | --- | --- | --- |
-| Creación anónima sin cuota agregada visible | `src/app/pedido/actions.ts` → `src/lib/orders/create.ts` → correo | UUID/idempotencia, stock y límites de tamaño acotan una petición, pero no pedidos independientes. TI debe comprobar WAF/bot/cuotas efectivas. Definir admisión y reserva impaga con límites antes de exponer catálogo operativo; validar con servicios locales ficticios, nunca con compras/correos reales. |
-| Permiso de carpeta creado antes de registrar intención durable | `src/lib/payments/drive-access.ts`, `src/db/schema.ts:driveReaderGrants` | Una aceptación de Google con respuesta perdida o fallo de persistencia, seguida de revocación antes de adopción, podría dejar un reader no registrado. Requiere validación aislada de la secuencia y revisión de permisos reales por el propietario. Corregir mediante intención durable previa, recuperación por email/carpeta y retiro confirmado; conservar owners/writers/heredados. |
+| Creación anónima sin cuota agregada visible | Admisión dentro de la transacción, cuotas compartidas por correo/IP/global y pendientes, conservación de idempotencia. Configuración dinámica exclusiva del maestro y auditoría de cambios. | Validación funcional controlada del despliegue; inspección de firewall Hobby y consumo. No protege por sí solo de todo tráfico HTTP. |
+| Permiso de carpeta creado antes de registrar intención durable | Intención comprometida antes de Google, ID nullable, recuperación por carpeta/email incluso tras revocación; no adopta permisos manuales preexistentes y relee rol/herencia antes de retirar. | Validación controlada de pérdida de respuesta y revocación; inventario del propietario de permisos heredados/manuales y registros anteriores a la corrección. |
 
-Estos registros son **pendientes de validación, sin severidad asignada**: falta el resultado acotado y/o evidencia externa decisiva. No son una afirmación de que ya ocurrió exposición. El segundo requiere prioridad de tratamiento por su relación con la revocación de acceso a comprobantes. No eliminar automáticamente permisos manuales desconocidos como parte de una revisión.
+Estado: **tratamiento en código, sin afirmar verificación completa en producción**. El expediente inicial externo conserva sus conclusiones originales; no se ha convertido una hipótesis en un incidente demostrado. No eliminar permisos manuales desconocidos como parte de una revisión.
 
 ## Controles implementados en fuente
 
@@ -20,6 +20,7 @@ Estos registros son **pendientes de validación, sin severidad asignada**: falta
 | Identidad Google y acceso cerrado | Better Auth, email verificado, lista autorizada en BD y vinculación de cuentas desactivada | MFA y seguridad de la identidad dependen de Google Workspace |
 | Autorización por recurso | Proxy, páginas, acciones y transacciones vuelven a comprobar sesión/rol/unidad/asignación | Aplicación usa un rol de servicio SQL; no hay RLS que aísle gestores como usuarios PostgreSQL |
 | Revocación de aplicación | Elimina sesiones y libera atención abierta en transacción | Retiro de permisos Google tiene consistencia separada y puede fallar |
+| Admisión pública | Cuotas transaccionales compartidas, claves HMAC de IP/correo, edición maestra auditada | Acota pedidos aceptados, no todo consumo HTTP; firewall efectivo por acreditar |
 | Protección de transiciones | Locks, versión, responsable y estados permitidos; stock/cupones una vez | No acredita comportamiento concurrente sin validación de ejecución |
 | Entradas y SQL | Zod, campos permitidos y consultas Drizzle parametrizadas | Validación sintáctica no demuestra identidad del comprador ni legitimidad de un depósito |
 | Archivos | MIME, firma inicial, hash, tamaño máximo, pertenencia y ciclo de documento | No hay antivirus/CDR ni garantía de contenido PDF inocuo |
@@ -48,7 +49,7 @@ No compartir valores secretos para completar esta revisión. Bastan evidencia re
 
 | Área | Evidencia requerida |
 | --- | --- |
-| Gobierno | Responsable técnico/funcional, inventario de encargados/proveedores, finalidad, retención, respuesta al titular e incidentes |
+| Gobierno | Responsables designados y conservación indefinida documentados; validar finalidad, proveedores, respuesta al titular e incidentes |
 | Neon | Proyecto/rama productiva y región, rol runtime y privilegios efectivos, quién administra, MFA, conexión segura, ventana de restauración del plan y evidencia de restauración aislada |
 | Vercel | Miembros/roles/MFA, ramas/entornos separados, secretos solo donde corresponda, protección de previews, WAF y límites de abuso/coste, retención/redacción de logs |
 | Google Workspace | Custodia/MFA/recuperación de cuenta propietaria, consentimiento OAuth, scopes, acceso de buzones, carpeta/archivo sin enlace público y política organizacional de compartición |
@@ -58,10 +59,10 @@ No compartir valores secretos para completar esta revisión. Bastan evidencia re
 
 ## Mejoras preventivas recomendadas
 
-1. Resolver/validar los dos riesgos de la tabla inicial y documentar protecciones de admisión y revocación.
+1. Validar en entorno controlado los tratamientos de la tabla inicial y documentar protecciones efectivas de Vercel y permisos de Google.
 2. Proteger cambios de campus/cuentas contra formularios obsoletos y registrar actor/cambio de configuración financiera.
 3. Separar consulta pública de seguimiento de metadatos internos de correo para reducir una futura serialización accidental; hoy las props públicas revisadas se proyectan explícitamente.
-4. Definir retención y política de enlace privado (expiración/rotación/revocación si corresponde), y considerar inspección de PDFs según exigencia de TI.
+4. Validar institucionalmente la conservación indefinida aprobada operativamente y definir política de enlace privado (expiración/rotación/revocación si corresponde), y considerar inspección de PDFs según exigencia de TI.
 5. Evaluar una CSP de scripts y una política de frame más restrictiva para rutas internas/login. No desplegar directivas que rompan Next, Maps o WordPress sin validación de compatibilidad.
 6. Revisar advisories al actualizar dependencias y verificar correcciones con compatibilidad. No introducir versiones inexistentes ni overrides globales como una “solución” documental.
 

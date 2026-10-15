@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createOrder } from "@/lib/orders/create";
 import { deliverOrderEmail } from "@/lib/orders/email";
@@ -8,7 +9,7 @@ import { OrderInputError, submissionSchema, type OrderCreationResult } from "@/l
 export async function createOrderAction(input: unknown): Promise<OrderCreationResult> {
   if (!submissionSchema.safeParse(input).success) return { success: false, message: "Revisa los datos del pedido y acepta la política." };
   try {
-    const { trackingToken, created } = await createOrder(input);
+    const { trackingToken, created } = await createOrder(input, await headers());
     const mailed = !created || await deliverOrderEmail(trackingToken, null);
     revalidatePath("/pedido");
     return { success: true, trackingToken, ...(!mailed ? { mailWarning: "El pedido quedó registrado, pero no se pudo enviar el correo. Conserva tu enlace de seguimiento; no se reintentará el envío automáticamente." } : {}) };

@@ -1,10 +1,12 @@
+import { SecuritySettings } from "@/components/admin/security-settings";
+import { admissionPolicySchema } from "@/lib/orders/admission-policy";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import type { Metadata } from "next";
 import { treasuryScopes } from "@/lib/treasury/scope";
 import { CajaSettings } from "@/components/caja/settings";
 import { asc } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes } from "@/db/schema";
+import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes, orderAdmissionPolicy } from "@/db/schema";
 import { requirePageAccess, getAuthorizedSession } from "@/lib/access";
 import { isMasterEmail } from "@/lib/access-policy";
 import { headers } from "next/headers";
@@ -25,19 +27,23 @@ export default async function AuthorizedEmailsPage() {
   const requestHeaders = await headers();
   // Recheck at the data source, including when a layout is reused by Next.js.
   await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-  const [rows, campusRows, bankRows, mailboxRows] = await withReadDatabase(async (db) => {
+  const [rows, campusRows, bankRows, mailboxRows, policyRows] = await withReadDatabase(async (db) => {
     return Promise.all([
       db.select().from(authorizedEmails).orderBy(asc(authorizedEmails.createdAt), asc(authorizedEmails.email)),
       db.select().from(campuses).orderBy(asc(campuses.name)),
       db.select().from(bankAccounts).orderBy(asc(bankAccounts.publisherImprint), asc(bankAccounts.bank)),
       db.select().from(treasuryMailboxes),
+      db.select().from(orderAdmissionPolicy),
     ]);
   });
+  const policy = policyRows[0];
+  if (!policy) throw new Error("ADMISSION_POLICY_NOT_INITIALIZED");
+  const policyValues = admissionPolicySchema.parse({ emailQuarterHour: policy.emailQuarterHour, emailDay: policy.emailDay, ipQuarterHour: policy.ipQuarterHour, globalDay: policy.globalDay, pendingEmail: policy.pendingEmail });
   const paymentSetup = await getPaymentSetupStatus();
   return (
     <>
       <WorkspacePageHeading eyebrow="Sistema" title="Configuración" description="Organiza los accesos, campus, cuentas y servicios del equipo." />
-      <SettingsTabs emails={<section aria-labelledby="emails-title">
+      <SettingsTabs security={<SecuritySettings key={policy.updatedAt.toISOString()} policy={policyValues} version={policy.updatedAt.toISOString()} updatedBy={policy.updatedBy} canManage={isMasterEmail(actor.email)} />} emails={<section aria-labelledby="emails-title">
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "gestor").map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
