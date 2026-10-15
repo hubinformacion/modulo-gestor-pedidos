@@ -40,7 +40,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-El seed solo asegura el correo maestro y es idempotente. Libros, precios, stock, campus y cuentas se administran por interfaz; no se crean datos ficticios.
+El seed incorpora el correo maestro `distribucionfe@continental.edu.pe`, las cuatro cuentas bancarias confirmadas y los ocho campus con sus direcciones y recojo en biblioteca. Es idempotente: inserta lo que falta sin sobrescribir registros existentes. Los datos iniciales están en `src/db/seed-data.ts`; la configuración vigente se edita por interfaz. Las coordenadas, el mapa exacto y la ubicación interna específica de cada biblioteca se completan en Configuración → Campus. No crea libros, pedidos ni usuarios OAuth ni realiza operaciones en Drive/Gmail.
 
 | Ruta | Uso |
 | --- | --- |
@@ -172,7 +172,7 @@ Promociones y cupones están integrados. Las migraciones conservan datos existen
 3. Verifica el contenido de las tres guías PDF y su correspondencia con las cuentas vigentes. Configuración → Integraciones comprueba presencia/formato de configuración; no confirma que el token Google siga autorizado.
 4. Pega el bloque HTML completo del iframe en WordPress y revisa ancho/altura en móvil y escritorio. La aplicación desplegada no actualiza automáticamente el bloque de WordPress.
 
-El reinicio previo a producción dejó vacíos catálogo, campus, pedidos, descuentos, buzones, avisos y usuarios/sesiones OAuth. Se conservaron únicamente las cuatro cuentas bancarias y la autorización del correo maestro `distribucionfe@continental.edu.pe`. Inicia sesión con esa cuenta, configura campus, incorpora gestores y personal/buzones de Tesorería y carga el catálogo real. Los permisos privados gestionados se reconciliaron; archivos y correos físicos de Google permanecen. No hay reinicios automáticos ni se debe repetir este borrado sobre datos operativos.
+El reinicio previo a producción dejó vacíos catálogo, campus, pedidos, descuentos, buzones, avisos y usuarios/sesiones OAuth. Se conservaron únicamente las cuatro cuentas bancarias y la autorización del correo maestro `distribucionfe@continental.edu.pe`. Inicia sesión con esa cuenta, ejecuta `pnpm db:seed` para incorporar los campus y cuentas iniciales faltantes, incorpora gestores y personal/buzones de Tesorería y carga el catálogo real. Los permisos privados gestionados se reconciliaron; archivos y correos físicos de Google permanecen. No hay reinicios automáticos ni se debe repetir este borrado sobre datos operativos.
 
 ### Vaciar únicamente pedidos al terminar las demos
 
