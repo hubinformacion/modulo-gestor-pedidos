@@ -6,6 +6,7 @@ import "./globals.css";
 import { IframeHeightBridge } from "@/components/iframe/height-bridge";
 import { getWordPressOrigins } from "@/lib/iframe/config";
 import { ToastProvider } from "@/components/toast-provider";
+import { PerformanceInsights } from "@/components/performance-insights";
 
 export const metadata: Metadata = {
   title: { default: "Gestor de pedidos", template: "%s · Gestor de pedidos" },
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div id="app-content" className="flow-root">{children}</div>
         <IframeHeightBridge allowedOrigins={getWordPressOrigins()} />
         <ToastProvider />
+        <PerformanceInsights />
       </body>
     </html>
   );
