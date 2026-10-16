@@ -66,7 +66,7 @@ Google: cliente Web, callback `<BETTER_AUTH_URL>/api/auth/callback/google`, Driv
 
 `CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos privados de Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
 
-Speed Insights está integrado con `@vercel/speed-insights` en el layout principal. Tras desplegar, revisar la pestaña **Speed Insights** del proyecto en Vercel y habilitar la opción incluida en el plan si aún no está activa; no contratar Plus automáticamente. Las métricas omiten parámetros, fragmentos y valores de tokens/IDs de las rutas. No consultan Neon ni añaden tareas programadas.
+Speed Insights está integrado con `@vercel/speed-insights` en el layout principal. Tras desplegar, revisar la pestaña **Speed Insights** del proyecto en Vercel y habilitar la opción incluida en el plan si aún no está activa; no contratar Plus automáticamente. Las métricas omiten parámetros, fragmentos y valores de tokens/IDs de las rutas. No consultan Neon ni añaden tareas programadas. Web Analytics (`@vercel/analytics`) registra visitas con el mismo filtro de privacidad; habilitarlo en **Analytics → Enable** del proyecto tras desplegar. No se envían eventos personalizados ni datos de formularios.
 
 ## WordPress y rutas
 
