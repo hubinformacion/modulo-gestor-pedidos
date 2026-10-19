@@ -41,6 +41,8 @@ En la BD actual no es necesario reinstalar ni restablecer nada. El seed ya incor
 
 Habilitar Drive API y Gmail API. Callback OAuth exacto: `https://modulo-gestor-pedidos.vercel.app/api/auth/callback/google`. Login solicita solo `openid email profile`; token propietario requiere `drive`, `gmail.send`, `gmail.metadata`. Mantener el consentimiento y la cuenta propietaria bajo gobierno institucional; un token External/Testing puede expirar a los siete días. No distribuir el refresh token a gestores.
 
+Si Drive y Gmail fallan con HTTP 400 y `reason: invalid_grant`, Google rechazó el token propietario: puede haber vencido o sido revocado. Revisar primero el estado de publicación/las políticas institucionales, volver a autorizar con el mismo cliente OAuth y los tres scopes, actualizar `GOOGLE_REFRESH_TOKEN` en Vercel (Production) y localmente, y desplegar de nuevo. No imprimir tokens ni respuestas OAuth completas. La corrección permite eventos nuevos; los correos fallidos no se reenvían automáticamente.
+
 Después del despliegue: ingresar como maestro, comprobar cuentas/guías/campus, registrar accesos y buzones, cargar catálogo real. La presencia de variables no acredita que Google acepte el token ni que los archivos sean correctos.
 
 ## WordPress

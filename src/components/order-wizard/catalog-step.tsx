@@ -45,6 +45,13 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity, at }: {
           <Button variant="link" className="mt-3 h-10" onClick={() => { setSearch(""); setFilter("todos"); }}>Limpiar búsqueda</Button>
         </div>
       ) : (
+        <div
+          key={`${filter}:${term}`}
+          role="region"
+          aria-label="Catálogo de publicaciones"
+          tabIndex={0}
+          className="max-h-[26rem] overflow-y-auto rounded-lg outline-none [scrollbar-gutter:stable] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:max-h-[32rem]"
+        >
         <ul className="divide-y divide-border border-y border-border">
           {filtered.map((book) => {
             const quantity = cart.find((item) => item.bookId === book.id)?.quantity ?? 0;
@@ -79,6 +86,7 @@ export function CatalogStep({ catalog, cart, customerType, onQuantity, at }: {
             );
           })}
         </ul>
+        </div>
       )}
     </div>
   );

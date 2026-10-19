@@ -7,6 +7,10 @@ function machineCode(value: unknown): string | undefined {
   const code = typeof value === "number" ? String(value) : value;
   return typeof code === "string" && /^[a-zA-Z0-9_.-]{1,80}$/.test(code) ? code : undefined;
 }
+const oauthErrorCodes = new Set([
+  "invalid_grant", "invalid_client", "invalid_request", "invalid_scope",
+  "unauthorized_client", "access_denied", "unsupported_grant_type", "temporarily_unavailable",
+]);
 export function safeErrorDetails(error: unknown) {
   const details: { stage?: string; code?: string; status?: number; reason?: string } = {};
   let current = record(error);
@@ -17,7 +21,12 @@ export function safeErrorDetails(error: unknown) {
     const response = record(current.response);
     const status = response?.status ?? current.statusCode ?? current.status ?? current.code;
     if (typeof status === "number" && Number.isInteger(status) && status >= 100 && status <= 599) details.status ??= status;
-    const apiError = record(record(response?.data)?.error);
+    const providerError = record(response?.data)?.error;
+    if (typeof providerError === "string" && oauthErrorCodes.has(providerError)) {
+      details.reason ??= providerError;
+      details.stage ??= "google.oauth.token";
+    }
+    const apiError = record(providerError);
     if (Array.isArray(apiError?.errors)) {
       for (const item of apiError.errors) details.reason ??= machineCode(record(item)?.reason);
     }
