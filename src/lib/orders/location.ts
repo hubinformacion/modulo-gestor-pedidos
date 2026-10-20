@@ -10,6 +10,7 @@ export function resolveOrderLocation(order: typeof orders.$inferSelect, campus: 
   const address = pickup ? order.deliveryAddress : [order.deliveryAddress, order.deliveryDistrict, order.deliveryProvince, order.deliveryDepartment].filter(Boolean).join(", ");
   const map = campusMapUrls({ id: order.deliveryCampus ?? "", name: "", libraryAddress: address, coordinates });
   return { ...order,
+    deliveryPickupHours: pickup ? order.deliveryPickupHours ?? campus?.pickupHours ?? null : null,
     deliveryLibraryLocation: pickup ? order.deliveryLibraryLocation ?? campus?.libraryLocation ?? null : null,
     deliveryMapUrl: order.deliveryMapUrl ?? map.searchUrl,
   };

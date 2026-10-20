@@ -1,4 +1,5 @@
 "use server";
+import { deliverPickupSupportEmail } from "@/lib/delivery/support-email";
 import { writeManagementAudit } from "@/lib/audit/management";
 
 import { createCajaRequest } from "@/lib/caja/service";
@@ -10,7 +11,7 @@ import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { desc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { books, campuses, pickupEvidence, orderActivity, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
+import { books, campuses, pickupContacts, pickupNotifications, pickupEvidence, orderActivity, orderItems, orderNotifications, orders, paymentReceipts } from "@/db/schema";
 import { deliverOrderEmail } from "@/lib/orders/email";
 import { reportServerError } from "@/lib/server-diagnostics";
 import { getAuthorizedSession } from "@/lib/access";
@@ -111,19 +112,31 @@ export async function dispatchOrderAction(input: unknown): Promise<ActionResult>
           if (!proof || proof.orderId !== order.id || !proof.driveViewUrl || !proof.uploadedAt || data.status !== "ENTREGADO") throw new OperationError("La imagen aún no está lista. Reintenta sin retirarla.");
           await tx.update(pickupEvidence).set({ confirmedAt: new Date() }).where(eq(pickupEvidence.id, proof.id));
         }
+        const pickupDispatch = data.status === "DESPACHADO" && order.deliveryType === "recojo_campus";
+        const [support] = pickupDispatch && data.supportContactId ? await tx.select().from(pickupContacts).where(eq(pickupContacts.id, data.supportContactId)).for("share") : [];
+        if (pickupDispatch && (!support || support.status !== "ACTIVO")) throw new OperationError("Selecciona una persona activa para apoyar con el recojo.");
+        if (support && support.email === order.customerEmail.toLowerCase()) throw new OperationError("Selecciona a una persona de apoyo distinta del comprador.");
+        let supportNotificationId: string | null = null;
+        if (support) {
+          const [notice] = await tx.insert(pickupNotifications).values({ orderId: order.id, contactId: support.id, contactName: support.name, contactEmail: support.email }).returning({ id: pickupNotifications.id });
+          supportNotificationId = notice.id;
+        }
         const [campus] = order.deliveryCampus ? await tx.select().from(campuses).where(eq(campuses.id, order.deliveryCampus)).for("share") : [];
         const destination = resolveOrderLocation(order, campus ?? null);
-        await tx.update(orders).set({ orderStatus: data.status, deliveryLibraryLocation: destination.deliveryLibraryLocation, deliveryMapUrl: destination.deliveryMapUrl, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
+        await tx.update(orders).set({ orderStatus: data.status, ...(support ? { pickupContactId: support.id, pickupContactName: support.name, pickupContactEmail: support.email } : {}), deliveryPickupHours: destination.deliveryPickupHours, deliveryLibraryLocation: destination.deliveryLibraryLocation, deliveryMapUrl: destination.deliveryMapUrl, courier: data.status === "DESPACHADO" && order.deliveryType === "delivery" ? data.courier : order.courier,
           ...(data.status === "DESPACHADO" ? { shippingTrackingCode: order.deliveryType === "delivery" ? data.trackingCode || null : null, shippingTrackingUrl: order.deliveryType === "delivery" ? data.trackingUrl || null : null, dispatchedAt: new Date() } : { deliveredAt: new Date() }) }).where(eq(orders.id, order.id));
-        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, deliveryZone: order.deliveryZone ?? "", courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: destination.deliveryAddress, libraryLocation: destination.deliveryLibraryLocation ?? "", mapUrl: destination.deliveryMapUrl } }).returning({ id: orderNotifications.id });
-        await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.status, detail: data.status === "ENTREGADO" ? "Entrega registrada. Gracias por tu pedido." : order.deliveryType === "recojo_campus" ? "Publicaciones listas para recoger en biblioteca." : `Pedido enviado por ${data.courier}${data.trackingCode ? ` · Guía ${data.trackingCode}` : ""}.` });
-        return { token: order.trackingToken, notificationId: notification.id };
+        const [notification] = await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.status, payload: { orderStatus: data.status, deliveryType: order.deliveryType, deliveryZone: order.deliveryZone ?? "", courier: data.status === "DESPACHADO" ? data.courier : order.courier ?? "", trackingCode: data.status === "DESPACHADO" ? data.trackingCode : order.shippingTrackingCode ?? "", trackingUrl: data.status === "DESPACHADO" ? data.trackingUrl : order.shippingTrackingUrl ?? "", address: destination.deliveryAddress, libraryLocation: destination.deliveryLibraryLocation ?? "", pickupHours: destination.deliveryPickupHours ?? "", pickupContactName: support?.name ?? order.pickupContactName ?? "", mapUrl: destination.deliveryMapUrl } }).returning({ id: orderNotifications.id });
+        await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.status, detail: data.status === "ENTREGADO" ? "Entrega registrada. Gracias por tu pedido." : order.deliveryType === "recojo_campus" ? `Publicaciones listas para recoger en biblioteca.${support ? ` Apoyo para recojo: ${support.name}.` : ""}` : `Pedido enviado por ${data.courier}${data.trackingCode ? ` · Guía ${data.trackingCode}` : ""}.` });
+        return { token: order.trackingToken, notificationId: notification.id, supportNotificationId };
       });
     });
-    const mailed = await deliverOrderEmail(outcome.token, outcome.notificationId);
+    const [mailed, supportMailed] = await Promise.all([
+      deliverOrderEmail(outcome.token, outcome.notificationId),
+      outcome.supportNotificationId ? deliverPickupSupportEmail(outcome.supportNotificationId) : Promise.resolve(true),
+    ]);
     const token = outcome.token;
     revalidatePath("/admin/pedidos", "layout"); revalidatePath(`/seguimiento/${token}`);
-    return { success: true, ...(!mailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
+    return { success: true, ...(!mailed || !supportMailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: parsed.data.status === "DESPACHADO" ? "Pedido despachado." : "Pedido entregado." };
   } catch (error) {
     if (!(error instanceof AccessError) && !(error instanceof OperationError) && !(error instanceof PickupEvidenceError)) reportServerError("dispatch.failed", error);
     return failure(error);

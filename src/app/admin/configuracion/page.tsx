@@ -1,3 +1,4 @@
+import { PickupSupportSettings } from "@/components/admin/pickup-support-settings";
 import { ManagementAuditPanel } from "@/components/admin/management-audit";
 import { SecuritySettings } from "@/components/admin/security-settings";
 import { admissionPolicySchema } from "@/lib/orders/admission-policy";
@@ -7,7 +8,7 @@ import { treasuryScopes } from "@/lib/treasury/scope";
 import { CajaSettings } from "@/components/caja/settings";
 import { asc, desc } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
-import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes, orderAdmissionPolicy, managementAudit } from "@/db/schema";
+import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes, orderAdmissionPolicy, managementAudit, pickupContacts } from "@/db/schema";
 import { requirePageAccess, getAuthorizedSession } from "@/lib/access";
 import { isMasterEmail } from "@/lib/access-policy";
 import { headers } from "next/headers";
@@ -28,7 +29,7 @@ export default async function AuthorizedEmailsPage() {
   const requestHeaders = await headers();
   // Recheck at the data source, including when a layout is reused by Next.js.
   await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-  const [rows, campusRows, bankRows, mailboxRows, policyRows, auditRows] = await withReadDatabase(async (db) => {
+  const [rows, campusRows, bankRows, mailboxRows, policyRows, auditRows, supportRows] = await withReadDatabase(async (db) => {
     return Promise.all([
       db.select().from(authorizedEmails).orderBy(asc(authorizedEmails.createdAt), asc(authorizedEmails.email)),
       db.select().from(campuses).orderBy(asc(campuses.name)),
@@ -36,6 +37,7 @@ export default async function AuthorizedEmailsPage() {
       db.select().from(treasuryMailboxes),
       db.select().from(orderAdmissionPolicy),
       isMasterEmail(actor.email) ? db.select({ id: managementAudit.id, actorEmail: managementAudit.actorEmail, event: managementAudit.event, resource: managementAudit.resource, target: managementAudit.target, createdAt: managementAudit.createdAt }).from(managementAudit).orderBy(desc(managementAudit.createdAt), desc(managementAudit.id)).limit(30) : Promise.resolve([]),
+      db.select().from(pickupContacts).orderBy(asc(pickupContacts.name)),
     ]);
   });
   const policy = policyRows[0];
@@ -45,14 +47,14 @@ export default async function AuthorizedEmailsPage() {
   return (
     <>
       <WorkspacePageHeading eyebrow="Sistema" title="Configuración" description="Organiza los accesos, campus, cuentas y servicios del equipo." />
-      <SettingsTabs security={<><SecuritySettings key={policy.updatedAt.toISOString()} policy={policyValues} version={policy.updatedAt.toISOString()} updatedBy={policy.updatedBy} canManage={isMasterEmail(actor.email)} />{isMasterEmail(actor.email) ? <ManagementAuditPanel rows={auditRows} /> : null}</>} emails={<section aria-labelledby="emails-title">
+      <SettingsTabs support={<section><h2 className="text-lg font-semibold tracking-tight">Personal de apoyo para recojo</h2><p className="mt-3 text-sm leading-6 text-muted-foreground">Listado general para coordinar entregas en biblioteca, sin acceso al sistema.</p><PickupSupportSettings rows={supportRows.map((row) => ({ id: row.id, name: row.name, email: row.email, status: row.status, version: row.updatedAt.toISOString() }))} /></section>} security={<><SecuritySettings key={policy.updatedAt.toISOString()} policy={policyValues} version={policy.updatedAt.toISOString()} updatedBy={policy.updatedBy} canManage={isMasterEmail(actor.email)} />{isMasterEmail(actor.email) ? <ManagementAuditPanel rows={auditRows} /> : null}</>} emails={<section aria-labelledby="emails-title">
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "gestor").map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
       </section>} caja={<section><h2 className="text-lg font-semibold tracking-tight">Tesorería Recaudación</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Configura los buzones de servicio y los accesos personales a una o ambas unidades de negocio. Ingresa desde /tesoreria-recaudacion con Google.</p><CajaSettings canManage={isMasterEmail(actor.email)} mailboxes={mailboxRows.map((row) => ({ imprint: row.publisherImprint, email: row.email }))} rows={rows.filter((row) => row.role === "caja").map((row) => ({ email: row.email, imprints: treasuryScopes(row), service: row.treasuryService }))} /></section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
-        <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
+        <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, pickupHours: row.pickupHours, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />
       </section>} banks={<section aria-labelledby="bank-accounts-title">
         <h2 id="bank-accounts-title" className="text-lg font-semibold tracking-tight">Cuentas bancarias</h2>
         <p className="mt-3 text-sm leading-6 text-muted-foreground">Gestiona las alternativas de pago de cada sello. Los pedidos anteriores conservan las cuentas que recibieron al registrarse.</p>

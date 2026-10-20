@@ -27,6 +27,7 @@ export const campuses = pgTable("campuses", {
   name: text("name").notNull(),
   libraryAddress: text("library_address").notNull(),
   libraryLocation: text("library_location").default("").notNull(),
+  pickupHours: text("pickup_hours").default("").notNull(),
   latitude: numeric("latitude", { precision: 10, scale: 7 }),
   longitude: numeric("longitude", { precision: 10, scale: 7 }),
   googleMapsEmbedUrl: text("google_maps_embed_url"),
@@ -38,6 +39,14 @@ export const campuses = pgTable("campuses", {
   check("campuses_valid_coordinates", sql`(${table.latitude} IS NULL AND ${table.longitude} IS NULL) OR (${table.latitude} IS NOT NULL AND ${table.longitude} IS NOT NULL AND ${table.latitude} BETWEEN -90 AND 90 AND ${table.longitude} BETWEEN -180 AND 180)`),
   check("campuses_valid_map_url", sql`${table.googleMapsEmbedUrl} IS NULL OR ${table.googleMapsEmbedUrl} ~ '^https://(www[.]google[.]com|maps[.]google[.]com)/maps/embed([?]|/)'`),
 ]);
+
+export const pickupContacts = pgTable("pickup_contacts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  status: bookStatus("status").default("ACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [uniqueIndex("pickup_contacts_email_unique").on(sql`lower(btrim(${table.email}))`), check("pickup_contacts_nonempty", sql`btrim(${table.name}) <> '' AND ${table.email} = lower(btrim(${table.email}))`)]);
 
 export const books = pgTable("books", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -94,6 +103,10 @@ export const orders = pgTable("orders", {
   // Also stores the library address snapshot for campus pickup.
   deliveryAddress: text("delivery_address").notNull(),
   deliveryLibraryLocation: text("delivery_library_location"),
+  deliveryPickupHours: text("delivery_pickup_hours"),
+  pickupContactId: uuid("pickup_contact_id").references(() => pickupContacts.id, { onDelete: "restrict" }),
+  pickupContactName: text("pickup_contact_name"),
+  pickupContactEmail: text("pickup_contact_email"),
   deliveryMapUrl: text("delivery_map_url"),
   deliveryReference: text("delivery_reference"),
   deliveryRecipient: text("delivery_recipient").notNull(),
@@ -450,6 +463,8 @@ export const coupons = pgTable("coupons", {
   id: uuid("id").defaultRandom().primaryKey(),
   code: text("code").notNull().unique(),
   percent: integer("percent").notNull(),
+  scope: text("scope").$type<"all" | "selected">().default("all").notNull(),
+  bookIds: jsonb("book_ids").$type<string[]>().default([]).notNull(),
   audience: text("audience").$type<"all" | "comunidad_continental" | "publico_general">().default("all").notNull(),
   maxUses: integer("max_uses"),
   usedCount: integer("used_count").default(0).notNull(),
@@ -458,6 +473,7 @@ export const coupons = pgTable("coupons", {
   status: bookStatus("status").default("INACTIVO").notNull(),
   ...timestamps(),
 }, (table) => [
+  check("coupons_scope", sql`${table.scope} IN ('all','selected') AND jsonb_typeof(${table.bookIds}) = 'array' AND (${table.scope} = 'all' OR jsonb_array_length(${table.bookIds}) > 0)`),
   check("coupons_code", sql`${table.code} ~ '^[A-Z0-9_-]{3,32}$'`),
   check("coupons_percent", sql`${table.percent} BETWEEN 1 AND 99`),
   check("coupons_audience", sql`${table.audience} IN ('all','comunidad_continental','publico_general')`),
@@ -541,3 +557,18 @@ export const managementAudit = pgTable("management_audit", {
   details: jsonb("details").$type<Record<string, unknown>>().default({}).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("management_audit_created_at_idx").on(table.createdAt), index("management_audit_target_idx").on(table.resource, table.target)]);
+
+// Audit of immediate pickup-support notices. Never scanned or retried later.
+export const pickupNotifications = pgTable("pickup_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  orderId: uuid("order_id").notNull().unique().references(() => orders.id, { onDelete: "restrict" }),
+  contactId: uuid("contact_id").notNull().references(() => pickupContacts.id, { onDelete: "restrict" }),
+  contactName: text("contact_name").notNull(),
+  contactEmail: text("contact_email").notNull(),
+  status: text("status").default("NO_ENVIADO").notNull(),
+  attempts: integer("attempts").default(0).notNull(),
+  gmailMessageId: text("gmail_message_id"),
+  gmailThreadId: text("gmail_thread_id"),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [check("pickup_notifications_status", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')`), check("pickup_notifications_attempts", sql`${table.attempts} BETWEEN 0 AND 1`)]);

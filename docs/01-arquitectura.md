@@ -48,7 +48,7 @@ Versiones exactas: `package.json` y `pnpm-lock.yaml`. No hay framework de suites
 | Acceso y servicios Next.js | Autorización por sesión/rol/unidad/asignación; validación, reglas y efectos desde servidor |
 | Neon | HTTP para lecturas; Pool WebSocket por petición para auth/transacciones. No son WebSockets de sincronización de pantallas |
 | Drive | Comprobantes, PDF y evidencia privados; permisos nominados por carpeta o archivo según rol |
-| Gmail | Avisos nuevos en hilo del comprador y uno interno por solicitud/unidad; sin cola ni recuperación histórica |
+| Gmail | Avisos nuevos en hilo del comprador y uno interno por solicitud/unidad y aviso separado al apoyo para recojo; sin cola ni recuperación histórica |
 | Cron diario | Ruta protegida a las 12:00 UTC, exclusivamente reconciliación de permisos Drive; no envía correos ni hace backups |
 | Respaldo | Exportación manual cifrada, fuera de Vercel, a carpeta Drive separada y privada; automatización no implementada |
 
@@ -59,11 +59,11 @@ WordPress usa handshake, `origin/source` exactos y ajuste de altura/scroll. No i
 | Grupo | Tablas y contenido |
 | --- | --- |
 | Identidad | Tablas Better Auth y `authorized_emails`; la autorización es independiente de que exista identidad OAuth |
-| Configuración | `campuses`, `bank_accounts`, `treasury_mailboxes`, `order_admission_policy` |
+| Configuración | `campuses`, `bank_accounts`, `treasury_mailboxes`, `pickup_contacts`, `order_admission_policy` |
 | Compra | `books`, `orders`, `order_items`, contador anual, guías y descuentos/cupones |
 | Archivos | Intentos durables de carga, recibos, evidencia y PDF de venta; IDs/hash en BD, bytes en Drive |
 | Tesorería | Solicitudes, responsable, observaciones/correcciones, notas, documentos y lotes de PDF |
-| Auditoría | Actividades de pedido/Tesorería, `management_audit`, cambios de cuotas y resultado/metadatos de correo |
+| Auditoría | Actividades de pedido/Tesorería, `management_audit`, `pickup_notifications`, cambios de cuotas y resultado/metadatos de correo |
 | Permisos técnicos | Grants Drive y contadores HMAC de admisión, sin IP/correo en claro en estos contadores |
 
 PostgreSQL conserva nombres/precios/cuentas/destino/guía/consentimiento como snapshots. Los importes usan `numeric(12,2)` y cálculo en céntimos. El teléfono, DNI/dirección y tokens OAuth no tienen cifrado propio por campo; el alcance de protección se explica en 02.

@@ -110,6 +110,7 @@ CREATE TABLE "campuses" (
 	"name" text NOT NULL,
 	"library_address" text NOT NULL,
 	"library_location" text DEFAULT '' NOT NULL,
+	"pickup_hours" text DEFAULT '' NOT NULL,
 	"latitude" numeric(10, 7),
 	"longitude" numeric(10, 7),
 	"google_maps_embed_url" text,
@@ -132,6 +133,8 @@ CREATE TABLE "coupons" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"code" text NOT NULL,
 	"percent" integer NOT NULL,
+	"scope" text DEFAULT 'all' NOT NULL,
+	"book_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"audience" text DEFAULT 'all' NOT NULL,
 	"max_uses" integer,
 	"used_count" integer DEFAULT 0 NOT NULL,
@@ -141,6 +144,7 @@ CREATE TABLE "coupons" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "coupons_code_unique" UNIQUE("code"),
+	CONSTRAINT "coupons_scope" CHECK ("coupons"."scope" IN ('all','selected') AND jsonb_typeof("coupons"."book_ids") = 'array' AND ("coupons"."scope" = 'all' OR jsonb_array_length("coupons"."book_ids") > 0)),
 	CONSTRAINT "coupons_code" CHECK ("coupons"."code" ~ '^[A-Z0-9_-]{3,32}$'),
 	CONSTRAINT "coupons_percent" CHECK ("coupons"."percent" BETWEEN 1 AND 99),
 	CONSTRAINT "coupons_audience" CHECK ("coupons"."audience" IN ('all','comunidad_continental','publico_general')),
@@ -307,6 +311,10 @@ CREATE TABLE "orders" (
 	"delivery_ubigeo" text,
 	"delivery_address" text NOT NULL,
 	"delivery_library_location" text,
+	"delivery_pickup_hours" text,
+	"pickup_contact_id" uuid,
+	"pickup_contact_name" text,
+	"pickup_contact_email" text,
 	"delivery_map_url" text,
 	"delivery_reference" text,
 	"delivery_recipient" text NOT NULL,
@@ -419,6 +427,16 @@ CREATE TABLE "payment_uploads" (
 	CONSTRAINT "payment_uploads_drive_file_id_unique" UNIQUE("drive_file_id")
 );
 
+CREATE TABLE "pickup_contacts" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"name" text NOT NULL,
+	"email" text NOT NULL,
+	"status" "book_status" DEFAULT 'ACTIVO' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "pickup_contacts_nonempty" CHECK (btrim("pickup_contacts"."name") <> '' AND "pickup_contacts"."email" = lower(btrim("pickup_contacts"."email")))
+);
+
 CREATE TABLE "pickup_evidence" (
 	"id" uuid PRIMARY KEY NOT NULL,
 	"order_id" uuid NOT NULL,
@@ -436,6 +454,23 @@ CREATE TABLE "pickup_evidence" (
 	CONSTRAINT "pickup_evidence_drive_file_id_unique" UNIQUE("drive_file_id"),
 	CONSTRAINT "pickup_evidence_size" CHECK ("pickup_evidence"."size" > 0 AND "pickup_evidence"."size" <= 3145728),
 	CONSTRAINT "pickup_evidence_image_type" CHECK ("pickup_evidence"."mime_type" IN ('image/jpeg','image/png'))
+);
+
+CREATE TABLE "pickup_notifications" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"order_id" uuid NOT NULL,
+	"contact_id" uuid NOT NULL,
+	"contact_name" text NOT NULL,
+	"contact_email" text NOT NULL,
+	"status" text DEFAULT 'NO_ENVIADO' NOT NULL,
+	"attempts" integer DEFAULT 0 NOT NULL,
+	"gmail_message_id" text,
+	"gmail_thread_id" text,
+	"last_attempt_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "pickup_notifications_order_id_unique" UNIQUE("order_id"),
+	CONSTRAINT "pickup_notifications_status" CHECK ("pickup_notifications"."status" IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')),
+	CONSTRAINT "pickup_notifications_attempts" CHECK ("pickup_notifications"."attempts" BETWEEN 0 AND 1)
 );
 
 CREATE TABLE "promotion_books" (
@@ -608,6 +643,7 @@ ALTER TABLE "order_notifications" ADD CONSTRAINT "order_notifications_receipt_id
 ALTER TABLE "orders" ADD CONSTRAINT "orders_payment_guide_hash_payment_guides_hash_fk" FOREIGN KEY ("payment_guide_hash") REFERENCES "public"."payment_guides"("hash") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "orders" ADD CONSTRAINT "orders_customer_campus_campuses_id_fk" FOREIGN KEY ("customer_campus") REFERENCES "public"."campuses"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "orders" ADD CONSTRAINT "orders_delivery_campus_campuses_id_fk" FOREIGN KEY ("delivery_campus") REFERENCES "public"."campuses"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "orders" ADD CONSTRAINT "orders_pickup_contact_id_pickup_contacts_id_fk" FOREIGN KEY ("pickup_contact_id") REFERENCES "public"."pickup_contacts"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "orders" ADD CONSTRAINT "orders_coupon_id_coupons_id_fk" FOREIGN KEY ("coupon_id") REFERENCES "public"."coupons"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "orders" ADD CONSTRAINT "orders_submitted_receipt_universidad_payment_receipts_id_fk" FOREIGN KEY ("submitted_receipt_universidad") REFERENCES "public"."payment_receipts"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "orders" ADD CONSTRAINT "orders_submitted_receipt_instituto_payment_receipts_id_fk" FOREIGN KEY ("submitted_receipt_instituto") REFERENCES "public"."payment_receipts"("id") ON DELETE restrict ON UPDATE no action;
@@ -617,6 +653,8 @@ ALTER TABLE "payment_receipts" ADD CONSTRAINT "payment_receipts_upload_id_paymen
 ALTER TABLE "payment_uploads" ADD CONSTRAINT "payment_uploads_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "pickup_evidence" ADD CONSTRAINT "pickup_evidence_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "pickup_evidence" ADD CONSTRAINT "pickup_evidence_actor_user_id_user_id_fk" FOREIGN KEY ("actor_user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "pickup_notifications" ADD CONSTRAINT "pickup_notifications_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "pickup_notifications" ADD CONSTRAINT "pickup_notifications_contact_id_pickup_contacts_id_fk" FOREIGN KEY ("contact_id") REFERENCES "public"."pickup_contacts"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "promotion_books" ADD CONSTRAINT "promotion_books_promotion_id_promotions_id_fk" FOREIGN KEY ("promotion_id") REFERENCES "public"."promotions"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "promotion_books" ADD CONSTRAINT "promotion_books_book_id_books_id_fk" FOREIGN KEY ("book_id") REFERENCES "public"."books"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "sale_document_batches" ADD CONSTRAINT "sale_document_batches_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
@@ -657,6 +695,7 @@ CREATE INDEX "orders_customer_campus_idx" ON "orders" USING btree ("customer_cam
 CREATE INDEX "orders_delivery_campus_idx" ON "orders" USING btree ("delivery_campus");
 CREATE INDEX "payment_receipts_order_imprint_idx" ON "payment_receipts" USING btree ("order_id","publisher_imprint");
 CREATE INDEX "payment_uploads_order_idx" ON "payment_uploads" USING btree ("order_id");
+CREATE UNIQUE INDEX "pickup_contacts_email_unique" ON "pickup_contacts" USING btree (lower(btrim("email")));
 CREATE INDEX "pickup_evidence_order_idx" ON "pickup_evidence" USING btree ("order_id");
 CREATE INDEX "promotion_books_book_idx" ON "promotion_books" USING btree ("book_id");
 CREATE INDEX "promotions_dates_idx" ON "promotions" USING btree ("status","starts_at","ends_at");

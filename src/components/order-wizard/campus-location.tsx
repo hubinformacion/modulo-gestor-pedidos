@@ -12,6 +12,8 @@ export function CampusLocation({ campus }: { campus: Campus }) {
           <p className="text-xs font-semibold">Biblioteca · {campus.name}</p>
           <p className="mt-2 text-sm leading-6 text-muted-foreground">{campus.libraryAddress}</p>
           {campus.libraryLocation ? <p className="mt-2 text-xs font-medium">{campus.libraryLocation}</p> : null}
+          {campus.pickupHours ? <p className="mt-2 text-xs leading-6 text-muted-foreground">{campus.pickupHours}</p> : null}
+          <p className="mt-2 text-xs leading-6 text-muted-foreground">Para ingresar, presenta en vigilancia tu DNI, el correo de la orden y el comprobante del depósito.</p>
           <p className="mt-1 text-xs font-medium">Recojo del libro en la biblioteca</p>
         </div>
       </div>

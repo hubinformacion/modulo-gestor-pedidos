@@ -12,7 +12,7 @@ import { formatMoney, toCents } from "@/lib/orders/money";
 import { managerMailCopies } from "@/lib/orders/mail-recipients";
 import { customerTrackingUrl } from "@/lib/orders/customer-links";
 import { courierEstimate } from "@/lib/orders/courier";
-import { readMailArt, type MailArt } from "@/lib/orders/mail-art";
+import { readMailArt, readMailLogo, type MailArt } from "@/lib/orders/mail-art";
 import { emailSubject, renderOrderEmail, renderOrderUpdate } from "@/lib/orders/email-template";
 import { imprintNames } from "@/lib/orders/types";
 import type { getTrackedOrder } from "@/lib/orders/tracking";
@@ -110,7 +110,8 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
   const from = z.email().parse(process.env.GOOGLE_OWNER_EMAIL);
   const recipients = [...new Set(z.array(z.email()).min(1).parse(audience?.to ?? [tracking.order.customerEmail]).map((email) => email.toLowerCase()))];
   const to = recipients.join(", ");
-  const cc = audience ? [] : await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients);
+  const cc = (await managerMailCopies(eventCreatedAt ?? tracking.order.createdAt, recipients))
+    .filter((email) => !audience || email !== tracking.order.customerEmail.toLowerCase());
   const boundary = `mixed_${randomUUID()}`;
   const alternative = `alternative_${randomUUID()}`;
   const messageId = notificationId ? `<pedido-aviso-${notificationId}@${new URL(getPublicOrigin()).hostname}>` : originalMessageId(tracking);
@@ -126,8 +127,10 @@ async function sendMime({ tracking, html, text, attachment, attachments = [], au
     `--${alternative}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", base64Lines(Buffer.from(html)), `--${alternative}--`];
   const related = `related_${randomUUID()}`;
   const illustration = await readMailArt(art);
+  const logo = await readMailLogo();
   const relatedBody = [`--${related}`, `Content-Type: multipart/alternative; boundary="${alternative}"`, "", ...body,
-    `--${related}`, "Content-Type: image/png", "Content-Transfer-Encoding: base64", `Content-ID: <${artCid}>`, `Content-Disposition: inline; filename="${art}.png"`, "", base64Lines(illustration), `--${related}--`, ""];
+    `--${related}`, "Content-Type: image/png", "Content-Transfer-Encoding: base64", `Content-ID: <${artCid}>`, `Content-Disposition: inline; filename="${art}.png"`, "", base64Lines(illustration),
+    `--${related}`, "Content-Type: image/png", "Content-Transfer-Encoding: base64", `Content-ID: <brand-${artCid}>`, 'Content-Disposition: inline; filename="isotipo.png"', "", base64Lines(logo), `--${related}--`, ""];
   const pdfs = attachment ? [attachment, ...attachments] : attachments;
   const raw = pdfs.length ? [...headers, `Content-Type: multipart/mixed; boundary="${boundary}"`, "", `--${boundary}`, `Content-Type: multipart/related; boundary="${related}"`, "", ...relatedBody,
     ...pdfs.flatMap((pdf) => [`--${boundary}`, "Content-Type: application/pdf", "Content-Transfer-Encoding: base64", `Content-Disposition: attachment; ${attachmentName(pdf.filename)}`, "", base64Lines(pdf.content)]), `--${boundary}--`, ""].join("\r\n")
@@ -177,11 +180,16 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: { i
   const link = customerTrackingUrl(tracking.order.trackingToken);
   const art: MailArt = notification.eventType === "CANCELADO" ? "rejected" : notification.eventType === "DOCUMENTOS_VENTA" ? "verified" : notification.eventType === "COMPROBANTE_RECIBIDO" ? "review" : notification.eventType === "PAGO_RECHAZADO" ? "rejected" : notification.eventType === "PAGO_VERIFICADO" ? payload.orderStatus === "EN_PREPARACION" ? "preparing" : "verified" : notification.eventType === "DESPACHADO" ? payload.deliveryType === "recojo_campus" ? "pickup" : "shipped" : "delivered";
   const artCid = `state-${notification.id}@${new URL(getPublicOrigin()).hostname}`;
-  const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
-  return sendMime({ tracking, art, artCid, attachments, eventCreatedAt: notification.createdAt, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${formatOrderNumber(tracking.order.orderNumber)}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
+  const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", pickupHours: payload.pickupHours ?? tracking.order.deliveryPickupHours ?? "", pickupContactName: payload.pickupContactName ?? tracking.order.pickupContactName ?? "", pickup: tracking.order.deliveryType === "recojo_campus", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
+  return sendMime({ tracking, art, artCid, attachments, eventCreatedAt: notification.createdAt, notificationId: notification.id, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, artCid, deliveryLocation }), text: `Pedido ${formatOrderNumber(tracking.order.orderNumber)}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.pickupHours, deliveryLocation.pickupContactName ? `Pregunta por ${deliveryLocation.pickupContactName}.` : "", deliveryLocation.pickup ? "Presenta en vigilancia tu DNI, correo de la orden y comprobante del depósito." : "", deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` });
 }
 
 export async function sendCajaEmail(tracking: Tracking, audience: MailAudience, notificationId: string, html: string, text: string, art: MailArt, eventCreatedAt: Date) {
   const artCid = `caja-${notificationId}@${new URL(getPublicOrigin()).hostname}`;
   return sendMime({ tracking, audience, notificationId, html, text, art, artCid, eventCreatedAt });
+}
+
+export async function sendPickupSupportEmail(tracking: Tracking, contactEmail: string, noticeId: string, createdAt: Date, html: string, text: string) {
+  const artCid = `pickup-support-${noticeId}@${new URL(getPublicOrigin()).hostname}`;
+  return sendMime({ tracking, audience: { to: [contactEmail], subject: `Apoyo para recojo · Orden #${formatOrderNumber(tracking.order.orderNumber)} - Fondo Editorial` }, notificationId: noticeId, art: "pickup", artCid, eventCreatedAt: createdAt, html, text });
 }

@@ -10,12 +10,12 @@ Empieza por [00 · Inicio](docs/00-inicio.md). La documentación está resumida 
 
 ## Funciones principales
 
-- Compra en cuatro pasos, precios comunidad/externos, promociones y cupones sin acumulación.
+- Compra en cuatro pasos, precios comunidad/externos y descuentos por título; promociones y un cupón por compra sin acumulación. Cupones para todo el catálogo o títulos seleccionados.
 - Stock y numeración anual transaccionales; creación idempotente y snapshots de compra.
 - Pagos por unidad; mixtos con dos depósitos, carga automática y revisión independiente.
 - Atención asignada, distribución, despacho/entrega, evidencia opcional y cancelación permitida según estado.
 - Tesorería por una/ambas unidades: observaciones, subsanación, notas privadas, PDF como borrador y finalización; en mixtos un correo al comprador con ambos PDF.
-- Inventario en tabla, configuración de campus/cuentas/accesos, reportes e historial.
+- Inventario en tabla, configuración de campus/horarios/cuentas/accesos, personal de apoyo para recojo, reportes e historial.
 - Correos inmediatos en hilos separados por audiencia, sin cola ni reenvío posterior de fallos.
 
 ## Stack
@@ -41,7 +41,9 @@ pnpm start
 
 Para desarrollo local usar `pnpm dev`. `db:setup` instala un único esquema inicial sobre una BD vacía y ejecuta el seed en la misma transacción. En una BD compatible conserva la estructura/datos y siembra solo faltantes; ante diferencias aborta. No modifica automáticamente esquemas existentes ni llama a Google. Requiere permisos de instalación; el runtime debe usar un rol SQL restringido distinto. `DATABASE_SETUP_URL` permite una credencial temporal de instalación que no se debe desplegar al runtime.
 
-Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `src/db/schema.sql`. No hay historial de migraciones/snapshots de desarrollo ni comandos de borrado. **Un futuro cambio de esquema con datos operativos requiere una actualización explícita y un respaldo**, fuera del build.
+Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `src/db/schema.sql`. No hay historial de migraciones/snapshots de desarrollo ni comandos de borrado. **Un cambio de esquema con datos operativos requiere una actualización explícita y un respaldo**, fuera del build.
+
+Para actualizar una instalación anterior con el flujo de apoyo para recojo, seguir el [procedimiento operativo](docs/03-operacion-y-cierre.md) y aplicar una sola vez `src/db/updates/20261020-pickup-support.sql` antes de desplegar. No ejecutar `db:setup` como migrador.
 
 ## Datos iniciales
 

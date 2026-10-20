@@ -126,3 +126,14 @@ Registrar versión/ambiente, fecha, ejecutor, resultado y evidencia anonimizada.
 Privilegios: rol runtime sin propiedad/DDL; auditorías append-only solo SELECT/INSERT y sin privilegios heredados de cambio/borrado. No reconstruir registros antiguos. Revisar dependencias/advisories con compatibilidad, sin actualizaciones masivas automáticas.
 
 Mejoras de mantenimiento identificadas: unificar Boleta/Factura efectiva tras subsanación entre detalle/bandeja; comparar versión de formularios campus/cuentas para evitar sobrescritura obsoleta; separar más el DTO público de metadatos de correo. No se presentan como vulnerabilidades demostradas ni se ocultan por simplificar documentación.
+
+
+## Actualización de recojo y descuentos por título
+
+La base de datos actualmente configurada ya recibió esta actualización con autorización expresa del responsable antes del lanzamiento. No repetir el SQL en ella. El procedimiento siguiente aplica a otras instalaciones que todavía tengan la estructura anterior.
+
+Antes de desplegar esta versión sobre una BD anterior, el responsable técnico debe disponer de respaldo y ejecutar una sola vez [20261020-pickup-support.sql](../src/db/updates/20261020-pickup-support.sql) en Neon SQL Editor con su rol de instalación. El archivo es transaccional: añade campos/tablas/constraints, conserva pedidos y configura los ocho horarios iniciales solo si están vacíos. No ejecuta Google ni envía correos. No forma parte del build; repetirlo sobre una BD ya actualizada produce un error y rollback. Instalaciones vacías usan el SQL inicial actualizado, sin ejecutar este archivo adicional. Conceder al runtime permisos mínimos sobre las dos tablas nuevas y actualizar el respaldo de esquema.
+
+Después, registrar personas reales en Configuración → Apoyo para recojo (nombre/correo/estado); no se siembran contactos ficticios ni se crean accesos al sistema. El desplegable de Distribución solo muestra personas activas y es obligatorio para recojo. El comprador verá el nombre del apoyo, no su correo. El aviso al apoyo tiene hilo separado y CC a gestores; el resultado se consulta en el detalle administrativo. No se reenviarán fallos ni pedidos históricos.
+
+Validación manual al operar pedidos autorizados: comprobar descuentos por línea y totales por unidad en únicos/mixtos; cupón global/selección (un código), comparación con campañas y envío intacto; horario de Miraflores y otros campus; impedir recojo sin apoyo; comprador/apoyo/Tesorería en hilos distintos con CC de gestores; logo/estado/botón y PDF originales. La comprobación estática no acredita estos envíos reales.

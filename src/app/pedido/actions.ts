@@ -32,7 +32,7 @@ export async function reviewPricingAction(input: unknown) {
     if (!draft.success) return { success: false as const, message: draft.error.issues[0].message };
     const { pricingClock } = await import("@/lib/discounts/catalog");
     const at = await pricingClock();
-    let coupon: { code: string; percent: number } | null = null;
+    let coupon: import("@/lib/orders/types").CouponOffer | null = null;
     if (parsed.data.couponCode) {
       const { couponCodeSchema } = await import("@/lib/discounts/validation");
       const code = couponCodeSchema.safeParse(parsed.data.couponCode);
@@ -43,7 +43,7 @@ export async function reviewPricingAction(input: unknown) {
       const { assertCoupon } = await import("@/lib/discounts/coupons");
       const [row] = await withReadDatabase((db) => db.select().from(coupons).where(eq(coupons.code, code.data)));
       assertCoupon(row, draft.data.buyer.type, new Date(at));
-      coupon = { code: row.code, percent: row.percent };
+      coupon = { code: row.code, percent: row.percent, scope: row.scope, bookIds: row.bookIds };
     }
     return { success: true as const, catalog, at, coupon };
   } catch (error) { return { success: false as const, message: error instanceof OrderInputError ? error.message : "No pudimos actualizar los precios. Reintenta." }; }

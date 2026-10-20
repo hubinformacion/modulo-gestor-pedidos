@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180" role="img" aria-labelledby="title desc">
 <title id="title">Arquitectura completa · Fondo Editorial Continental</title>
-<desc id="desc">El comprador usa compra y seguimiento Next.js embebidos en WordPress. Gestores y Tesorería entran directamente a Vercel, con identidad Google y autorización en PostgreSQL Neon. Los servicios de servidor gestionan pedidos, pagos, emisión y auditoría, archivos privados Drive y correo Gmail por evento. Google Maps se consulta desde compra. GitHub entrega código a Vercel. El cron diario solo reconcilia permisos Drive; el respaldo semanal es manual, cifrado y separado del runtime.</desc>
+<desc id="desc">El comprador usa compra y seguimiento Next.js embebidos en WordPress. Gestores y Tesorería entran directamente a Vercel, con identidad Google y autorización en PostgreSQL Neon. Los servicios de servidor gestionan pedidos, pagos, emisión y auditoría, archivos privados Drive y correo Gmail por evento, incluido aviso separado al apoyo para recojo sin acceso al sistema. Google Maps se consulta desde compra. GitHub entrega código a Vercel. El cron diario solo reconcilia permisos Drive; el respaldo semanal es manual, cifrado y separado del runtime.</desc>
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L9 5L1 9" fill="none" stroke="#777083" stroke-width="1.5"/></marker></defs>
 <style>text{font-family:Inter,Arial,sans-serif;fill:#24212b} .muted{fill:#706979}.eyebrow{font-size:14px;font-weight:700;letter-spacing:1.5px;fill:#6802c1}.zone{fill:#fcfbfd;stroke:#d7d1df;stroke-width:1.2;stroke-dasharray:7 6}.node{fill:white;stroke:#cbc3d5;stroke-width:1.5}.focus{fill:#f7f0fd;stroke:#6802c1;stroke-width:1.8}.line{fill:none;stroke:#777083;stroke-width:1.6;marker-end:url(#arrow)}.dash{stroke-dasharray:5 5}.title{font-size:20px;font-weight:700}.body{font-size:16px}.small{font-size:15px}.label{font-size:14px;fill:#625b6e}.zone-label{font-size:14px;font-weight:700;letter-spacing:1.2px;fill:#625b6e}</style>
 <rect width="1600" height="1180" fill="white"/>
@@ -75,7 +75,7 @@
 <text x="1182" y="655" class="body muted">Recibos · PDF · evidencias</text>
 <rect x="1160" y="720" width="320" height="90" rx="8" class="node"/>
 <text x="1182" y="755" class="title">Gmail</text>
-<text x="1182" y="785" class="body muted">Evento nuevo · sin cola</text>
+<text x="1182" y="785" class="body muted">Comprador / Tesorería / apoyo</text>
 <rect x="387.0" y="362" width="66" height="22" fill="white"/>
 <text x="420" y="377" class="label" text-anchor="middle">iframe</text>
 <rect x="391.0" y="622" width="58" height="22" fill="white"/>

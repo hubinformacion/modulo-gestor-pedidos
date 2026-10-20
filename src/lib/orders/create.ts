@@ -48,7 +48,7 @@ export async function createOrder(input: unknown, requestHeaders: Pick<Headers, 
     const pickupCampus = delivery.type === "recojo_campus" ? activeCampuses.find((campus) => campus.id === delivery.campus) : undefined;
     const [coupon] = data.couponCode ? await tx.select().from(coupons).where(eq(coupons.code, data.couponCode)).for("update") : [];
     if (data.couponCode) assertCoupon(coupon, buyer.type, pricingAt);
-    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), coupon ? { code: coupon.code, percent: coupon.percent } : null);
+    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), coupon ? { code: coupon.code, percent: coupon.percent, scope: coupon.scope, bookIds: coupon.bookIds } : null);
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
     if (data.expectedQuote && data.expectedQuote !== quoteStamp(quote)) throw new OrderInputError("Los precios o promociones cambiaron. Actualiza los precios y revisa el resumen antes de enviar.");
     await admitOrder(tx, buyer.email, requestHeaders);
@@ -72,6 +72,7 @@ export async function createOrder(input: unknown, requestHeaders: Pick<Headers, 
       deliveryDepartment: location?.department.name ?? null, deliveryCity: location?.district.name ?? null,
       deliveryProvince: location?.province.name ?? null, deliveryDistrict: location?.district.name ?? null, deliveryUbigeo: delivery.district || null,
       deliveryLibraryLocation: pickupCampus?.libraryLocation ?? null,
+      deliveryPickupHours: pickupCampus?.pickupHours ?? null,
       deliveryMapUrl: pickupCampus ? campusMapUrls(toPublicCampus(pickupCampus)).searchUrl : null,
       deliveryAddress: delivery.address, deliveryReference: delivery.reference || null, deliveryRecipient: delivery.recipient,
       deliveryRecipientType: delivery.recipientType, deliveryRecipientDocument: delivery.recipientDocument, deliveryRecipientPhone: delivery.recipientPhone,

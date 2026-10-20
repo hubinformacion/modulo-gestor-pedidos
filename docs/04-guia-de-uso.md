@@ -92,3 +92,12 @@ stateDiagram-v2
 - Cancelación conserva historial/documentos y restituye stock una vez. No hay devolución automática de dinero. Desde despacho no se cancela por UI.
 - El comprador tiene un hilo; cada unidad de emisión otro, solo a su buzón. Gestores reciben CC de avisos nuevos del comprador; altas de usuarios no reenvían históricos. Mixto recibe un único acuse/aprobación y un lote con ambos PDF cuando corresponda.
 - Refresco manual cuando no hay carga/borrador; no hay polling periódico ni botón de reenviar correo.
+
+
+## Recojo y personal de apoyo
+
+En Configuración → Campus se edita el horario como texto. En Apoyo para recojo se añaden nombres completos y correos, se editan o desactivan. El listado es general y no concede acceso al sistema. Solo se elimina un registro sin pedidos asociados.
+
+En Distribución, para recojo, seleccionar al apoyo antes de marcar Listo para recoger. El comprador recibe en su hilo el nombre por quien preguntar, lugar y horario. El apoyo recibe en otra conversación los datos de quien recoge y las publicaciones; los gestores reciben copia. Confirmar posteriormente la entrega sigue siendo responsabilidad del gestor. Para ingresar al campus se requiere DNI, correo de la orden y comprobante del depósito.
+
+En Cupones, seleccionar todo el catálogo o títulos concretos. Solo se utiliza un código por compra. El resumen muestra el precio y descuento de cada título; los importes de cada unidad suman esas líneas. El costo por envío conserva su distribución habitual y no recibe descuentos. Campañas y cupones no se combinan.

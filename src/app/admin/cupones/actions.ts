@@ -2,9 +2,9 @@
 import { writeManagementAudit } from "@/lib/audit/management";
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { coupons, couponRedemptions } from "@/db/schema";
+import { coupons, couponRedemptions, books } from "@/db/schema";
 import { getAuthorizedSession } from "@/lib/access";
 import { assertAuthorized } from "@/lib/transaction-access";
 import { AccessError } from "@/lib/access-policy";
@@ -21,6 +21,11 @@ export async function saveCouponAction(input: unknown) {
       await db.transaction(async (tx) => {
         await assertAuthorized(tx, actor);
         const { id, version, ...fields } = parsed.data;
+        fields.bookIds = [...new Set(fields.bookIds)];
+        if (fields.scope === "selected") {
+          const selected = await tx.select({ id: books.id }).from(books).where(inArray(books.id, fields.bookIds));
+          if (selected.length !== fields.bookIds.length) throw new CouponError("Alguna publicación ya no existe. Revisa la selección.");
+        } else fields.bookIds = [];
         if (id) {
           const [current] = await tx.select().from(coupons).where(eq(coupons.id, id)).for("update");
           if (!current || current.updatedAt.toISOString() !== version) throw new CouponError("El cupón cambió o fue utilizado. Actualiza la página.");

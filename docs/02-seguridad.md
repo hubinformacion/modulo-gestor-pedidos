@@ -62,7 +62,7 @@ Retención de negocio indefinida por decisión operativa, sin purga automática.
 | Cuentas/campus, catálogo/stock/precios y promociones/cupones | `management_audit`; recurso, operación y campos de negocio explícitos |
 | Correcciones fiscales | Observación con valores; auditoría con ID estable de actor y campos afectados, sin duplicar PII en logs de plataforma |
 | Límites de admisión | `order_admission_changes`; maestro, valores anteriores/nuevos y fecha |
-| Correo | `order_emails`, `order_notifications`, `caja_notifications`; resultado/API/hilo, nunca cola ni reenvío histórico |
+| Correo | `order_emails`, `order_notifications`, `caja_notifications`, `pickup_notifications`; resultado/API/hilo, nunca cola ni reenvío histórico |
 
 Solo maestro ve los últimos 30 registros administrativos en Seguridad; historial entero en BD, sin edición/borrado por UI y sin reconstrucción de eventos antiguos. TI debe restringir runtime a SELECT/INSERT en tablas append-only, sin propiedad ni privilegios heredados de modificación. La auditoría no sustituye logs de Workspace ni registra cada visualización o copia local.
 
@@ -82,3 +82,6 @@ Carpeta operativa exclusiva. No adoptar/retirar permisos manuales preexistentes;
 Registrar ambiente, versión, fecha, responsable y resultado. Adjuntar configuración redactada de MFA/OAuth, IAM/SQL/cifrado/región, ACL y firewall; ejemplo anonimizado de auditoría; acta de respaldo/restauración; aceptación funcional/legal de consentimiento/retención/eventos. Revisar accesos/retención/redacción de logs Vercel/WordPress: pueden contener rutas con tokens aunque los logs propios sean seguros.
 
 No adjuntar `.env.local`, cookies, dumps, tokens, PDFs de compradores ni parámetros SQL. Advisory de dependencias se revisa al actualizarlas; esta revisión de fuente y lint/build no equivalen a un escaneo actualizado del registro ni a pruebas completas OAuth/Gmail/Drive/WordPress.
+
+
+Personal de apoyo para recojo: contactos sin autorización de ingreso ni permisos Drive. Solo reciben por correo el nombre/documento/teléfono de quien recoge, publicaciones, lugar y horario del pedido asignado, con copia a gestores FE. No reciben el enlace privado del comprador ni documentos de otros pedidos. El comprador consulta el nombre de apoyo; su correo permanece interno. Cambios del listado se auditan. Los correos nuevos de Tesorería incluyen también CC de gestores FE, excluyendo al comprador y operadores adicionales de Tesorería.

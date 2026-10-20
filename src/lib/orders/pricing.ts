@@ -33,7 +33,8 @@ export function calculateQuote(
   let couponApplied: CouponOffer | null = null;
   if (coupon) {
     const couponLines = lines.map((line) => {
-      const unitPrice = Math.max(line.baseUnitPrice > 0 ? 1 : 0, Math.round(line.baseUnitPrice * (100 - coupon.percent) / 100));
+      const eligible = coupon.scope === "all" || coupon.bookIds.includes(line.book.id);
+      const unitPrice = eligible ? Math.max(line.baseUnitPrice > 0 ? 1 : 0, Math.round(line.baseUnitPrice * (100 - coupon.percent) / 100)) : line.baseUnitPrice;
       return { ...line, unitPrice, subtotal: unitPrice * line.quantity, discount: (line.baseUnitPrice - unitPrice) * line.quantity, discountPercent: line.baseUnitPrice > unitPrice ? coupon.percent : 0, promotionId: null, promotionName: null };
     });
     // Mutually exclusive whole-cart alternatives. Ties retain promotions.

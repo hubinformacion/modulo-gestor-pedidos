@@ -2,7 +2,7 @@ import { ArrowUpRight, MapPin, PackageCheck, Truck } from "lucide-react";
 import { courierEstimate } from "@/lib/orders/courier";
 import type { orders } from "@/db/schema";
 
-type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
+type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryPickupHours" | "pickupContactName" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 
 export function DeliveryCard({ order }: { order: DeliveryOrder }) {
@@ -19,12 +19,14 @@ export function DeliveryCard({ order }: { order: DeliveryOrder }) {
     <div className="grid gap-6 p-5 sm:grid-cols-2 sm:p-6">
       <div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{pickup ? "Biblioteca" : "Dirección de entrega"}</p><p className="mt-2 text-sm font-medium leading-6">{order.deliveryAddress}</p>
         {pickup && order.deliveryLibraryLocation ? <p className="mt-2 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
+        {pickup && order.deliveryPickupHours ? <p className="mt-2 text-xs leading-6 text-muted-foreground"><strong>Horario:</strong> {order.deliveryPickupHours}</p> : null}
+        {pickup && order.pickupContactName ? <p className="mt-2 text-xs leading-6 text-primary">Pregunta por <strong>{order.pickupContactName}</strong> para recoger tus publicaciones.</p> : null}
         {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex cursor-pointer items-center gap-1 text-xs font-medium text-primary underline underline-offset-4">Ver ubicación en Google Maps<ArrowUpRight className="size-3" /></a> : null}
         {order.deliveryDistrict ? <p className="mt-1 text-xs leading-6 text-muted-foreground">{order.deliveryDistrict}, {order.deliveryProvince}, {order.deliveryDepartment}</p> : null}
         {order.deliveryReference ? <p className="mt-2 text-xs leading-6 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
       </div>
       <div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{pickup ? "Persona que recoge" : "Persona que recibe"}</p><p className="mt-2 text-sm font-medium">{order.deliveryRecipient}</p>{order.deliveryRecipientPhone ? <p className="mt-2 text-xs text-muted-foreground">{order.deliveryRecipientPhone}</p> : null}
-        {pickup && sent && !delivered ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Lleva tu documento de identidad para recoger las publicaciones.</p> : null}
+        {pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Para ingresar, presenta en vigilancia tu DNI, el correo de la orden y el comprobante del depósito.</p> : null}
       </div>
     </div>
     {!pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="border-t border-border bg-secondary/20 px-5 py-3 text-xs leading-6 text-muted-foreground sm:px-6">{courierEstimate(order.deliveryZone)}</p> : null}

@@ -18,9 +18,10 @@ export const couponCodeSchema = z.string().trim().toUpperCase().regex(/^[A-Z0-9_
 export const couponSchema = z.object({
   id: z.uuid().optional(), version: z.iso.datetime().optional(), code: couponCodeSchema,
   percent: z.coerce.number().int().min(1).max(99), audience: z.enum(["all", "comunidad_continental", "publico_general"]),
+  scope: z.enum(["all", "selected"]).default("all"), bookIds: z.array(z.uuid()).max(2000).default([]),
   maxUses: z.number().int().min(1).max(2147483647).nullable(),
   startsAt: z.iso.datetime({ offset: true }).nullable(), endsAt: z.iso.datetime({ offset: true }).nullable(), status: z.enum(["ACTIVO", "INACTIVO"]),
-}).refine((data) => Boolean(data.id) === Boolean(data.version), "Actualiza el cupón antes de editarlo.")
+}).refine((data) => data.scope === "all" || data.bookIds.length > 0, "Selecciona al menos una publicación.").refine((data) => Boolean(data.id) === Boolean(data.version), "Actualiza el cupón antes de editarlo.")
   .refine((data) => !data.startsAt || !data.endsAt || Date.parse(data.startsAt) < Date.parse(data.endsAt), "El fin debe ser posterior al inicio.");
 export const deleteCouponSchema = z.object({ id: z.uuid(), version: z.iso.datetime() });
-export type CouponRow = { id: string; code: string; percent: number; audience: "all" | "comunidad_continental" | "publico_general"; maxUses: number | null; usedCount: number; startsAt: string | null; endsAt: string | null; status: "ACTIVO" | "INACTIVO"; version: string };
+export type CouponRow = { scope: "all" | "selected"; bookIds: string[]; id: string; code: string; percent: number; audience: "all" | "comunidad_continental" | "publico_general"; maxUses: number | null; usedCount: number; startsAt: string | null; endsAt: string | null; status: "ACTIVO" | "INACTIVO"; version: string };

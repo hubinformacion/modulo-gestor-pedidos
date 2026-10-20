@@ -26,3 +26,8 @@ for (const [state, icon] of Object.entries(icons)) {
   await sharp(Buffer.from(svg)).png().toFile(new URL(`${state}.png`, folder).pathname);
   console.log(`Ilustración generada: ${state}`);
 }
+
+// Institutional mark from the approved local SVG, white on the purple header.
+const { readFile } = await import("node:fs/promises");
+const logo = (await readFile(new URL("../../app/icon.svg", import.meta.url), "utf8")).replaceAll('fill="black"', 'fill="#ffffff"');
+await sharp(Buffer.from(logo)).resize(80, 80).png().toFile(new URL("isotipo.png", folder).pathname);

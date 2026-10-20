@@ -1,3 +1,6 @@
+import { asc, eq } from "drizzle-orm";
+import { withReadDatabase } from "@/db";
+import { pickupContacts, pickupNotifications } from "@/db/schema";
 import { canAttendOrders } from "@/lib/access-policy";
 import { PurchaseDetail } from "@/components/orders/purchase-detail";
 import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
@@ -30,6 +33,10 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const detail = await orderDetail(parsed.data);
   if (!detail) notFound();
   const { order, items, receipts, activity, notes, evidence } = detail;
+  const [supportContacts, supportNotices] = await withReadDatabase((db) => Promise.all([
+    db.select({ id: pickupContacts.id, name: pickupContacts.name }).from(pickupContacts).where(eq(pickupContacts.status, "ACTIVO")).orderBy(asc(pickupContacts.name)),
+    db.select({ status: pickupNotifications.status, createdAt: pickupNotifications.createdAt }).from(pickupNotifications).where(eq(pickupNotifications.orderId, order.id)),
+  ]));
   const version = order.updatedAt.toISOString();
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const canAttend = canAttendOrders(actor);
@@ -40,7 +47,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     <DetailCardHeading level={3} icon={Truck} title={order.deliveryType === "delivery" ? "Entrega a domicilio" : "Recojo en biblioteca"} />
     <div className="grid gap-5 sm:grid-cols-2">
       <div className="min-w-0"><h4 className="text-[10px] font-semibold text-primary">{order.deliveryType === "delivery" ? "Destino de entrega" : "Lugar de recojo"}</h4><p className="mt-2 break-words text-xs leading-6">{order.deliveryAddress}</p>
-        {order.deliveryType === "recojo_campus" && order.deliveryLibraryLocation ? <p className="mt-1 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
+        {order.deliveryType === "recojo_campus" && order.deliveryPickupHours ? <p className="mt-1 text-xs leading-6">{order.deliveryPickupHours}</p> : null}{order.pickupContactName ? <p className="mt-2 text-xs leading-6"><strong>Apoyo:</strong> {order.pickupContactName}{order.pickupContactEmail ? ` · ${order.pickupContactEmail}` : ""}<span className="block text-muted-foreground">Aviso al apoyo: {supportNotices[0]?.status === "ENVIADO" ? "Enviado" : supportNotices[0]?.status === "ERROR" ? "No se pudo enviar" : supportNotices[0]?.status === "OMITIDO" ? "Omitido" : "Registrado"}</span></p> : null}{order.deliveryType === "recojo_campus" && order.deliveryLibraryLocation ? <p className="mt-1 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
         {order.deliveryDistrict ? <p className="mt-2 text-[10px] leading-5 text-muted-foreground">{order.deliveryDistrict}, {order.deliveryProvince}, {order.deliveryDepartment}</p> : null}
         {order.deliveryReference ? <p className="mt-2 text-[10px] leading-5 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
         {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-[10px] font-medium text-primary underline">Ver ubicación en Google Maps ↗</a> : null}
@@ -81,7 +88,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       })}</div>{!mine && !closed ? <p className="mt-3 text-[10px] leading-6 text-muted-foreground">Las decisiones de pago las registra el gestor asignado.</p> : null}<div className="mt-5"><AdminSaleDocuments orderId={order.id} invoice={Boolean(order.billingRuc)} canReturn={mine && order.orderStatus !== "CANCELADO"} /></div>
     </div>,
     <div key="preparation"><h2 className="text-base font-semibold">Distribución y despacho</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">Comprueba cantidades y destino antes de registrar la salida.</p><div className="mt-5 grid items-start gap-5 xl:grid-cols-2">{packingList}{deliveryDetails}</div>
-      {mine && order.orderStatus === "EN_PREPARACION" ? <section className="mt-4 rounded-lg border border-primary/15 bg-secondary/10 p-4"><DetailCardHeading level={3} icon={Send} title="Registrar salida" /><DispatchControls id={order.id} version={version} status="EN_PREPARACION" delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} /></section> : <p className="mt-3 text-xs leading-6 text-muted-foreground">{order.orderStatus === "PENDIENTE_PAGO" ? "La salida se habilita al verificar todos los pagos." : "Consulta la entrega en la última etapa."}</p>}
+      {mine && order.orderStatus === "EN_PREPARACION" ? <section className="mt-4 rounded-lg border border-primary/15 bg-secondary/10 p-4"><DetailCardHeading level={3} icon={Send} title="Registrar salida" /><DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} /></section> : <p className="mt-3 text-xs leading-6 text-muted-foreground">{order.orderStatus === "PENDIENTE_PAGO" ? "La salida se habilita al verificar todos los pagos." : "Consulta la entrega en la última etapa."}</p>}
     </div>,
     <div key="delivery"><h2 className="text-base font-semibold">{closed ? "Cierre de atención" : "Entrega y seguimiento"}</h2><div className="mt-5 grid items-start gap-5 xl:grid-cols-2">{deliveryDetails}<section className="rounded-lg border border-border p-4"><DetailCardHeading level={3} icon={PackageCheck} title="Registro de entrega" /><dl className="mt-3 space-y-3 text-xs">
       {order.courier ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Courier</dt><dd className="font-medium">{order.courier}</dd></div> : null}

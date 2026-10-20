@@ -52,4 +52,4 @@ export const initialCampuses = [
   { name: "Ica", libraryAddress: "Calle C N.° 201 - Parque Industrial, Ica", libraryLocation: "Pabellón F", latitude: "-14.0500360", longitude: "-75.7506181" },
   { name: "Lima - Los Olivos", libraryAddress: "Av. Alfredo Mendiola 5210 - Los Olivos", libraryLocation: "Pabellón A, sexto piso", latitude: "-11.9739082", longitude: "-77.0658227" },
   { name: "Lima - Miraflores", libraryAddress: "Calle Junín 355, Miraflores - Lima", libraryLocation: "Segundo piso", latitude: "-12.1101961", longitude: "-77.0279912" },
-].map((campus) => ({ ...campus, googleMapsEmbedUrl: "", status: "ACTIVO" as const }));
+].map((campus) => ({ ...campus, pickupHours: campus.name === "Lima - Miraflores" ? "Martes, jueves y viernes, de 9:00 a. m. a 5:00 p. m." : "Lunes a viernes, de 9:00 a. m. a 7:00 p. m.", googleMapsEmbedUrl: "", status: "ACTIVO" as const }));
