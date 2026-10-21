@@ -1,3 +1,4 @@
+import type { DeliveryRates } from "@/lib/delivery/rates-validation";
 import { toCents } from "./money";
 import { resolveShippingZone } from "./geography";
 import type { CatalogBook, CartSelection, CustomerKind, DeliveryDraft, Imprint, CouponOffer } from "./types";
@@ -14,7 +15,7 @@ export function bookPrice(book: CatalogBook, customer: CustomerKind, at = Date.n
 
 export function calculateQuote(
   catalog: CatalogBook[], cart: CartSelection[], customer: CustomerKind,
-  delivery: Pick<DeliveryDraft, "type" | "district">, at = Date.now(), coupon?: CouponOffer | null,
+  delivery: Pick<DeliveryDraft, "type" | "district">, at: number, rates: DeliveryRates, coupon?: CouponOffer | null,
 ) {
   const catalogById = new Map(catalog.map((book) => [book.id, book]));
   const seen = new Set<string>();
@@ -44,8 +45,9 @@ export function calculateQuote(
   const hasInstituto = lines.some((line) => line.book.publisherImprint === "instituto");
   const orderType: "solo_universidad" | "solo_instituto" | "mixto" | null = hasUniversidad && hasInstituto ? "mixto" : hasUniversidad ? "solo_universidad" : hasInstituto ? "solo_instituto" : null;
   const zone = resolveShippingZone(delivery.district);
-  const shippingKnown = delivery.type === "recojo_campus" || zone !== "";
-  const shippingCost = lines.length === 0 || delivery.type === "recojo_campus" ? 0 : zone === "lima_callao" ? 1500 : zone === "provincia" ? 2500 : 0;
+  const shippingUnavailable = delivery.type === "delivery" && zone !== "" && rates[zone] === undefined;
+  const shippingKnown = delivery.type === "recojo_campus" || (zone !== "" && !shippingUnavailable);
+  const shippingCost = lines.length === 0 || delivery.type === "recojo_campus" || zone === "" ? 0 : rates[zone] ?? 0;
   const accounts = (Object.keys({ universidad: 0, instituto: 0 }) as Imprint[])
     .filter((imprint) => lines.some((line) => line.book.publisherImprint === imprint))
     .map((imprint) => {
@@ -57,7 +59,7 @@ export function calculateQuote(
   const subtotal = accounts.reduce((sum, account) => sum + account.subtotal, 0);
   const total = subtotal + shippingCost;
   if (!Number.isSafeInteger(total)) throw new Error("Importe fuera de rango.");
-  return { lines, accounts, orderType, couponApplied, discountTotal, originalSubtotal: subtotal + discountTotal, subtotal, shippingCost, shippingKnown, total, quantity: lines.reduce((sum, line) => sum + line.quantity, 0) };
+  return { lines, accounts, orderType, couponApplied, discountTotal, originalSubtotal: subtotal + discountTotal, subtotal, shippingCost, shippingKnown, shippingUnavailable, total, quantity: lines.reduce((sum, line) => sum + line.quantity, 0) };
 }
 
 export type OrderQuote = ReturnType<typeof calculateQuote>;

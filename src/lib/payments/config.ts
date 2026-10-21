@@ -1,16 +1,20 @@
 import "server-only";
+import { formatCci } from "./bank-format";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { z } from "zod";
 import { asc, eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
-import { bankAccounts, paymentGuides } from "@/db/schema";
+import { bankAccounts, paymentGuides, campuses, treasuryMailboxes, pickupContacts, deliveryRates } from "@/db/schema";
+import { isAuthConfigured } from "@/lib/env";
+import { getWordPressOrigins } from "@/lib/iframe/config";
+import { deliveryZoneLabels } from "@/lib/delivery/rates-validation";
 import type { Imprint } from "@/lib/orders/types";
 
 const bankSchema = z.object({
   bank: z.string().trim().min(2), holder: z.string().trim().min(2),
   currency: z.literal("PEN"), account: z.string().trim().min(5).max(80),
-  cci: z.string().transform((value) => value.replace(/[ -]/g, "")).pipe(z.string().regex(/^\d{20}$/)),
+  cci: z.string().transform((value) => value.replace(/[ -]/g, "")).pipe(z.string().regex(/^\d{20}$/)).transform(formatCci),
 });
 export const bankAccountsSchema = z.object({ universidad: z.array(bankSchema).min(1), instituto: z.array(bankSchema).min(1) });
 export type BankAccount = z.infer<typeof bankSchema>;
@@ -53,16 +57,39 @@ export async function getOrderBankAccounts(snapshot: unknown) {
   return parsed.success ? parsed.data : getBankAccounts();
 }
 
-export async function getPaymentSetupStatus() {
+export async function getPaymentSetupStatus(configuration: {
+  bankRows: (typeof bankAccounts.$inferSelect)[];
+  campusRows: (typeof campuses.$inferSelect)[];
+  mailboxRows: (typeof treasuryMailboxes.$inferSelect)[];
+  supportRows: (typeof pickupContacts.$inferSelect)[];
+  rateRows: (typeof deliveryRates.$inferSelect)[];
+}) {
+  // Reuse the authorized page snapshot instead of querying every setting twice.
+  const banks = bankAccountsFromRows(configuration.bankRows.filter((row) => row.status === "ACTIVO"));
+  const sites = configuration.campusRows.filter((row) => row.status === "ACTIVO");
+  const mailboxes = configuration.mailboxRows;
+  const support = configuration.supportRows.filter((row) => row.status === "ACTIVO");
+  const rates = configuration.rateRows;
   const guides = await Promise.all((Object.keys(pdfNames) as PaymentOrderType[]).map(async (type) => {
-    try { await readPaymentGuide(type); return { label: pdfNames[type], ready: true }; }
-    catch { return { label: pdfNames[type], ready: false }; }
+    try { await readPaymentGuide(type); return { group: "Pagos y documentos", label: pdfNames[type], ready: true, detail: "PDF local presente con firma y tamaño válidos." }; }
+    catch { return { group: "Pagos y documentos", label: pdfNames[type], ready: false, detail: "Revisa el archivo PDF y su tamaño máximo de 3 MiB." }; }
   }));
-  let originReady = false;
+  let originReady = false; let embedReady = false;
   try { getPublicOrigin(); originReady = true; } catch { /* Missing configuration. */ }
-  return [{ label: "Cuentas bancarias activas de ambos sellos", ready: Boolean(await getBankAccounts()) },
-    { label: "Credenciales de cuenta propietaria para Drive y Gmail", ready: googleConfigured() },
-    { label: "Dirección pública del sistema", ready: originReady }, ...guides];
+  try { embedReady = getWordPressOrigins().length > 0; } catch { /* Invalid origin configuration. */ }
+  return [
+    { group: "Aplicación y acceso", label: "Base de datos", ready: true, detail: "Las consultas de configuración se completaron." },
+    { group: "Aplicación y acceso", label: "Acceso con Google", ready: isAuthConfigured(), detail: "URL de autenticación, secreto de sesión y cliente OAuth presentes; no comprueba el login real." },
+    { group: "Aplicación y acceso", label: "Dirección pública", ready: originReady, detail: "APP_URL tiene un formato válido; no comprueba DNS ni disponibilidad externa." },
+    { group: "Aplicación y acceso", label: "WordPress autorizado para iframe", ready: embedReady, detail: "WORDPRESS_ORIGINS contiene orígenes válidos; no comprueba el bloque publicado en WordPress." },
+    { group: "Google y servicios", label: "Credenciales propietarias Drive / Gmail", ready: googleConfigured(), detail: "Variables presentes. Usa la comprobación manual para validar token, buzón y carpeta." },
+    { group: "Google y servicios", label: "Protección del cron de permisos", ready: (process.env.CRON_SECRET?.length ?? 0) >= 32, detail: "Secreto de al menos 32 caracteres; no acredita que el cron esté habilitado en Vercel." },
+    { group: "Pagos y documentos", label: "Cuentas activas de ambos sellos", ready: Boolean(banks), detail: "Revisa titular, cuenta y CCI. La validación de formato no confirma la titularidad bancaria." }, ...guides,
+    { group: "Entrega y recojo", label: "Campus activos con horario", ready: sites.length > 0 && sites.every((site) => site.pickupHours.trim()), detail: `${sites.length} campus activos. Todos deben tener un horario de recojo.` },
+    { group: "Entrega y recojo", label: "Personal de apoyo activo", ready: support.length > 0, detail: `${support.length} personas disponibles para coordinar recojos, sin acceso al sistema.` },
+    ...(["lima_callao", "provincia"] as const).map((zone) => ({ group: "Entrega y recojo", label: `Delivery · ${deliveryZoneLabels[zone]}`, ready: rates.some((rate) => rate.zone === zone && rate.status === "ACTIVO"), detail: "Una tarifa ausente o inactiva deshabilita el delivery para esta zona." })),
+    ...(["universidad", "instituto"] as const).map((unit) => ({ group: "Tesorería Recaudación", label: `Buzón de servicio · ${unit === "universidad" ? "Universidad" : "Instituto"}`, ready: mailboxes.some((row) => row.publisherImprint === unit), detail: "Destinatario interno configurado; no se comprueba la recepción de correo." })),
+  ];
 }
 
 export async function readOrderPaymentGuide(order: { orderType: PaymentOrderType; paymentGuideHash: string | null }) {

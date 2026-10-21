@@ -1,4 +1,5 @@
 "use client";
+import type { DeliveryRates } from "@/lib/delivery/rates-validation";
 import { scrollWizardTo } from "@/lib/ui/wizard-scroll";
 
 import { useRef, useState, useTransition, type FormEvent } from "react";
@@ -27,7 +28,8 @@ const steps = [
   { name: "Confirmación", title: "Revisa tu pedido", description: "Comprueba las publicaciones, tus datos y el detalle de pago por cuenta." },
 ] as const;
 
-export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEnabled = false }: { initialPricingAt: number; catalog: CatalogBook[]; campuses: Campus[]; submissionEnabled?: boolean }) {
+export function OrderWizard({ initialDeliveryRates, catalog, campuses, initialPricingAt, submissionEnabled = false }: { initialDeliveryRates: DeliveryRates; initialPricingAt: number; catalog: CatalogBook[]; campuses: Campus[]; submissionEnabled?: boolean }) {
+  const [rates, setRates] = useState(initialDeliveryRates);
   const [pricedCatalog, setPricedCatalog] = useState<CatalogBook[] | null>(null);
   const currentCatalog = pricedCatalog ?? catalog;
   const [pricingAt, setPricingAt] = useState(initialPricingAt);
@@ -48,7 +50,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
   const wizardRef = useRef<HTMLDivElement>(null);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const errorRef = useRef<HTMLDivElement>(null);
-  const quote = calculateQuote(currentCatalog, cart, buyer.type, delivery, pricingAt, couponOffer);
+  const quote = calculateQuote(currentCatalog, cart, buyer.type, delivery, pricingAt, rates, couponOffer);
 
   function resetValidation() { setErrors({}); setErrorMessage(""); setConsentAccepted(false); setCouponOffer(null); setCouponMessage(""); }
 
@@ -63,9 +65,9 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
     startTransition(async () => {
       const result = await reviewPricingAction({ cart, buyer, delivery, couponCode: couponInput }).catch(() => ({ success: false as const, message: "No pudimos comprobar el cupón. Reintenta." }));
       if (!result.success) { setCouponMessage(result.message); return; }
-      setPricedCatalog([...result.catalog, ...currentCatalog.filter((book) => !result.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(result.at); setCouponOffer(result.coupon); setConsentAccepted(false);
+      setPricedCatalog([...result.catalog, ...currentCatalog.filter((book) => !result.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setRates(result.rates); setPricingAt(result.at); setCouponOffer(result.coupon); setConsentAccepted(false);
       if (!result.coupon) { setCouponMessage("Ingresa un código para aplicar un cupón."); return; }
-      const priced = calculateQuote(result.catalog, cart, buyer.type, delivery, result.at, result.coupon);
+      const priced = calculateQuote(result.catalog, cart, buyer.type, delivery, result.at, result.rates, result.coupon);
       setCouponInput(result.coupon.code);
       setCouponMessage(priced.couponApplied ? `Cupón ${result.coupon.code} aplicado.` : "El precio actual ofrece igual o mayor ahorro. El cupón no se utilizará.");
       if (!priced.couponApplied) sileo.info({ title: "Se conserva el mayor ahorro", description: "El precio actual ofrece igual o mayor descuento. El cupón no se aplicará ni consumirá un uso en este pedido." });
@@ -111,7 +113,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
         const prices = await reviewPricingAction({ cart, buyer, delivery: result.data }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
         if (!prices.success) { showErrors([{ path: ["form"], message: prices.message }]); return; }
         setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]);
-        setPricingAt(prices.at); setConsentAccepted(false); goTo(3);
+        setRates(prices.rates); setPricingAt(prices.at); setConsentAccepted(false); goTo(3);
       });
     } else {
       const result = createOrderDraftSchema(currentCatalog, campuses).safeParse({ cart, buyer, delivery });
@@ -145,7 +147,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
       {step === 3 ? <div className="mb-4 flex justify-end"><Button variant="ghost" className="text-xs text-primary" disabled={submitting} onClick={() => startTransition(async () => {
         const prices = await reviewPricingAction({ cart, buyer, delivery, couponCode: couponOffer?.code ?? "" }).catch(() => ({ success: false as const, message: "No pudimos actualizar los precios. Reintenta." }));
         if (!prices.success) { showErrors([{ path: ["form"], message: prices.message }]); return; }
-        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setPricingAt(prices.at); setCouponOffer(prices.coupon); setConsentAccepted(false);
+        setPricedCatalog([...prices.catalog, ...currentCatalog.filter((book) => !prices.catalog.some((current) => current.id === book.id)).map((book) => ({ ...book, stock: 0 }))]); setRates(prices.rates); setPricingAt(prices.at); setCouponOffer(prices.coupon); setConsentAccepted(false);
       })}>Actualizar precios</Button></div> : null}
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
@@ -168,6 +170,7 @@ export function OrderWizard({ catalog, campuses, initialPricingAt, submissionEna
           <div key={step} className="enter-page">
             {step === 0 ? <CatalogStep at={pricingAt} catalog={currentCatalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
+            {step === 2 && quote.shippingUnavailable ? <p role="alert" className="mb-4 rounded-lg bg-destructive/5 p-3 text-xs leading-6 text-destructive">El delivery no está disponible para esta zona. Puedes seleccionar recojo en biblioteca.</p> : null}
             {step === 2 ? <DeliveryStep delivery={delivery} campuses={campuses} errors={errors} buyer={buyer} onChange={(value) => { setDelivery(value); if (value.type === "recojo_campus") setBuyer((current) => ({ ...current, billingAddressMode: "custom" })); resetValidation(); }} /> : null}
             {step === 3 ? <ConfirmationStep buyer={buyer} delivery={delivery} campuses={campuses} errors={errors} onBuyerChange={(value) => { setBuyer(value); resetValidation(); }} onEdit={(value) => { setConsentAccepted(false); goTo(value); }} /> : null}
           </div>

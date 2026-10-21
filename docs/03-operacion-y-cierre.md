@@ -137,3 +137,14 @@ Antes de desplegar esta versión sobre una BD anterior, el responsable técnico 
 Después, registrar personas reales en Configuración → Apoyo para recojo (nombre/correo/estado); no se siembran contactos ficticios ni se crean accesos al sistema. El desplegable de Distribución solo muestra personas activas y es obligatorio para recojo. El comprador verá el nombre del apoyo, no su correo. El aviso al apoyo tiene hilo separado y CC a gestores; el resultado se consulta en el detalle administrativo. No se reenviarán fallos ni pedidos históricos.
 
 Validación manual al operar pedidos autorizados: comprobar descuentos por línea y totales por unidad en únicos/mixtos; cupón global/selección (un código), comparación con campañas y envío intacto; horario de Miraflores y otros campus; impedir recojo sin apoyo; comprador/apoyo/Tesorería en hilos distintos con CC de gestores; logo/estado/botón y PDF originales. La comprobación estática no acredita estos envíos reales.
+
+
+## Tarifas de delivery y comprobación de integraciones
+
+La BD actualmente configurada ya recibió esta actualización y la sincronización de las cuatro cuentas confirmadas. No repetir el SQL en ella. Se conservaron los pedidos y sus snapshots bancarios.
+
+En instalaciones anteriores a las tarifas editables, aplicar una vez [20261021-delivery-rates.sql](../src/db/updates/20261021-delivery-rates.sql), con respaldo y antes del despliegue. Crea las dos tarifas iniciales (Lima/Callao15, provincia25) y adapta el constraint de pedidos para aceptar importes configurables. Conserva todos los importes de pedidos existentes. Instalaciones vacías usan esquema inicial/seed y no ejecutan este SQL adicional.
+
+Configuración → Delivery permite crear, editar, activar/desactivar o eliminar cada una de las dos tarifas. Ausente/inactiva impide delivery a esa zona; recojo gratuito sigue disponible. Una variación durante la compra exige actualizar el resumen antes de confirmar; el servidor relee con lock y nunca acepta un importe del navegador. Los cambios se auditan.
+
+Integraciones distingue presencia de configuración frente a conexión efectiva. El botón Comprobar Google ejecuta lecturas de autorización, carpeta, buzón y permisos, con tiempos límite y sin envíos, cargas ni cambios de acceso; no se ejecuta al abrir pantallas ni por cron. No acredita entrega de mensajes ni funcionamiento completo de OAuth/WordPress. Las cuentas del seed incluyen guiones y los CCI se presentan3-3-12-2; repetir seed conserva las cuentas ya existentes y sus valores.

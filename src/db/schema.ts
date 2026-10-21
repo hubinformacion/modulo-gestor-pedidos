@@ -167,8 +167,8 @@ export const orders = pgTable("orders", {
   check("orders_delivery_fields", sql`btrim(${table.deliveryAddress}) <> '' AND btrim(${table.deliveryRecipient}) <> '' AND (
     (${table.deliveryType} = 'recojo_campus' AND coalesce(btrim(${table.deliveryCampus}), '') <> '' AND ${table.deliveryZone} IS NULL AND ${table.shippingCost} = 0)
     OR (${table.deliveryType} = 'delivery' AND ${table.deliveryCampus} IS NULL AND ${table.deliveryZone} IS NOT NULL AND (
-      (${table.deliveryZone} = 'lima_callao' AND ${table.shippingCost} = 15)
-      OR (${table.deliveryZone} = 'provincia' AND ${table.shippingCost} = 25 AND coalesce(btrim(${table.deliveryDepartment}), '') <> '' AND coalesce(btrim(${table.deliveryCity}), '') <> '')
+      (${table.deliveryZone} = 'lima_callao')
+      OR (${table.deliveryZone} = 'provincia' AND coalesce(btrim(${table.deliveryDepartment}), '') <> '' AND coalesce(btrim(${table.deliveryCity}), '') <> '')
     ))
   )`),
   check("orders_nonnegative_amounts", sql`${table.subtotalUniversidad} >= 0 AND ${table.subtotalInstituto} >= 0 AND ${table.shippingCost} >= 0 AND ${table.shippingUniversidad} >= 0 AND ${table.shippingInstituto} >= 0 AND ${table.totalUniversidad} >= 0 AND ${table.totalInstituto} >= 0 AND ${table.total} >= 0`),
@@ -572,3 +572,10 @@ export const pickupNotifications = pgTable("pickup_notifications", {
   lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [check("pickup_notifications_status", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')`), check("pickup_notifications_attempts", sql`${table.attempts} BETWEEN 0 AND 1`)]);
+
+export const deliveryRates = pgTable("delivery_rates", {
+  zone: deliveryZone("zone").primaryKey(),
+  price: money("price").notNull(),
+  status: bookStatus("status").default("ACTIVO").notNull(),
+  ...timestamps(),
+}, (table) => [check("delivery_rates_price", sql`${table.price} >= 0 AND ${table.price} <= 999999.99`)]);

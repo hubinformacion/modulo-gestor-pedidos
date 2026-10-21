@@ -15,7 +15,7 @@ Empieza por [00 · Inicio](docs/00-inicio.md). La documentación está resumida 
 - Pagos por unidad; mixtos con dos depósitos, carga automática y revisión independiente.
 - Atención asignada, distribución, despacho/entrega, evidencia opcional y cancelación permitida según estado.
 - Tesorería por una/ambas unidades: observaciones, subsanación, notas privadas, PDF como borrador y finalización; en mixtos un correo al comprador con ambos PDF.
-- Inventario en tabla, configuración de campus/horarios/cuentas/accesos, personal de apoyo para recojo, reportes e historial.
+- Inventario en tabla, configuración de campus/horarios/cuentas/accesos, tarifas de delivery, personal de apoyo para recojo, reportes e historial. Integraciones con comprobación manual de Google.
 - Correos inmediatos en hilos separados por audiencia, sin cola ni reenvío posterior de fallos.
 
 ## Stack
@@ -44,6 +44,8 @@ Para desarrollo local usar `pnpm dev`. `db:setup` instala un único esquema inic
 Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `src/db/schema.sql`. No hay historial de migraciones/snapshots de desarrollo ni comandos de borrado. **Un cambio de esquema con datos operativos requiere una actualización explícita y un respaldo**, fuera del build.
 
 Para actualizar una instalación anterior con el flujo de apoyo para recojo, seguir el [procedimiento operativo](docs/03-operacion-y-cierre.md) y aplicar una sola vez `src/db/updates/20261020-pickup-support.sql` antes de desplegar. No ejecutar `db:setup` como migrador.
+
+Las instalaciones anteriores a las tarifas editables requieren además `src/db/updates/20261021-delivery-rates.sql` antes de desplegar esa versión. Conserva los importes históricos.
 
 ## Datos iniciales
 

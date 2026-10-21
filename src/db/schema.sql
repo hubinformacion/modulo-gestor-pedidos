@@ -152,6 +152,15 @@ CREATE TABLE "coupons" (
 	CONSTRAINT "coupons_dates" CHECK ("coupons"."starts_at" IS NULL OR "coupons"."ends_at" IS NULL OR "coupons"."starts_at" < "coupons"."ends_at")
 );
 
+CREATE TABLE "delivery_rates" (
+	"zone" "delivery_zone" PRIMARY KEY NOT NULL,
+	"price" numeric(12, 2) NOT NULL,
+	"status" "book_status" DEFAULT 'ACTIVO' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "delivery_rates_price" CHECK ("delivery_rates"."price" >= 0 AND "delivery_rates"."price" <= 999999.99)
+);
+
 CREATE TABLE "drive_file_reader_grants" (
 	"drive_file_id" text NOT NULL,
 	"email" text NOT NULL,
@@ -369,8 +378,8 @@ CREATE TABLE "orders" (
 	CONSTRAINT "orders_delivery_fields" CHECK (btrim("orders"."delivery_address") <> '' AND btrim("orders"."delivery_recipient") <> '' AND (
     ("orders"."delivery_type" = 'recojo_campus' AND coalesce(btrim("orders"."delivery_campus"), '') <> '' AND "orders"."delivery_zone" IS NULL AND "orders"."shipping_cost" = 0)
     OR ("orders"."delivery_type" = 'delivery' AND "orders"."delivery_campus" IS NULL AND "orders"."delivery_zone" IS NOT NULL AND (
-      ("orders"."delivery_zone" = 'lima_callao' AND "orders"."shipping_cost" = 15)
-      OR ("orders"."delivery_zone" = 'provincia' AND "orders"."shipping_cost" = 25 AND coalesce(btrim("orders"."delivery_department"), '') <> '' AND coalesce(btrim("orders"."delivery_city"), '') <> '')
+      ("orders"."delivery_zone" = 'lima_callao')
+      OR ("orders"."delivery_zone" = 'provincia' AND coalesce(btrim("orders"."delivery_department"), '') <> '' AND coalesce(btrim("orders"."delivery_city"), '') <> '')
     ))
   )),
 	CONSTRAINT "orders_nonnegative_amounts" CHECK ("orders"."subtotal_universidad" >= 0 AND "orders"."subtotal_instituto" >= 0 AND "orders"."shipping_cost" >= 0 AND "orders"."shipping_universidad" >= 0 AND "orders"."shipping_instituto" >= 0 AND "orders"."total_universidad" >= 0 AND "orders"."total_instituto" >= 0 AND "orders"."total" >= 0),

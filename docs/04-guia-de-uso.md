@@ -101,3 +101,10 @@ En Configuración → Campus se edita el horario como texto. En Apoyo para recoj
 En Distribución, para recojo, seleccionar al apoyo antes de marcar Listo para recoger. El comprador recibe en su hilo el nombre por quien preguntar, lugar y horario. El apoyo recibe en otra conversación los datos de quien recoge y las publicaciones; los gestores reciben copia. Confirmar posteriormente la entrega sigue siendo responsabilidad del gestor. Para ingresar al campus se requiere DNI, correo de la orden y comprobante del depósito.
 
 En Cupones, seleccionar todo el catálogo o títulos concretos. Solo se utiliza un código por compra. El resumen muestra el precio y descuento de cada título; los importes de cada unidad suman esas líneas. El costo por envío conserva su distribución habitual y no recibe descuentos. Campañas y cupones no se combinan.
+
+
+## Delivery e integraciones
+
+En Configuración → Delivery se ajusta el precio en soles por zona. Se admite un monto cero si se desea ofrecer envío gratuito; desactivar o eliminar una tarifa impide nuevas compras con delivery a esa zona. Los pedidos registrados conservan su costo original. Recojo en campus siempre es gratuito.
+
+Integraciones agrupa los requisitos de configuración. Presente significa que el dato existe y pasó su validación local. Comprobar Google valida la conexión y los permisos actuales sin enviar correos ni cargar documentos. Si indica invalid_grant, revisar el token propietario según el procedimiento operativo. No requiere recargar la aplicación periódicamente.

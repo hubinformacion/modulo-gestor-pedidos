@@ -27,7 +27,8 @@ export async function reviewPricingAction(input: unknown) {
     const { getPublicCatalog } = await import("@/lib/orders/catalog");
     const { getActiveCampuses } = await import("@/lib/campuses/catalog");
     const { createOrderDraftSchema } = await import("@/lib/orders/validation");
-    const [catalog, campuses] = await Promise.all([getPublicCatalog(), getActiveCampuses()]);
+    const { getDeliveryRates } = await import("@/lib/delivery/rates");
+    const [catalog, campuses, rates] = await Promise.all([getPublicCatalog(), getActiveCampuses(), getDeliveryRates()]);
     const draft = createOrderDraftSchema(catalog, campuses, false).safeParse(parsed.data);
     if (!draft.success) return { success: false as const, message: draft.error.issues[0].message };
     const { pricingClock } = await import("@/lib/discounts/catalog");
@@ -45,6 +46,8 @@ export async function reviewPricingAction(input: unknown) {
       assertCoupon(row, draft.data.buyer.type, new Date(at));
       coupon = { code: row.code, percent: row.percent, scope: row.scope, bookIds: row.bookIds };
     }
-    return { success: true as const, catalog, at, coupon };
+    const { calculateQuote } = await import("@/lib/orders/pricing");
+    if (calculateQuote(catalog, draft.data.cart, draft.data.buyer.type, draft.data.delivery, at, rates, coupon).shippingUnavailable) return { success: false as const, message: "El delivery a esta zona no está disponible. Selecciona recojo u otra dirección válida." };
+    return { success: true as const, catalog, at, coupon, rates };
   } catch (error) { return { success: false as const, message: error instanceof OrderInputError ? error.message : "No pudimos actualizar los precios. Reintenta." }; }
 }

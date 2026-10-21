@@ -8,7 +8,7 @@ export const initialBankAccounts = [
     "holder": "UNIVERSIDAD CONTINENTAL SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "0011-0235-0100038518",
-    "cci": "01123500010003851895",
+    "cci": "011-235-000100038518-95",
     "status": "ACTIVO"
   },
   {
@@ -17,7 +17,7 @@ export const initialBankAccounts = [
     "holder": "UNIVERSIDAD CONTINENTAL SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "355-1144183-0-61",
-    "cci": "00235500114418306616",
+    "cci": "002-355-001144183061-66",
     "status": "ACTIVO"
   },
   {
@@ -25,8 +25,8 @@ export const initialBankAccounts = [
     "bank": "BBVA",
     "holder": "CORPORACIÓN APEC SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
-    "account": "011-0235-0100038682",
-    "cci": "01123500010003868299",
+    "account": "0011-0235-0100038682",
+    "cci": "011-235-000100038682-99",
     "status": "ACTIVO"
   },
   {
@@ -35,7 +35,7 @@ export const initialBankAccounts = [
     "holder": "CORPORACIÓN APEC SOCIEDAD ANÓNIMA CERRADA",
     "currency": "PEN",
     "account": "355-1737857-0-67",
-    "cci": "00235500173785706769",
+    "cci": "002-355-001737857067-69",
     "status": "ACTIVO"
   }
 ] satisfies BankForm[];

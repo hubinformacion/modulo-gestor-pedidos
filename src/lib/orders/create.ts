@@ -1,4 +1,5 @@
 import "server-only";
+import { ratesFromRows } from "@/lib/delivery/rates";
 import { admitOrder } from "./admission";
 import { decoratePromotions, loadPromotionRules } from "@/lib/discounts/catalog";
 import { assertCoupon } from "@/lib/discounts/coupons";
@@ -7,7 +8,7 @@ import { and, asc, eq, inArray, notLike, sql } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import { bankAccountsFromRows, paymentSetupReady, readPaymentGuide } from "@/lib/payments/config";
 import { withDatabase } from "@/db";
-import { bankAccounts, coupons, couponRedemptions, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
+import { bankAccounts, deliveryRates, coupons, couponRedemptions, books, campuses, orderCounters, orderEmails, orderActivity, orderItems, orders, paymentGuides } from "@/db/schema";
 import { campusMapUrls } from "@/lib/orders/campus-map";
 import { toPublicCampus } from "@/lib/campuses/catalog";
 import { createOrderDraftSchema } from "./validation";
@@ -36,6 +37,7 @@ export async function createOrder(input: unknown, requestHeaders: Pick<Headers, 
     }
     const accounts = bankAccountsFromRows(await tx.select().from(bankAccounts).where(eq(bankAccounts.status, "ACTIVO")).orderBy(asc(bankAccounts.id)).for("share"));
     if (!accounts || !ready) throw new OrderInputError("El registro de pedidos no está disponible temporalmente. Conserva tus datos e inténtalo más tarde.");
+    const rates = ratesFromRows(await tx.select().from(deliveryRates).orderBy(asc(deliveryRates.zone)).for("share"));
     const { rows: [pricingClock] } = await tx.execute<{ at: string }>(sql`SELECT current_timestamp::text AS at`);
     const pricingAt = new Date(pricingClock.at);
     const promotionRules = await loadPromotionRules(tx, pricingAt, true);
@@ -48,7 +50,8 @@ export async function createOrder(input: unknown, requestHeaders: Pick<Headers, 
     const pickupCampus = delivery.type === "recojo_campus" ? activeCampuses.find((campus) => campus.id === delivery.campus) : undefined;
     const [coupon] = data.couponCode ? await tx.select().from(coupons).where(eq(coupons.code, data.couponCode)).for("update") : [];
     if (data.couponCode) assertCoupon(coupon, buyer.type, pricingAt);
-    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), coupon ? { code: coupon.code, percent: coupon.percent, scope: coupon.scope, bookIds: coupon.bookIds } : null);
+    const quote = calculateQuote(decoratePromotions(catalog, promotionRules), cart, buyer.type, delivery, pricingAt.getTime(), rates, coupon ? { code: coupon.code, percent: coupon.percent, scope: coupon.scope, bookIds: coupon.bookIds } : null);
+    if (quote.shippingUnavailable) throw new OrderInputError("El delivery a esta zona no está disponible. Selecciona otra modalidad de entrega.");
     if (!quote.orderType || !quote.shippingKnown) throw new OrderInputError("Completa la entrega para continuar.");
     if (data.expectedQuote && data.expectedQuote !== quoteStamp(quote)) throw new OrderInputError("Los precios o promociones cambiaron. Actualiza los precios y revisa el resumen antes de enviar.");
     await admitOrder(tx, buyer.email, requestHeaders);
