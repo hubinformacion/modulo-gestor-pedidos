@@ -192,6 +192,10 @@ Los controles se detallan y sus límites se mantienen en [Seguridad y accesos](0
 
 <!-- END:database-map -->
 
+## Toda la base de datos en un único lienzo
+
+El [diagrama completo con zoom y búsqueda](diagramas/06-base-datos-completa.html) reúne **40 tablas, 404 columnas, 44 claves foráneas y nueve tipos enumerados** en una sola vista, sin dividirla en pantallas. Incluye todas las columnas y conecta los campos de cada FK. Seleccionar una tabla o una columna FK resalta sus relaciones; las demás tablas permanecen visibles. También está disponible el [SVG vectorial completo](diagramas/06-base-datos-completa.svg). Es una vista del SQL inicial local; no contiene registros ni modifica la presentación.
+
 ## Consistencia y operación
 
 - Stock, cuotas, numeración anual, partidas y recepción se confirman juntos; un fallo revierte la compra completa. UUID/hash de intento evita duplicar un pedido ya creado.
