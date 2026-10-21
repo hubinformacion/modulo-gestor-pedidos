@@ -5,6 +5,10 @@ from xml.sax.saxutils import escape
 import base64
 import json
 import textwrap
+import re
+import sys
+sys.dont_write_bytecode = True
+from database import add_database_slides, write_database_docs
 
 ROOT = Path(__file__).resolve().parents[3]
 OUT = ROOT / 'docs' / 'presentacion'
@@ -39,6 +43,9 @@ class Slide:
     def line(self, points, color=None, arrow=True, dash=False):
         self.elements.append(dict(type='line', points=points, color=color or C['muted'], arrow=arrow, dash=dash))
 
+    def image(self, x, y, w, h, path, description):
+        self.elements.append(dict(type='image', x=x, y=y, w=w, h=h, path=str(path), description=description))
+
     def box(self, x, y, w, h, title, body='', focal=False, tag=None):
         self.rect(x, y, w, h, C['tint'] if focal else C['soft'], C['accent'] if focal else C['line'], 8)
         off = 16
@@ -69,7 +76,7 @@ class Slide:
 
 
 s = Slide('Visión general', 'Gestor de pedidos', 'Fondo Editorial Continental', '00–04 · Documentación del proyecto',
-'''Presentación de síntesis para público funcional y técnico. Duración orientativa: 18–25 minutos; adaptar al ritmo de preguntas. Fuente única: docs/00-inicio.md a docs/04-guia-de-uso.md, revisión 20/10/2026. Los diagramas simplifican relaciones, no certifican configuraciones de consolas ni pruebas de producción. Todos los textos y formas del PPTX son editables. Se usa Inter; si el equipo no la tiene, PowerPoint puede sustituirla. No se han consultado datos operativos ni realizado envíos o respaldos.''')
+'''Presentación de síntesis para público funcional y técnico. Duración orientativa: 25–35 minutos; adaptar al ritmo de preguntas. Fuente: docs/00-inicio.md a docs/04-guia-de-uso.md y esquema local, revisión 21/10/2026. Los diagramas no certifican configuraciones de consolas ni pruebas de producción. Texto y diagramas de datos editables; la arquitectura ampliada conserva como imagen el dibujo existente y su SVG está en docs/diagramas. Se usa Inter; si el equipo no la tiene, PowerPoint puede sustituirla. No se han consultado datos operativos ni realizado envíos o respaldos.''')
 s.text(48, 232, 760, 164, 'De la compra a la entrega,\ncon trazabilidad en cada paso.', 40, bold=True)
 s.text(48, 440, 704, 112, 'Arquitectura · Seguridad\nRespaldos · Guías de uso', 25, C['muted'])
 for i, word in enumerate(['Comprar', 'Atender', 'Documentar', 'Entregar']):
@@ -99,8 +106,8 @@ s.box(920, 504, 312, 112, 'Google OAuth / Gmail', 'Identidad y avisos')
 s.text(48, 588, 760, 40, 'Flecha = la aplicación utiliza el servicio indicado.', 16, C['muted'])
 
 s = Slide('03 · Información', 'Datos, archivos y mensajes viven en lugares distintos', 'Esta separación también define qué debe protegerse y recuperarse.', '01 · Arquitectura / 03 · Operación',
-'''Neon conserva identidad, autorización, configuración, compras, snapshots, intentos de carga, referencias/hash, actividad y metadatos de correo. Drive conserva bytes: depósitos, PDF de venta y evidencia privada. Gmail conserva conversaciones. La base no contiene una copia completa de los archivos ni de los mensajes. Los snapshots conservan título/precio/cuentas/destino/consentimiento de la compra aunque cambie la configuración. El seed solo incorpora configuración faltante; no es una copia de información operativa.''')
-s.box(48, 236, 560, 288, 'Base de datos · Neon', 'Pedidos, stock e importes\nUsuarios, permisos y configuración\nHistorial y referencias de archivos', focal=True, tag='Registros')
+'''Neon conserva identidad, autorización, configuración, compras, snapshots, intentos de carga, referencias/hash, actividad y metadatos de correo. payment_guides conserva además la guía PDF histórica codificada en base64, deduplicada por hash. Drive conserva bytes de depósitos, PDF de venta, adjuntos de subsanación y evidencia privada. Gmail conserva conversaciones. Un dump no incluye los bytes de Drive ni los mensajes Gmail. Los snapshots conservan título/precio/cuentas/destino/consentimiento de la compra aunque cambie la configuración. El seed solo incorpora configuración faltante; no es copia operativa.''')
+s.box(48, 236, 560, 288, 'Base de datos · Neon', 'Pedidos, stock e importes\nUsuarios, permisos y configuración\nHistorial, referencias y guía PDF', focal=True, tag='Registros')
 s.box(648, 236, 584, 128, 'Drive · documentos', 'Depósitos, PDF de venta y evidencia privada')
 s.box(648, 396, 584, 128, 'Gmail · comunicaciones', 'Conversaciones y avisos por audiencia')
 s.band('Una copia de PostgreSQL no incluye los archivos de Drive ni los mensajes de Gmail.')
@@ -207,6 +214,28 @@ s.text(656,552,552,32,'Técnico · Fredy Paolo Romero Espinoza',18,bold=True)
 s.text(656,592,552,28,'fromeror@continental.edu.pe',18,C['muted'])
 
 
+# Se añaden vistas técnicas sin reemplazar la arquitectura simple original.
+original_slides = list(SLIDES)
+s = Slide('Arquitectura ampliada', 'Arquitectura ampliada: componentes y límites', '', '01 · Diagrama de arquitectura existente',
+    'Mismo diagrama de docs/diagramas/01-arquitectura.svg: compra pública embebida y equipos internos separados, interfaces pública/interna, servicios de servidor, OAuth, Neon, Drive, Gmail, Maps y despliegue GitHub. Para aprovechar el formato 16:9 se recortan solo encabezado y leyenda del original; el contenido de respaldo se mantiene como franja de texto. No se omiten componentes ni relaciones del área principal. El SVG íntegro sigue disponible en documentación, con leyenda. Las zonas no acreditan VPC privada. La franja describe procedimiento manual, no automatización ni copia realizada.')
+s.elements = s.elements[:1]
+s.text(48,20,1184,44,'Arquitectura ampliada: componentes y límites',28,bold=True)
+s.text(48,64,1184,28,'El diagrama existente de docs: acceso público, operación interna, datos y servicios.',16,C['muted'])
+s.image(64,92,1152,529,Path('/tmp/fec-arquitectura-ampliada.png'),'Arquitectura completa existente: WordPress, Vercel, PostgreSQL Neon, Google OAuth, Drive, Gmail, Maps y GitHub.')
+s.rect(48,632,1184,24,C['tint'],radius=4)
+s.text(64,634,1152,24,'Respaldo manual semanal: BD → copia local cifrada → Drive privado. Clave aparte; restauración por validar.',14,C['accent'],True)
+s.line([(48,664),(1232,664)],C['line'],arrow=False)
+s.text(48,680,1020,20,'FONDO EDITORIAL CONTINENTAL · docs/diagramas/01-arquitectura.svg',11,C['muted'])
+s.text(1140,676,92,28,'00 / 00',14,C['accent'],True,'right')
+expanded_architecture = s
+database_diagrams = add_database_slides(Slide, C)
+SLIDES[:] = original_slides[:3] + [expanded_architecture] + original_slides[3:4] + list(database_diagrams.values()) + original_slides[4:]
+for position, slide in enumerate(SLIDES, 1):
+    for element in slide.elements:
+        if element['type']=='text' and re.fullmatch(r'\d+ / \d+', element['text']):
+            element['text']=f'{position:02d} / {len(SLIDES)}'
+
+
 def wrapped(e):
     # Reserva de anchura conservadora compartida por PowerPoint y SVG.
     limit = max(1, int(e['w']/(e['size']*.56)))
@@ -232,6 +261,9 @@ def svg_slide(s, index):
                 d+=f' L {pre[0]} {pre[1]} Q {b[0]} {b[1]} {post[0]} {post[1]}'
             d+=f' L {p[-1][0]} {p[-1][1]}'
             svg.append(f'<path d="{d}" fill="none" stroke="#{e["color"]}" stroke-width="2"'+(' stroke-dasharray="6 4"' if e['dash'] else '')+(f' marker-end="url(#arrow-{index})"' if e['arrow'] else '')+'/>')
+        elif e['type']=='image':
+            data=base64.b64encode(Path(e['path']).read_bytes()).decode()
+            svg.append(f'<image x="{e["x"]}" y="{e["y"]}" width="{e["w"]}" height="{e["h"]}" href="data:image/png;base64,{data}" role="img" aria-label="{escape(e["description"])}"/>')
         else:
             x=e['x']+ (e['w'] if e['align']=='right' else e['w']/2 if e['align']=='center' else 0)
             anchor={'left':'start','right':'end','center':'middle'}[e['align']]
@@ -253,7 +285,11 @@ def make_pptx(module_path):
     path = OUT / 'gestor-pedidos-presentacion.pptx'
     slides = []
     for s in SLIDES:
-        elements = [dict(e, lines=wrapped(e)) if e['type'] == 'text' else e for e in s.elements]
+        elements = []
+        for e in s.elements:
+            if e['type']=='text': elements.append(dict(e,lines=wrapped(e)))
+            elif e['type']=='image': elements.append(dict(e,data='image/png;base64,'+base64.b64encode(Path(e['path']).read_bytes()).decode()))
+            else: elements.append(e)
         slides.append(dict(elements=elements, notes=s.notes + '\nFuente: ' + s.source))
     model = dict(output=str(path), slides=slides)
     subprocess.run(['node', str(Path(__file__).with_name('generate-pptx.mjs')), module_path],
@@ -271,7 +307,7 @@ def make_html():
         articles.append(f'<article id="diapositiva-{i}" class="{"active" if i==1 else ""}">{svg_slide(s,i)}<details><summary>Notas del presentador · {i:02d}</summary><p>{escape(s.notes)}</p></details></article>')
     options=''.join(f'<option value="{i}">{i:02d} · {escape(s.section)}</option>' for i,s in enumerate(SLIDES,1))
     script='''let current=1;const slides=[...document.querySelectorAll('article')], sel=document.querySelector('select');function go(n){current=Math.max(1,Math.min(slides.length,n));slides.forEach((s,i)=>s.classList.toggle('active',i===current-1));sel.value=current;if(!document.body.classList.contains('present'))slides[current-1].scrollIntoView({block:'start'});}document.querySelector('#prev').onclick=()=>go(current-1);document.querySelector('#next').onclick=()=>go(current+1);sel.onchange=()=>go(+sel.value);document.querySelector('#mode').onclick=()=>{document.body.classList.toggle('present');go(current)};document.addEventListener('keydown',e=>{if(e.target.matches('select,button'))return;if(e.key==='ArrowRight'||e.key==='PageDown'){e.preventDefault();go(current+1)}if(e.key==='ArrowLeft'||e.key==='PageUp'){e.preventDefault();go(current-1)}if(e.key==='Escape')document.body.classList.remove('present')});'''
-    (OUT/'gestor-pedidos-vista-previa.html').write_text('<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestor de pedidos · Presentación</title><style>'+style+'</style><body><header><span>Fondo Editorial Continental · 18 diapositivas</span><button id="prev" aria-label="Diapositiva anterior">←</button><select aria-label="Ir a diapositiva">'+options+'</select><button id="next" aria-label="Diapositiva siguiente">→</button><button id="mode">Alternar modo presentación</button></header><main>'+''.join(articles)+'</main><script>'+script+'</script></body></html>',encoding='utf-8')
+    (OUT/'gestor-pedidos-vista-previa.html').write_text('<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Gestor de pedidos · Presentación</title><style>'+style+'</style><body><header><span>Fondo Editorial Continental · '+str(len(SLIDES))+' diapositivas</span><button id="prev" aria-label="Diapositiva anterior">←</button><select aria-label="Ir a diapositiva">'+options+'</select><button id="next" aria-label="Diapositiva siguiente">→</button><button id="mode">Alternar modo presentación</button></header><main>'+''.join(articles)+'</main><script>'+script+'</script></body></html>',encoding='utf-8')
 
 
 if __name__=='__main__':
@@ -279,13 +315,16 @@ if __name__=='__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pptxgenjs', default='pptxgenjs', help='Ruta al módulo PptxGenJS 4.0.1')
     args = parser.parse_args()
-    assert len(SLIDES)==18
+    assert len(SLIDES)==24
     # Comprobaciones del artefacto, sin suites ni interacción con la aplicación.
     for i,s in enumerate(SLIDES,1):
         for e in s.elements:
             if e['type']=='text':
                 height=len(wrapped(e))*e['size']*1.22
                 if height>e['h']+5: print(f'Revisar altura: diapositiva {i}, {e["text"]!r}: {height:.0f} > {e["h"]}')
+    write_database_docs(database_diagrams,svg_slide)
+    import subprocess
+    subprocess.run(['node',str(Path(__file__).with_name('render-diagrams.mjs'))],check=True)
     print(make_pptx(args.pptxgenjs).relative_to(ROOT))
     make_html()
     (Path('/tmp')/'fec-presentacion-slides.json').write_text(json.dumps([svg_slide(s,i) for i,s in enumerate(SLIDES,1)]))

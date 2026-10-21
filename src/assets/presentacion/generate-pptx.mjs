@@ -30,6 +30,8 @@ for (const item of model.slides) {
         paraSpaceAfter: 0, lineSpacingMultiple: 1.22,
         lang: 'es-PE', isTextBox: true,
       });
+    } else if (e.type === 'image') {
+      slide.addImage({ data: e.data, x: e.x / 96, y: e.y / 96, w: e.w / 96, h: e.h / 96, altText: e.description });
     } else if (e.type === 'rect') {
       slide.addShape(e.radius ? pptx.ShapeType.roundRect : pptx.ShapeType.rect, {
         x: e.x / 96, y: e.y / 96, w: e.w / 96, h: e.h / 96,

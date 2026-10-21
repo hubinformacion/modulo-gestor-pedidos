@@ -13,6 +13,8 @@ Sistema de pedidos del Fondo Editorial Continental. Compra y seguimiento dentro 
 
 Para presentar a TI: 01 → 02 → lista de cierre de 03. Para capacitar al personal: 04. La arquitectura está también en [PNG para Word](diagramas/01-arquitectura.png) y [SVG editable](diagramas/01-arquitectura.svg).
 
+La [presentación editable](presentacion/gestor-pedidos-presentacion.pptx) incluye la arquitectura simple, el diagrama ampliado existente y las vistas de base de datos/protección. También están la [vista HTML con notas](presentacion/gestor-pedidos-vista-previa.html) y el [PDF](presentacion/gestor-pedidos-presentacion.pdf). El [mapa de base de datos](diagramas/02-base-datos.html) reúne cuatro diagramas y el inventario de las 40 tablas, sin información operativa.
+
 ## Responsables y acuerdos
 
 | Función | Responsable | Contacto |

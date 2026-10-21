@@ -39,6 +39,8 @@ Ocultar controles no es autorización: sesión/rol/unidad se revalidan en consul
 
 ## Datos, confidencialidad y cifrado
 
+El [modelo de datos e inventario de tablas](01-arquitectura.md#base-de-datos-tablas-información-y-protección) relaciona cada tabla con la información que conserva y los controles aplicables. Sus diagramas distinguen claves foráneas, asociaciones lógicas y listas JSON; no presentan la separación por rol/unidad como RLS ni acreditan privilegios SQL efectivos.
+
 | Datos | Dónde viven y quién los necesita |
 | --- | --- |
 | Nombre, correo, teléfono, DNI; datos fiscales | PostgreSQL y contenido necesario de correo/PDF; Fondo Editorial y Tesorería autorizada para emisión |
