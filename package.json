@@ -64,7 +64,7 @@
   "packageManager": "pnpm@11.3.0",
   "type": "module",
   "engines": {
-    "node": "24.x",
+    "node": "^24.22.1",
     "pnpm": "11.x"
   }
 }

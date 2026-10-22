@@ -24,7 +24,14 @@ Next.js App Router/Server Actions, React, TypeScript estricto, Tailwind y Base U
 
 ## Instalación inicial
 
-Requiere Node.js 24, pnpm 11.3.0 y una BD Neon destinada a la aplicación.
+Requiere Node.js 24.22.1 o posterior de la rama 24, pnpm 11.3.0 y una BD Neon destinada a la aplicación. `.node-version` fija la versión local con los parches de seguridad; `engines.node` declara ese mínimo y conserva la rama 24.
+
+Con `fnm`, preparar Node antes de instalar dependencias:
+
+```bash
+fnm install
+fnm use
+```
 
 ```bash
 pnpm install --frozen-lockfile
@@ -56,6 +63,8 @@ La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se
 ## Configuración y despliegue
 
 Vercel instala/construye con pnpm; no ejecuta instalación de BD durante el build.
+
+Vercel selecciona la rama 24 desde `engines.node` y administra sus versiones menores/parches; no permite fijar un parche concreto del runtime. Tras actualizaciones de seguridad, comprobar la versión de Node en los registros del despliegue (`node --version` en el comando de build) y la disponibilidad del runtime corregido en Vercel. La versión local no acredita la versión que está ejecutándose en producción. [Referencia de Vercel](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions).
 
 | Variable | Producción |
 | --- | --- |
