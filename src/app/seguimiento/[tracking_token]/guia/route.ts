@@ -1,5 +1,5 @@
-import { getTrackedOrder } from "@/lib/orders/tracking";
-import { readOrderPaymentGuide } from "@/lib/payments/config";
+import { getTrackedOrder } from "@/modules/orders/data/tracking";
+import { readOrderPaymentGuide } from "@/modules/settings/application/payment-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

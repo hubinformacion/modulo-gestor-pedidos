@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { withDatabase } from "@/db";
-import { getSignedInSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
+import { getSignedInSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
 export const dynamic = "force-dynamic";
 export default async function AccessPage() {
   const requestHeaders = await headers();

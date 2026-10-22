@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
-import { LoginButton } from "@/components/login-button";
-import { isAuthConfigured } from "@/lib/env";
+import { LoginButton } from "@/components/access/login-button";
+import { isAuthConfigured } from "@/shared/config/env";
 
 export const metadata: Metadata = { title: "Ingresar" };
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export default async function LoginPage({ searchParams }: {
         <div className="login-brand">
           {/* Local institutional SVG shared with the favicon and internal sidebar. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icon.svg" width={48} height={48} alt="Universidad Continental" />
+          <img src="/isotipo.svg" width={48} height={48} alt="Universidad Continental" />
         </div>
         <div className="login-introduction"><h1 id="login-title">Iniciar sesión</h1><p>Ingresa para gestionar pedidos y solicitudes de emisión.</p></div>
         {message ? <p role="alert" className="mt-6 rounded-lg border border-border bg-muted p-4 text-xs leading-6">{message}</p> : null}

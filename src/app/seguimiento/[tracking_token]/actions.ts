@@ -1,11 +1,18 @@
 "use server";
 
-import { reportServerError } from "@/lib/server-diagnostics";
+
+
+
+
+
+
+
+import { reportServerError } from "@/shared/logging/server-diagnostics";
+import { deliverOrderEmail } from "@/modules/orders/application/email";
+import { uploadReceipt } from "@/modules/orders/application/receipt-upload";
+import { receiptFileSchema, receiptMetadataSchema } from "@/modules/orders/domain/receipt-upload";
+import { OrderInputError } from "@/modules/orders/domain/submission";
 import { z } from "zod";
-import { deliverOrderEmail } from "@/lib/orders/email";
-import { OrderInputError } from "@/lib/orders/submission";
-import { receiptFileSchema, receiptMetadataSchema } from "@/lib/payments/validation";
-import { uploadReceipt } from "@/lib/payments/upload";
 
 export async function uploadReceiptAction(input: unknown): Promise<{ success: true; receiptId: string } | { success: false; message: string }> {
   const form = z.instanceof(FormData).safeParse(input);
@@ -28,10 +35,10 @@ export async function uploadReceiptAction(input: unknown): Promise<{ success: tr
 }
 
 export async function cancelOrderAction(input: unknown) {
-  const { cancelPurchaseSchema } = await import("@/lib/orders/cancellation-validation");
+  const { cancelPurchaseSchema } = await import("@/modules/orders/domain/cancellation-validation");
   const parsed = cancelPurchaseSchema.safeParse(input);
   if (!parsed.success) return { success: false, message: "Revisa el pedido y el motivo de cancelación." };
-  const { cancelPurchase, CancellationError } = await import("@/lib/orders/cancellation");
+  const { cancelPurchase, CancellationError } = await import("@/modules/orders/application/cancellation");
   try {
     const outcome = await cancelPurchase(parsed.data);
     const { revalidatePath } = await import("next/cache");

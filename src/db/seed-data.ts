@@ -1,4 +1,4 @@
-import type { BankForm } from "../lib/payments/banks-validation";
+import type { BankForm } from "@/modules/settings/domain/banks";
 
 // Cuentas vigentes confirmadas en la configuración, sin identificadores ni timestamps.
 export const initialBankAccounts = [

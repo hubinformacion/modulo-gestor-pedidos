@@ -1,6 +1,6 @@
 "use client";
 import { useEffect } from "react";
-import { iframeHeightSchema, iframeInitSchema, iframeScrollSchema } from "@/lib/iframe/protocol";
+import { iframeHeightSchema, iframeInitSchema, iframeScrollSchema } from "@/integrations/wordpress/protocol";
 
 export function IframeHeightBridge({ allowedOrigins }: { allowedOrigins: string[] }) {
   // RSC refreshes produce new arrays. Keep the connection while their values

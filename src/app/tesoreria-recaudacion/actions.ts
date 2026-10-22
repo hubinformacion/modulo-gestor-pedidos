@@ -1,15 +1,30 @@
 "use server";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { withDatabase } from "@/db";
-import { getAuthorizedSession, getCajaSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
-import { CajaError, finalizeSaleDocument, returnSaleDocument, uploadSaleDocument } from "@/lib/caja/service";
-import { finalizeSaleSchema, pdfSchema, returnSaleSchema, uploadSaleSchema } from "@/lib/caja/validation";
-import { deliverCajaEmail } from "@/lib/caja/email";
-import { deliverOrderEmail } from "@/lib/orders/email";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
+import { getAuthorizedSession, getCajaSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
+import { deliverOrderEmail } from "@/modules/orders/application/email";
+import { finalizeSaleDocument, returnSaleDocument, uploadSaleDocument } from "@/modules/treasury/application/documents";
+import { deliverCajaEmail } from "@/modules/treasury/application/email";
+import { finalizeSaleSchema, pdfSchema, returnSaleSchema, uploadSaleSchema } from "@/modules/treasury/domain/documents";
+import { CajaError } from "@/modules/treasury/domain/errors";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { z } from "zod";
+
 function failure(error: unknown) { if (!(error instanceof AccessError || error instanceof CajaError)) reportServerError("caja.action.failed", error); return { success: false as const, message: error instanceof AccessError || error instanceof CajaError ? error.message : "No pudimos guardar el cambio. Reintenta." }; }
 export async function uploadSaleAction(input: unknown) {
   const form = z.instanceof(FormData).safeParse(input);
@@ -24,7 +39,7 @@ export async function uploadSaleAction(input: unknown) {
     // No refresh during FilePond processing and no email before Finalizar.
     let href = `/tesoreria-recaudacion/${parsed.data.id}/archivos/${document.documentId}`;
     try {
-      const { ensureCajaFileReader } = await import("@/lib/caja/drive-access");
+      const { ensureCajaFileReader } = await import("@/integrations/google/treasury-readers");
       await ensureCajaFileReader(actor, parsed.data.id, document.driveFileId); href = document.driveViewUrl;
     } catch (error) { reportServerError("caja.upload.access.pending", error); }
     return { success: true as const, documentId: document.documentId, fileName: document.fileName, version: document.version, href };
@@ -56,8 +71,8 @@ export async function returnSaleAction(input: unknown) {
 }
 
 export async function removeSaleDraftAction(input: unknown) {
-  const { removeDraftSchema } = await import("@/lib/caja/validation");
-  const { removeSaleDraft } = await import("@/lib/caja/service");
+  const { removeDraftSchema } = await import("@/modules/treasury/domain/documents");
+  const { removeSaleDraft } = await import("@/modules/treasury/application/documents");
   const parsed = removeDraftSchema.safeParse(input);
   if (!parsed.success) return { success: false as const, message: "Revisa el PDF que deseas retirar." };
   try {
@@ -69,11 +84,11 @@ export async function removeSaleDraftAction(input: unknown) {
 }
 
 export async function assignCajaAction(input: unknown) {
-  const { cajaAssignmentSchema } = await import("@/lib/caja/validation");
+  const { cajaAssignmentSchema } = await import("@/modules/treasury/domain/documents");
   const parsed = cajaAssignmentSchema.safeParse(input);
   if (!parsed.success) return { success: false as const, message: "Actualiza la solicitud antes de continuar." };
   try {
-    const { changeCajaAssignment } = await import("@/lib/caja/service");
+    const { changeCajaAssignment } = await import("@/modules/treasury/application/documents");
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
     const notice = await changeCajaAssignment(actor, parsed.data);

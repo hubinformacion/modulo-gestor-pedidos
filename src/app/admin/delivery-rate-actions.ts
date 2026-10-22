@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { deliveryRates } from "@/db/schema";
-import { getAuthorizedSession } from "@/lib/access";
-import { assertAuthorized } from "@/lib/transaction-access";
-import { AccessError } from "@/lib/access-policy";
-import { writeManagementAudit } from "@/lib/audit/management";
-import { deliveryRateSchema, deleteDeliveryRateSchema } from "@/lib/delivery/rates-validation";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { assertAuthorized } from "@/modules/access/data/transaction-access";
+import { AccessError } from "@/modules/access/domain/policy";
+import { writeManagementAudit } from "@/modules/access/data/management-audit";
+import { deliveryRateSchema, deleteDeliveryRateSchema } from "@/modules/settings/domain/delivery-rates";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 class RateError extends Error {}
 async function changeRate(input: unknown, remove: boolean) {
   const parsed = (remove ? deleteDeliveryRateSchema : deliveryRateSchema).safeParse(input);

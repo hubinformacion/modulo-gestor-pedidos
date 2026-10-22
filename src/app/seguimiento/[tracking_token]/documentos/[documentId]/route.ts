@@ -2,9 +2,9 @@ import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
 import { withReadDatabase } from "@/db";
 import { cajaRequests, orders, saleDocuments } from "@/db/schema";
-import { trackingTokenSchema } from "@/lib/orders/submission";
-import { salePdfBytes } from "@/lib/caja/service";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { trackingTokenSchema } from "@/modules/orders/domain/submission";
+import { salePdfBytes } from "@/modules/treasury/application/documents";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export async function GET(_request: Request, { params }: { params: Promise<{ tracking_token: string; documentId: string }> }) {

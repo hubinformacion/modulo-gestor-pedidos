@@ -1,6 +1,6 @@
 import { toNextJsHandler } from "better-auth/next-js";
 import { withDatabase } from "@/db";
-import { createAuth } from "@/lib/auth";
+import { createAuth } from "@/integrations/auth/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

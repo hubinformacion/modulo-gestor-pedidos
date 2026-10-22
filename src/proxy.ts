@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { withDatabase } from "@/db";
-import { getAuthorizedRequestSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
+import { getAuthorizedRequestSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
 
 export async function proxy(request: NextRequest) {
   try {

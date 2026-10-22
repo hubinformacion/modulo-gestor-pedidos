@@ -1,0 +1,93 @@
+import { useState } from "react";
+import { BookOpen, Minus, Plus, Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { formatMoney } from "@/modules/orders/domain/money";
+import { bookPrice } from "@/modules/orders/domain/pricing";
+import { type CatalogBook, type CartSelection, type CustomerKind, type Imprint } from "@/modules/orders/domain/types";
+import { ImprintBadge } from "@/components/catalog/imprint-badge";
+import { cn } from "@/shared/utils/cn";
+
+export function CatalogStep({ catalog, cart, customerType, onQuantity, at }: {
+  at: number; catalog: CatalogBook[]; cart: CartSelection[]; customerType: CustomerKind;
+  onQuantity: (book: CatalogBook, quantity: number) => void;
+}) {
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Imprint | "todos">("todos");
+  const term = search.trim().toLocaleLowerCase("es-PE");
+  const filtered = catalog.filter((book) => (filter === "todos" || book.publisherImprint === filter) &&
+    `${book.title} ${book.author}`.toLocaleLowerCase("es-PE").includes(term));
+
+  return (
+    <div>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3.5 top-3.5 size-4 text-muted-foreground" aria-hidden="true" />
+        <label htmlFor="book-search" className="sr-only">Buscar por título o autor</label>
+        <Input id="book-search" type="search" className="h-11 pl-10" placeholder="Buscar título o autor" value={search} onChange={(event) => setSearch(event.target.value)} />
+      </div>
+      <div className="my-5 flex flex-wrap items-center gap-2" role="group" aria-label="Filtrar publicaciones por sello">
+        {(["todos", "universidad", "instituto"] as const).map((value) => (
+          <button key={value} type="button" aria-pressed={filter === value} onClick={() => setFilter(value)} className={cn("min-h-10 rounded-lg px-3 text-xs font-medium transition-colors", filter === value ? "bg-secondary text-primary" : "text-muted-foreground hover:bg-muted")}>
+            {value === "todos" ? "Todas" : value === "universidad" ? "Universidad" : "Instituto"}
+          </button>
+        ))}
+        <span className="ml-auto text-xs text-muted-foreground" aria-live="polite">{filtered.length} {filtered.length === 1 ? "publicación" : "publicaciones"}</span>
+      </div>
+      {catalog.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border px-6 py-12 text-center">
+          <BookOpen className="mx-auto size-6 text-muted-foreground" aria-hidden="true" />
+          <h3 className="mt-4 text-sm font-semibold">No hay publicaciones disponibles</h3>
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-muted-foreground">El catálogo se actualizará pronto. Vuelve a consultar más adelante.</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border px-6 py-10 text-center">
+          <p className="text-sm text-muted-foreground">No encontramos publicaciones con esos filtros.</p>
+          <Button variant="link" className="mt-3 h-10" onClick={() => { setSearch(""); setFilter("todos"); }}>Limpiar búsqueda</Button>
+        </div>
+      ) : (
+        <div
+          key={`${filter}:${term}`}
+          role="region"
+          aria-label="Catálogo de publicaciones"
+          tabIndex={0}
+          className="max-h-[26rem] overflow-y-auto rounded-lg outline-none [scrollbar-gutter:stable] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:max-h-[32rem]"
+        >
+        <ul className="divide-y divide-border border-y border-border">
+          {filtered.map((book) => {
+            const quantity = cart.find((item) => item.bookId === book.id)?.quantity ?? 0;
+            const applied = bookPrice(book, customerType, at);
+            const price = applied.unitPrice;
+            return (
+              <li key={book.id} className={cn("grid gap-4 px-3 py-5 transition-colors sm:grid-cols-[minmax(0,1fr)_8rem] sm:items-center", quantity ? "bg-secondary/25" : "bg-white")}>
+                <div className="min-w-0">
+
+                  <div className="min-w-0 flex-1">
+                    <ImprintBadge imprint={book.publisherImprint} />{applied.discountPercent ? <span className="ml-2 inline-block rounded-full bg-secondary px-2 py-1 text-[10px] font-semibold text-primary">Promoción · {applied.discountPercent}%</span> : null}
+                    <h3 className="mt-2 text-base font-semibold leading-6">{book.title}</h3>
+                    <p className="mt-1 text-xs leading-5 text-muted-foreground">{book.author}</p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">{book.stock > 0 ? `${book.stock} disponibles` : "Agotado"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end">
+                  <div>
+                    <p className="text-base font-semibold tabular-nums">{formatMoney(price)}</p>
+                  </div>
+                  {quantity ? (
+                    <div className="flex items-center gap-1 rounded-lg border border-border p-0.5" role="group" aria-label={`Cantidad de ${book.title}`}>
+                      <Button variant="ghost" size="icon" className="size-9" aria-label={`Quitar una unidad de ${book.title}`} onClick={() => onQuantity(book, quantity - 1)}><Minus aria-hidden="true" /></Button>
+                      <span className="min-w-8 text-center text-sm font-semibold tabular-nums" aria-live="polite">{quantity}</span>
+                      <Button variant="ghost" size="icon" className="size-9" aria-label={`Añadir una unidad de ${book.title}`} disabled={quantity >= book.stock} onClick={() => onQuantity(book, quantity + 1)}><Plus aria-hidden="true" /></Button>
+                    </div>
+                  ) : (
+                    <Button variant="outline" className="h-10 gap-2 px-4 sm:w-full" disabled={book.stock < 1} onClick={() => onQuantity(book, 1)}><Plus aria-hidden="true" />{book.stock > 0 ? "Añadir" : "Agotado"}</Button>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+        </div>
+      )}
+    </div>
+  );
+}

@@ -6,7 +6,7 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Calendar } from "./calendar";
 import { Select } from "./select";
-import { cn } from "@/lib/utils";
+import { cn } from "@/shared/utils/cn";
 
 type RangeValue = { from: string; to: string };
 type Props = Pick<ComponentProps<"button">, "id" | "disabled" | "className" | "aria-label" | "aria-labelledby"> & {

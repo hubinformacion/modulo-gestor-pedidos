@@ -3,10 +3,10 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { withDatabase } from "@/db";
-import { getAuthorizedSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
-import { deleteCampus, saveCampus } from "@/lib/campuses/service";
-import { campusIdSchema, campusSchema, campusUpdateSchema, type CampusActionResult } from "@/lib/campuses/validation";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
+import { deleteCampus, saveCampus } from "@/modules/settings/data/campuses-service";
+import { campusIdSchema, campusSchema, campusUpdateSchema, type CampusActionResult } from "@/modules/settings/domain/campuses";
 
 function databaseError(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return undefined;

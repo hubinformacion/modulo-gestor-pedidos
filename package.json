@@ -10,8 +10,7 @@
     "typecheck": "next typegen && tsc --noEmit",
     "db:auth:generate": "auth generate --config src/db/auth-schema.config.ts --output src/db/auth-schema.ts --yes",
     "db:seed": "tsx src/db/seed.ts",
-    "iframe:snippet": "tsx src/iframe/generate-snippet.ts",
-    "email:assets": "tsx src/assets/email/generate.ts",
+    "iframe:snippet": "tsx src/integrations/wordpress/generate-snippet.ts",
     "db:setup": "tsx src/db/setup.ts",
     "db:schema:export": "drizzle-kit export --dialect=postgresql --schema=./src/db/schema.ts > src/db/schema.sql"
   },
@@ -56,7 +55,6 @@
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.8",
     "shadcn": "4.21.1",
-    "sharp": "0.35.5",
     "tailwindcss": "4.3.3",
     "tsx": "4.23.15",
     "typescript": "5.9.3"

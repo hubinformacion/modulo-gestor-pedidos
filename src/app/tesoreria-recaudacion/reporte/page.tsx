@@ -1,14 +1,14 @@
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { peruToday } from "@/lib/dashboard/validation";
+import { peruToday } from "@/modules/reporting/domain/validation";
 import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
 import { Select } from "@/components/ui/select";
 import Link from "next/link";
 import { Clock3, FileCheck2, Inbox, MessageSquareWarning, UserRoundCheck, ArrowUpRight, BarChart3 } from "lucide-react";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
-import { OrderLiveRefresh } from "@/components/order-live-refresh";
-import { TreasuryTrend } from "@/components/dashboard/treasury-chart";
-import { SortableTable } from "@/components/sortable-table";
-import { treasurySummary, treasurySummaryFilters } from "@/lib/treasury/dashboard";
+import { OrderLiveRefresh } from "@/components/orders/live-refresh";
+import { TreasuryTrend } from "@/components/treasury/report-chart";
+import { SortableTable } from "@/components/workspace/sortable-table";
+import { treasurySummary, treasurySummaryFilters } from "@/modules/treasury/application/report";
 export const metadata = { title: "Reporte de Tesorería Recaudación" };
 export default async function TreasurySummaryPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const schema = treasurySummaryFilters(peruToday());

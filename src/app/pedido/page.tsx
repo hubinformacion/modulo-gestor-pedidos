@@ -1,10 +1,10 @@
-import { getDeliveryRates } from "@/lib/delivery/rates";
-import { pricingClock } from "@/lib/discounts/catalog";
+import { getDeliveryRates } from "@/modules/settings/data/delivery-rates";
+import { pricingClock } from "@/modules/discounts/data/catalog";
 import type { Metadata } from "next";
-import { OrderWizard } from "@/components/order-wizard/wizard";
-import { getActiveCampuses } from "@/lib/campuses/catalog";
-import { paymentSetupReady } from "@/lib/payments/config";
-import { getPublicCatalog } from "@/lib/orders/catalog";
+import { OrderWizard } from "@/components/orders/purchase/wizard";
+import { getActiveCampuses } from "@/modules/settings/data/campuses-catalog";
+import { paymentSetupReady } from "@/modules/settings/application/payment-config";
+import { getPublicCatalog } from "@/modules/catalog/data/catalog";
 
 export const metadata: Metadata = { title: "Nuevo pedido" };
 export const runtime = "nodejs";

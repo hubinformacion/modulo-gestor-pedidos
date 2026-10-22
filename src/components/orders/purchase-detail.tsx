@@ -1,7 +1,7 @@
 import { BookOpen } from "lucide-react";
-import { SortableTable } from "@/components/sortable-table";
+import { SortableTable } from "@/components/workspace/sortable-table";
 import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
-import { formatMoney, toCents } from "@/lib/orders/money";
+import { formatMoney, toCents } from "@/modules/orders/domain/money";
 
 type PurchaseItem = { basePrice?: string | null; discountPercent?: number; id: string; code: string | null; title: string; quantity: number; price: string; subtotal: string };
 export function PurchaseDetail({ items, subtotal, shipping, total, discountTotal = "0", couponCode, totalLabel = "Total", description = "Publicaciones e importes del pedido." }: {

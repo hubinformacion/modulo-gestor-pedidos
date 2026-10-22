@@ -2,9 +2,9 @@
 import { z } from "zod";
 import { headers } from "next/headers";
 import { withDatabase } from "@/db";
-import { getAuthorizedSession } from "@/lib/access";
-import { checkGoogleConnection } from "@/lib/payments/integration-check";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { checkGoogleConnection } from "@/integrations/google/health";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 export async function checkGoogleIntegrationAction(input: unknown) {
   if (!z.strictObject({}).safeParse(input).success) return { success: false as const, message: "Solicitud de comprobación inválida." };
   try {

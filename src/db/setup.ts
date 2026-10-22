@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { config } from "dotenv";
 import { Pool, type PoolClient } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
-import { getDatabaseUrl } from "../lib/env";
+import { getDatabaseUrl } from "@/shared/config/env";
 import { seedConfiguration } from "./seed";
 
 config({ path: ".env.local", quiet: true });

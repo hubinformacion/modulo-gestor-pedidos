@@ -1,6 +1,6 @@
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
-import { canAttendOrders } from "@/lib/access-policy";
-import { requirePageAccess } from "@/lib/access";
+import { canAttendOrders } from "@/modules/access/domain/policy";
+import { requirePageAccess } from "@/modules/access/application/session";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

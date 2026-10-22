@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { eq, sql } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { orderAdmissionPolicy, orderAdmissionChanges } from "@/db/schema";
-import { getAuthorizedSession } from "@/lib/access";
-import { isMasterEmail } from "@/lib/access-policy";
-import { assertAuthorized } from "@/lib/transaction-access";
-import { admissionPolicySchema, admissionUpdateSchema } from "@/lib/orders/admission-policy";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { isMasterEmail } from "@/modules/access/domain/policy";
+import { assertAuthorized } from "@/modules/access/data/transaction-access";
+import { admissionPolicySchema, admissionUpdateSchema } from "@/modules/orders/domain/admission-policy";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 class PolicyError extends Error {}
 export async function saveAdmissionPolicyAction(input: unknown) {
   const parsed = admissionUpdateSchema.safeParse(input);

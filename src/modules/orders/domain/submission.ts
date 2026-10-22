@@ -1,0 +1,14 @@
+import { consentSchema } from "@/modules/orders/domain/validation";
+import { z } from "zod";
+
+export const submissionSchema = z.object({
+  requestId: z.uuid(),
+  cart: z.array(z.object({ bookId: z.uuid(), quantity: z.number().int().min(1).max(1000) })).min(1).max(100),
+  couponCode: z.string().trim().toUpperCase().max(32).regex(/^$|^[A-Z0-9_-]{3,32}$/).default(""),
+  expectedQuote: z.string().max(16000).optional(),
+  buyer: z.unknown(), delivery: z.unknown(), consent: consentSchema,
+});
+export const trackingTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{32}$/);
+export const consentVersion = "2026-10-05";
+export type OrderCreationResult = { success: true; trackingToken: string; mailWarning?: string } | { success: false; message: string };
+export class OrderInputError extends Error { }

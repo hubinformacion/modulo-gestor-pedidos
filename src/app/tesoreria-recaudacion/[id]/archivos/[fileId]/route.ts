@@ -1,12 +1,12 @@
-import { ensureCajaFileReader } from "@/lib/caja/drive-access";
-import { salePdfBytes } from "@/lib/caja/service";
+import { ensureCajaFileReader } from "@/integrations/google/treasury-readers";
+import { salePdfBytes } from "@/modules/treasury/application/documents";
 import { z } from "zod";
 import { and, eq, inArray } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { cajaRequests, paymentReceipts, saleDocuments, treasurySupportingFiles } from "@/db/schema";
-import { getCajaSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getCajaSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export async function GET(request: Request, { params }: { params: Promise<{ id: string; fileId: string }> }) {

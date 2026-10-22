@@ -1,17 +1,17 @@
-import { formatOrderNumber } from "@/lib/orders/number";
+import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
-import { ServerSortHeader } from "@/components/server-sort-header";
-import { DetailButton } from "@/components/detail-button";
+import { ServerSortHeader } from "@/components/workspace/server-sort-header";
+import { DetailButton } from "@/components/workspace/detail-button";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { listOrders } from "@/lib/admin/data";
-import { filterSchema, orderLabels } from "@/lib/admin/validation";
-import { requirePageAccess } from "@/lib/access";
-import { formatMoney, toCents } from "@/lib/orders/money";
-import { Field, SelectField } from "@/components/order-wizard/fields";
+import { listOrders } from "@/modules/orders/application/queries";
+import { filterSchema, orderLabels } from "@/modules/orders/domain/management";
+import { requirePageAccess } from "@/modules/access/application/session";
+import { formatMoney, toCents } from "@/modules/orders/domain/money";
+import { Field, SelectField } from "@/components/ui/form-fields";
 import { Button } from "@/components/ui/button";
-import { StatusBadge } from "@/components/admin/status-badge";
-import { OrderLiveRefresh } from "@/components/order-live-refresh";
+import { StatusBadge } from "@/components/orders/management/status-badge";
+import { OrderLiveRefresh } from "@/components/orders/live-refresh";
 
 export const metadata: Metadata = { title: "Atención de pedidos" };
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });

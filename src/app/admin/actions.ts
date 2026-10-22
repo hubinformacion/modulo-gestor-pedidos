@@ -1,14 +1,34 @@
 "use server";
 
-import { after } from "next/server";
-import { synchronizeDriveReaders } from "@/lib/payments/drive-access";
-import { reportServerError } from "@/lib/server-diagnostics";
-import { headers } from "next/headers";
-import { revalidatePath } from "next/cache";
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 import { withDatabase } from "@/db";
-import { getAuthorizedSession } from "@/lib/access";
-import { AccessError, authorizedEmailSchema, type AccessActionResult } from "@/lib/access-policy";
-import { addAuthorizedEmail, removeAuthorizedEmail } from "@/lib/authorized-emails";
+import { synchronizeDriveReaders } from "@/integrations/google/manager-readers";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { addAuthorizedEmail, removeAuthorizedEmail } from "@/modules/access/data/authorized-emails";
+import { AccessError, authorizedEmailSchema, type AccessActionResult } from "@/modules/access/domain/policy";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { after } from "next/server";
 
 async function changeAccess(input: unknown, operation: "add" | "remove"): Promise<AccessActionResult> {
   try {
