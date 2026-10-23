@@ -44,11 +44,13 @@ Acceder a [Solicitudes](https://modulo-gestor-pedidos.vercel.app/tesoreria-recau
 6. Pulsar **Finalizar solicitud** cuando el PDF y los datos estén correctos. La carga sola no completa la atención. El nombre original del documento se conserva.
 7. Si Fondo Editorial devuelve el documento, revisar el motivo, cargar corrección y finalizar nuevamente. El documento anterior permanece en historial cuando corresponde.
 
-Notas internas solo se comparten con el equipo de Tesorería de la unidad; cualquier operador autorizado de ese equipo puede añadir una nota. Para pedir corrección a Fondo Editorial usar observación. Notas e historial están en la cabecera. Los avisos internos llegan únicamente al buzón de servicio, sin CC a operadores. Reporte y Guía están en el menú lateral.
+Notas internas solo se comparten con el equipo de Tesorería de la unidad; cualquier operador autorizado de ese equipo puede añadir una nota. Para pedir corrección a Fondo Editorial usar observación. Notas e historial están en la cabecera. Los avisos internos llegan al buzón de servicio con copia a gestores FE vigentes; sin CC a operadores adicionales de Tesorería ni al comprador. Reporte y Guía están en el menú lateral.
 
 ## Maestro y configuración
 
 Ingresar como `distribucionfe@continental.edu.pe` en Configuración. La cuenta maestra consulta pedidos pero no los atiende ni añade notas; para operar se usa un correo personal autorizado. Registrar correos personales para gestores y operadores; seleccionar las unidades de Tesorería y configurar un buzón de servicio por unidad. Los demás gestores consultan accesos pero no pueden añadir/revocar.
+
+Si TI cambia la dirección de una cuenta Google vinculada, el sistema deniega el nuevo inicio hasta que el responsable técnico concilie identidad y autorización; añadir la nueva dirección a la lista no transfiere permisos automáticamente.
 
 Al revocar, se cierran sesiones y liberan atenciones abiertas; el historial cerrado se conserva. El retiro en Drive es una operación externa: consultar al responsable técnico si falla su reconciliación, sin suponer que el cierre de sesión prueba que el permiso de Google ya se retiró.
 
@@ -62,35 +64,24 @@ Contactar a Jullisa del Pilar Falla Aguirre (funcional, jfalla@continental.edu.p
 
 ## Estados del pedido
 
-Leyenda: cajas = estados, flechas = cambios permitidos y su condición. El punto inicial/final marca el proceso, no el borrado del pedido. Véase la [leyenda general](01-arquitectura.md#leyenda-común).
-
-```mermaid
-stateDiagram-v2
-  state "Pendiente de pago" as Pendiente
-  state "Distribución" as Distribucion
-  state "Enviado / listo para recojo" as Despachado
-  state "Entregado" as Entregado
-  state "Cancelado / anulado" as Cancelado
-  [*] --> Pendiente
-  Pendiente --> Distribucion: Todos los pagos aplicables verificados
-  Distribucion --> Despachado: Courier o disponibilidad en biblioteca
-  Despachado --> Entregado: Recepción confirmada
-  Pendiente --> Cancelado: Cancelación o anulación válida
-  Distribucion --> Cancelado: Anulación del gestor antes del despacho
-  Entregado --> [*]
-  Cancelado --> [*]
-```
+| Estado | Avance permitido |
+| --- | --- |
+| Pendiente de pago | Pasa a Distribución cuando todos los pagos requeridos están verificados; cancelación/anulación según permisos y estado de pagos |
+| Distribución | Pasa a Despachado con courier en delivery o disponibilidad confirmada para recojo; gestor asignado puede anular con motivo antes del despacho |
+| Despachado | Confirmar recepción para pasar a Entregado; ya no se cancela desde la interfaz |
+| Entregado | Estado final; conserva historial y documentos |
+| Cancelado/anulado | Estado final; conserva importes e historial y restituye stock una sola vez |
 
 `EN_PREPARACION` es el estado interno presentado como Distribución. El PDF tributario avanza en paralelo: una entrega no exige que Tesorería ya finalice. Observación abierta bloquea finalizar emisión, no la logística; devolución abre un nuevo ciclo con el documento anterior conservado.
 
 ## Reglas para la demostración
 
-- Universidad e Instituto tienen cuentas propias. En mixtos son dos depósitos; el flete va solo a Universidad. Recojo S/0, Lima/Callao S/15 y provincia S/25; costos visibles en resumen.
+- Universidad e Instituto tienen cuentas propias. En mixtos son dos depósitos; el flete va solo a Universidad. Recojo S/0; delivery usa la tarifa vigente configurada por zona, visible en el resumen.
 - Comunidad exige campus y correo institucional, pero declarar ese correo no verifica pertenencia mediante OAuth del comprador. Precios/stock/cupones se recalculan en servidor.
 - Promociones y cupones no se combinan; gana el mayor ahorro y el empate conserva promociones. El envío no recibe descuento; aplicar cupón en pantalla no reserva su uso.
 - Stock insuficiente o datos/precio cambiados abortan sin pedido parcial. Repetir el mismo intento recupera la compra; no crear otro para comprobar si llegó el correo.
 - Cancelación conserva historial/documentos y restituye stock una vez. No hay devolución automática de dinero. Desde despacho no se cancela por UI.
-- El comprador tiene un hilo; cada unidad de emisión otro, solo a su buzón. Gestores reciben CC de avisos nuevos del comprador; altas de usuarios no reenvían históricos. Mixto recibe un único acuse/aprobación y un lote con ambos PDF cuando corresponda.
+- El comprador tiene un hilo; cada unidad de emisión otro, dirigido a su buzón con copia a gestores FE. Gestores reciben CC de avisos nuevos del comprador; altas de usuarios no reenvían históricos. Mixto recibe un único acuse/aprobación y un lote con ambos PDF cuando corresponda.
 - Refresco manual cuando no hay carga/borrador; no hay polling periódico ni botón de reenviar correo.
 
 

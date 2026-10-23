@@ -23,6 +23,15 @@ Si la BD está vacía instala y siembra en una transacción. Si la estructura co
 
 En la BD actual no es necesario reinstalar ni restablecer nada. El seed ya incorporó campus, cuentas y maestro; `pnpm db:seed` se conserva para incorporar faltantes. Los registros históricos de Drizzle que pudieran quedar en una BD anterior no son consultados ni eliminados por el instalador.
 
+
+## Versión y publicación
+
+La primera versión estable es **1.0.0**, identificada por la etiqueta Git `v1.0.0`. `main` contiene el código publicado. La reorganización y las correcciones de seguridad no modifican el esquema ni requieren seed, reinstalación o movimientos de archivos operativos.
+
+El responsable confirma verificadas las pruebas de OAuth, Drive y restauración. Las comprobaciones del agente son lint, tipos, build, estado del despliegue Vercel y respuesta HTTP de la aplicación y logos; no se atribuyen pruebas operativas adicionales. Los objetivos de recuperación y controles de proveedor continúan siendo responsabilidades de operación, no nuevas tareas de implementación de esta entrega.
+
+Para publicar cambios posteriores: revisar el diff y comprobaciones pertinentes, integrar en `main`, esperar el estado de Vercel y comprobar las rutas públicas sin mutaciones de prueba. Si cambia WordPress, reemplazar su bloque con autorización del sitio; si cambia la BD, aplicar el procedimiento incremental respaldado. Las futuras migraciones a Azure se diseñan aparte.
+
 ## Variables y Google
 
 | Variable | Uso y manejo |
@@ -47,7 +56,7 @@ Después del despliegue: ingresar como maestro, comprobar cuentas/guías/campus,
 
 ## WordPress
 
-Copiar el bloque completo `src/iframe/wordpress-pedido.html`; no basta con cambiar un `src` aislado. Usar el origen aprobado y permitir scripts mediante el mecanismo admitido del sitio. Regenerar el bloque con `pnpm iframe:snippet` cuando cambie su protocolo/configuración, y reemplazarlo en WordPress. La aplicación no modifica WordPress automáticamente.
+Copiar el bloque completo `src/integrations/wordpress/wordpress-pedido.html`; no basta con cambiar un `src` aislado. Usar el origen aprobado y permitir scripts mediante el mecanismo admitido del sitio. Regenerar el bloque con `pnpm iframe:snippet` cuando cambie su protocolo/configuración, y reemplazarlo en WordPress. La aplicación no modifica WordPress automáticamente.
 
 Administración abre `/admin/pedidos` directamente en Vercel; Tesorería abre `/tesoreria-recaudacion`. No incrustar módulos internos ni relajar cookies/auth para ello.
 
@@ -62,13 +71,13 @@ Administración abre `/admin/pedidos` directamente en Vercel; Tesorería abre `/
 
 ## Seed: configuración recuperable
 
-Fuente: [seed-data.ts](../src/db/seed-data.ts) y maestro en [access-policy.ts](../src/lib/access-policy.ts). Incorpora `distribucionfe@continental.edu.pe`, cuatro cuentas PEN confirmadas (BCP/BBVA por unidad), ocho campus con dirección/ubicación/coordenadas y la política de cuotas. Sin catálogo ficticio, usuarios OAuth, pedidos ni correos.
+Fuente: [seed-data.ts](../src/db/seed-data.ts) y maestro en [policy.ts](../src/modules/access/domain/policy.ts). Incorpora `distribucionfe@continental.edu.pe`, cuatro cuentas PEN confirmadas (BCP/BBVA por unidad), ocho campus con dirección/ubicación/coordenadas y la política de cuotas. Sin catálogo ficticio, usuarios OAuth, pedidos ni correos.
 
 Campus: Arequipa, Ayacucho, Cusco, Huancayo - Instituto (Real), Huancayo - Universidad (San Carlos), Ica, Lima - Los Olivos y Lima - Miraflores. Direcciones/coordenadas y cuentas/CCI exactos permanecen en la fuente única del seed; no duplicarlos en manuales que puedan quedar desactualizados. Los titulares legales están confirmados.
 
 `pnpm db:seed` incorpora faltantes y conserva conflictos; no sobrescribe lo editado. Cambiar nombre de campus o número de cuenta puede hacer que el original parezca faltante: revisar fuente antes de repetir. Cambios UI no se copian al seed; actualizarlo solo con datos confirmados para futuras instalaciones. El seed no es un respaldo ni recupera numeración, historial o archivos. No reinstalar/reiniciar una BD para resolver un error de esquema.
 
-Revisar guías definitivas `src/assets/pdfs/guia_pago_{universidad,instituto,mixta}.pdf`; Universidad/Mixto se aceptaron temporalmente iguales. Buzones/equipo y catálogo real se configuran por interfaz, sin inventarlos en el seed.
+Revisar guías definitivas `src/resources/payment-guides/guia_pago_{universidad,instituto,mixta}.pdf`; Universidad/Mixto se aceptaron temporalmente iguales. Buzones/equipo y catálogo real se configuran por interfaz, sin inventarlos en el seed.
 
 ## Cuotas, recursos y tareas automáticas
 
@@ -97,19 +106,19 @@ Neon Free tiene ventana instantánea de hasta seis horas, sujeta al plan, y un s
 
 Automatizar requiere ejecutor con pg_dump, cifrado, credencial SQL y subida Drive; las APIs/keys actuales solo resuelven parte del proceso. Preferir un job institucional separado, identidad mínima sin Gmail operativo, límites de tiempo/tamaño y aviso de fallo. **Automatización no implementada**: primero validar copia/restauración. No se han creado carpetas ni subido dumps durante la revisión.
 
-## Restauración medida y cierre de pendientes
+## Restauración y aceptación operativa
 
 Restaurar en base vacía aislada compatible, sin envíos, cron ni cargas; nunca sobre producción para comprobar que funciona. Verificar integridad, versión, relaciones y referencias a archivos; PostgreSQL no respalda bytes Drive ni mensajes Gmail. Reaplicar revocaciones y revisar ACL antes de abrir tráfico: una copia puede reactivar autorizaciones antiguas. No ejecutar reconciliación de un ensayo contra la carpeta operativa.
 
-| Pendiente | Qué necesitamos / resultado esperado | Responsable |
+| Control | Procedimiento o evidencia | Responsable |
 | --- | --- | --- |
-| Validación funcional de rama | Maestro y buzones solo consultan; personal atiende únicamente rol/unidad/asignación; acciones directas denegadas y auditoría persistente | Funcional + técnico |
+| Validación funcional del módulo | Maestro y buzones solo consultan; personal atiende únicamente rol/unidad/asignación; acciones directas denegadas y auditoría persistente | Funcional + técnico |
 | Cuotas e idempotencia | En ambiente aislado: mismo intento no duplica; límite/concurrencia no deja stock/pedido parcial. No usar pedidos/correos operativos para simularlo | Técnico |
-| Permiso Drive ambiguo | Adaptador local o Google aislado autorizado: intención previa, respuesta perdida, revocación y conservación de manuales/owners/writers/heredados | Técnico + propietario Google |
+| OAuth y permisos Drive | Verificación confirmada por el responsable. El código deniega el cambio de correo vinculado y conserva intenciones ACL ambiguas; preservar manuales/owners/writers/heredados | Técnico + propietario Google |
 | Evidencia de proveedor | MFA/OAuth, privilegios SQL/IAM, cifrado/región, ACL, firewall y logs redactados | TI |
-| Copia y restauración | Destino/cifrado/clave/custodios definidos; copia válida; medir desde descarga/descifrado hasta verificación, objetivo ≤4 horas | Técnico; conformidad funcional |
+| Copia y restauración | Restauración verificada según confirmación del responsable. Mantener copia, cifrado y custodia; el objetivo RTO de cuatro horas no se presenta como una medición aportada en este repositorio | Técnico; conformidad funcional |
 | Instalación y despliegue | En entorno aislado autorizado: instalación vacía, segunda compatible, rechazo incompatible; verificar OAuth/adjuntos/hilos y WordPress móvil | Técnico + funcional |
-| Aceptación institucional | Finalidad/consentimiento, receptor tercero, conservación y catálogo de eventos; aprobación de merge/publicación | Funcional + Seguridad/TI |
+| Aceptación institucional | Finalidad/consentimiento, receptor tercero, conservación y catálogo de eventos; conformidad del módulo; publicación de la versión 1.0.0 autorizada | Funcional + Seguridad/TI |
 
 Registrar versión/ambiente, fecha, ejecutor, resultado y evidencia anonimizada. No adjuntar secretos, cookies, dumps, PDFs reales ni tokens. Lint/tipos/build ya realizados no acreditan los casos de esta tabla. No se añaden suites, datos DEMO ni ensayos automáticos contra producción.
 
@@ -147,4 +156,4 @@ En instalaciones anteriores a las tarifas editables, aplicar una vez [20261021-d
 
 Configuración → Delivery permite crear, editar, activar/desactivar o eliminar cada una de las dos tarifas. Ausente/inactiva impide delivery a esa zona; recojo gratuito sigue disponible. Una variación durante la compra exige actualizar el resumen antes de confirmar; el servidor relee con lock y nunca acepta un importe del navegador. Los cambios se auditan.
 
-Integraciones distingue presencia de configuración frente a conexión efectiva. El botón Comprobar Google ejecuta lecturas de autorización, carpeta, buzón y permisos, con tiempos límite y sin envíos, cargas ni cambios de acceso; no se ejecuta al abrir pantallas ni por cron. No acredita entrega de mensajes ni funcionamiento completo de OAuth/WordPress. Las cuentas del seed incluyen guiones y los CCI se presentan3-3-12-2; repetir seed conserva las cuentas ya existentes y sus valores.
+Integraciones distingue presencia de configuración frente a conexión efectiva. El botón Comprobar Google ejecuta lecturas de autorización, carpeta, buzón y permisos, con tiempos límite y sin envíos, cargas ni cambios de acceso; no se ejecuta al abrir pantallas ni por cron. No acredita entrega de mensajes ni funcionamiento completo de OAuth/WordPress. Las cuentas del seed incluyen guiones y los CCI se presentan 3-3-12-2; repetir seed conserva las cuentas ya existentes y sus valores.

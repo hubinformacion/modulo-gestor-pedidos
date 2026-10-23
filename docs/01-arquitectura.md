@@ -1,94 +1,77 @@
-# 01 · Arquitectura y diagramas
+# 01 · Arquitectura y datos
 
 [← Inicio](00-inicio.md) · [Siguiente: Seguridad →](02-seguridad.md)
 
-## Solución completa
+## Solución y alcance
 
-**Monolito modular Next.js en Vercel**, con PostgreSQL en Neon y servicios Google. WordPress embebe únicamente compra/seguimiento; el personal opera en una pestaña propia con Google OAuth. La plataforma coordina ventas y documentos; no procesa tarjetas, transfiere dinero ni emite directamente documentos tributarios.
+**Versión 1.0.0: monolito modular con arquitectura en capas.** Una aplicación Next.js desplegada en Vercel, PostgreSQL en Neon y servicios Google. WordPress embebe solo compra y seguimiento; Fondo Editorial y Tesorería usan la aplicación directamente con Google OAuth. El sistema coordina ventas y documentos: no procesa tarjetas, transfiere dinero ni emite por sí mismo documentos tributarios.
 
-![Arquitectura completa del sistema](diagramas/01-arquitectura.png)
+## Organización del código
 
-Para Word: [PNG de alta resolución](diagramas/01-arquitectura.png). Para modificar o ampliar sin perder calidad: [SVG fuente](diagramas/01-arquitectura.svg). El dibujo representa componentes y relaciones, no una certificación de las consolas ni un orden temporal de ejecución.
+| Ubicación | Responsabilidad |
+| --- | --- |
+| `src/app` | Rutas, páginas y Server Actions; entradas y coordinación de la interfaz |
+| `src/components` | Interfaz agrupada por función y componentes compartidos |
+| `src/modules` | Negocio: orders, catalog, discounts, treasury, access, settings y reporting |
+| `src/modules/*/domain` | Reglas, validaciones, errores y contratos independientes de Next, BD e integraciones |
+| `src/modules/*/application` | Casos de uso y coordinación de transacciones e integraciones |
+| `src/modules/*/data` | Consultas y persistencia; no depende de aplicación ni de Next |
+| `src/integrations` | Adaptadores técnicos de autenticación, Google, correo y WordPress |
+| `src/db` | Conexión, esquemas, SQL inicial, seed, instalador y actualizaciones incrementales |
+| `src/shared` | Configuración, diagnóstico seguro y funciones auxiliares puras; sin dependencias de negocio |
+| `src/resources` | Ubigeo y guías operativas de pago, no expuestos como archivos públicos |
+| `public` | Isotipo SVG de interfaz/favicon y PNG institucional de correo |
+
+ESLint comprueba los límites de capas. Los módulos no importan páginas ni componentes; dominio no depende de persistencia o proveedores. Las reglas y textos de avisos están en los módulos; MIME, logo y transporte son técnicos. Esto no implica Clean Architecture completa ni aislamiento total entre módulos: pedidos todavía consulta catálogo y actualiza su stock dentro de la transacción de compra.
+
+## Tecnologías y conexión
+
+Next.js App Router y Server Actions, React, TypeScript estricto, Tailwind, Base UI/shadcn, FilePond, Sileo, boneyard-js y Recharts. Better Auth y Google OAuth para identidad; Drizzle y el driver Neon para PostgreSQL; googleapis/google-auth-library para Drive y Gmail. Versiones exactas en `package.json` y `pnpm-lock.yaml`. No hay herramientas Python, generadores de iconos ni dependencia directa de Sharp.
+
+| Acceso | Transporte | Uso |
+| --- | --- | --- |
+| `withReadDatabase` | HTTPS con Neon y Drizzle HTTP | Consultas independientes; interfaz restringida a SELECT |
+| `withDatabase` | WebSocket seguro con PoolClient propio por petición | Autenticación y transacciones interactivas |
+
+Las transacciones conservan el mismo cliente; se libera y cierra el pool al terminar, incluso ante fallos. Estos WebSockets conectan servidor y BD, no sincronizan navegadores. Las mutaciones no se repiten ante respuestas ambiguas. La conexión actual es específica de Neon: migrar a otro servicio exige adaptar `src/db`, no solo cambiar una URL. El transporte no acredita por sí mismo VPN, red privada ni políticas efectivas de proveedor.
+
+## Componentes e integraciones
+
+| Componente | Función y límite |
+| --- | --- |
+| WordPress | Origen y ventana exactos, handshake y mensajes acotados de presentación; sin PII ni sesiones internas por postMessage |
+| Autenticación | Google verificado, allowlist vigente y sesión BD; rol/unidad revalidados en cada operación sensible |
+| Drive | Archivos privados y permisos nominados; IDs, hashes e intentos durables guardados en BD |
+| Gmail | Avisos inmediatos del evento nuevo, hilos por audiencia, sin cola ni reenvíos históricos |
+| Cron | Diario a las 12:00 UTC, solo reconciliación de permisos Drive |
+| Respaldo | Procedimiento institucional separado del build y del cron de la aplicación |
+
+Los logos están en `public/isotipo.svg` y `public/isotipo-blanco.png`. El segundo es la única imagen CID de los correos, con logo a la izquierda y Fondo Editorial a la derecha. Las guías se leen desde settings/data y se distribuyen desde `src/resources/payment-guides/`; ubigeo conserva su procedencia/licencia en `src/resources/ubigeo/`.
+
+## Flujo y consistencia
+
+Crear pedido valida datos, recalcula precios/descuentos, bloquea libros/cupón y confirma cuotas, stock, numeración, partidas, snapshots y registro de aviso en una transacción. El UUID/hash recupera el mismo intento sin duplicar compra. Tras el commit se intenta el correo nuevo durante esa solicitud; un fallo de envío no revierte el pedido ni crea una entrega diferida.
+
+Pagos y emisión de Tesorería son independientes de la logística. Las transiciones comprueban rol, responsable, estado y versión. Los archivos se cargan fuera de locks de pedido/stock con ID durable y validación de firma/hash/tamaño. Un volcado SQL no incluye bytes Drive ni mensajes Gmail. El filesystem del despliegue no almacena cargas operativas persistentes.
+
+No hay transacción distribuida entre BD y Google ni garantía de entrega exactamente una vez ante timeout ambiguo. Sin polling periódico: mutaciones, retorno limitado a pestaña y botón manual actualizan; las cargas/borradores pausan refrescos.
 
 ## Leyenda común
 
-| Símbolo o término | Cómo leerlo |
-| --- | --- |
-| Tarjeta/rectángulo | Componente, servicio o punto de acceso; el texto identifica su función |
-| Cilindro | Base de datos persistente |
-| Contorno punteado con título | Límite de proveedor/ejecución; no significa que exista una red privada o VPC |
-| Flecha continua A → B | A utiliza/invoca B; por claridad no se dibuja cada respuesta |
-| Flecha punteada | Despliegue fuera del flujo de negocio; no representa polling ni una cola |
-| Bloque morado/lila | Componente central del sistema; el color no concede un permiso ni indica un error |
-| Franja de respaldo | Procedimiento manual separado, no una tarea automática desplegada |
-| Estado en el diagrama de 04 | Situación de un pedido; una flecha muestra una transición permitida, con su condición escrita |
-| Punto inicial/final en 04 | Inicio o cierre del proceso; no es una tabla ni la eliminación del registro |
-
-No confundir **arquitectura** (qué componentes existen y cómo se conectan) con **flujo** (en qué orden se atiende un pedido). Los identificadores internos `caja` y `EN_PREPARACION` se presentan como Tesorería Recaudación y Distribución.
-
-## Herramientas de programación
-
-| Capa | Herramientas | Responsabilidad |
-| --- | --- | --- |
-| Aplicación | Node.js 24, pnpm 11, TypeScript estricto, Next.js 16, React 19 | App Router, renderizado de servidor, Server Actions y rutas de archivos |
-| Interfaz | Tailwind, Base UI/shadcn, Inter, FilePond, Sileo, boneyard-js, Recharts | Interacción, cargas, notificaciones, skeletons e indicadores |
-| Validación/acceso | Zod, Better Auth, Google OAuth, nanoid | Validación de entradas, sesiones y enlaces privados; permisos propios en BD |
-| Datos | Drizzle ORM, PostgreSQL Neon, @neondatabase/serverless | Consultas parametrizadas, esquema, constraints y transacciones |
-| Google | googleapis, google-auth-library | OAuth propietario separado para Drive/Gmail |
-| Entrega/calidad | Git/GitHub, Vercel, ESLint, TypeScript/Next build | Versionado, despliegue y comprobación estática |
-
-Versiones exactas: `package.json` y `pnpm-lock.yaml`. No hay framework de suites automatizadas por decisión del proyecto. El editor del desarrollador no es una dependencia. Herramientas locales de recursos, como Sharp, no ejecutan generación de imágenes durante un envío de correo.
-
-## Componentes y límites
-
-| Componente | Función y límite de confianza |
-| --- | --- |
-| Comprador/WordPress | Iframe de compra y seguimiento; token privado por pedido, sin login Google del comprador |
-| Módulos internos | Gestores y Tesorería entran directamente a Vercel. Maestro y buzones consultan casos; cuentas personales atienden |
-| Acceso y servicios Next.js | Autorización por sesión/rol/unidad/asignación; validación, reglas y efectos desde servidor |
-| Neon | HTTP para lecturas; Pool WebSocket por petición para auth/transacciones. No son WebSockets de sincronización de pantallas |
-| Drive | Comprobantes, PDF y evidencia privados; permisos nominados por carpeta o archivo según rol |
-| Gmail | Avisos nuevos en hilo del comprador y uno interno por solicitud/unidad y aviso separado al apoyo para recojo; sin cola ni recuperación histórica |
-| Cron diario | Ruta protegida a las 12:00 UTC, exclusivamente reconciliación de permisos Drive; no envía correos ni hace backups |
-| Respaldo | Exportación manual cifrada, fuera de Vercel, a carpeta Drive separada y privada; automatización no implementada |
-
-WordPress usa handshake, `origin/source` exactos y ajuste de altura/scroll. No intercambia PII por postMessage ni comparte la sesión interna. No se relajan cookies/CORS para incrustar administración.
-
-## Datos principales
-
-| Grupo | Tablas y contenido |
-| --- | --- |
-| Identidad | Tablas Better Auth y `authorized_emails`; la autorización es independiente de que exista identidad OAuth |
-| Configuración | `campuses`, `bank_accounts`, `treasury_mailboxes`, `pickup_contacts`, `delivery_rates`, `order_admission_policy` |
-| Compra | `books`, `orders`, `order_items`, contador anual, guías y descuentos/cupones |
-| Archivos | Intentos durables de carga, recibos, evidencia y PDF de venta; IDs/hash en BD, bytes en Drive |
-| Tesorería | Solicitudes, responsable, observaciones/correcciones, notas, documentos y lotes de PDF |
-| Auditoría | Actividades de pedido/Tesorería, `management_audit`, `pickup_notifications`, cambios de cuotas y resultado/metadatos de correo |
-| Permisos técnicos | Grants Drive y contadores HMAC de admisión, sin IP/correo en claro en estos contadores |
-
-PostgreSQL conserva nombres/precios/cuentas/destino/guía/consentimiento como snapshots. La guía de pago histórica se guarda además como PDF base64 en `payment_guides`; los demás adjuntos operativos mantienen sus bytes en Drive privado. Los importes usan `numeric(12,2)` y cálculo en céntimos. El teléfono, DNI/dirección y tokens OAuth no tienen cifrado propio por campo; el alcance de protección se explica en 02.
-
-<!-- BEGIN:database-map -->
+I: identidad y acceso; C: configuración; O: pedidos/pagos; T: Tesorería; A: historial/auditoría; S: control técnico. Estas claves describen controles de aplicación y no acreditan RLS, privilegios SQL ni configuración efectiva de proveedores.
 
 ## Base de datos: tablas, información y protección
 
-El esquema inicial local declara **40 tablas**. Esta documentación describe estructura y controles de código; no consulta datos ni acredita la configuración actual de Neon/Google. Fuente: `src/db/schema.ts`, `src/db/auth-schema.ts` y `src/db/schema.sql`.
-
-![Vista general de la base de datos](diagramas/02-base-datos.png)
-
-[Mapa completo en HTML, con cuatro diagramas e inventario](diagramas/02-base-datos.html) · [SVG de la vista general](diagramas/02-base-datos.svg).
+El inventario corresponde al SQL inicial de `src/db/schema.sql`, generado desde los esquemas TypeScript y Better Auth. No consulta ni contiene registros operativos.
 
 ### Relaciones principales
 
-Las vistas ER muestran tablas reales y un subconjunto de campos/relaciones. **1:N** significa un registro relacionado con cero o varios; **1:0..1**, con cero o uno. Las líneas continuas corresponden a FK del esquema, sin representar el orden del proceso ni permisos. Una línea discontinua identifica una asociación lógica que valida la aplicación. Cada caja indica cuántos campos adicionales se omiten. Las relaciones no dibujadas siguen existiendo en el esquema.
+Las tablas operativas enlazan pedidos, partidas, pagos, documentos, usuarios y configuración mediante las claves y validaciones del esquema. Las FK preservan relaciones; las asociaciones guardadas como JSON se validan en aplicación. Las relaciones no dibujadas siguen existiendo en el esquema.
 
-![Relaciones de publicaciones, pedidos y depósitos](diagramas/03-base-datos-pedidos.png)
 
-![Relaciones de solicitudes y documentos de Tesorería](diagramas/04-base-datos-emision.png)
 
-`caja_requests.draft_document_id` y `finalized_document_id` también referencian `sale_documents.id`; se omiten esas líneas de retorno para facilitar la lectura. `sale_document_batches.document_ids` y `coupons.book_ids` son listas JSON, no claves foráneas: los servicios validan sus referencias.
+`caja_requests.draft_document_id` y `finalized_document_id` también referencian `sale_documents.id`; estos vínculos son parte del esquema y se validan durante el flujo de emisión. `sale_document_batches.document_ids` y `coupons.book_ids` son listas JSON, no claves foráneas: los servicios validan sus referencias.
 
-![Identidad, sesiones y lista de autorización](diagramas/05-base-datos-identidad.png)
 
 `authorized_emails.email` se compara con `user.email` desde servidor; no existe una FK entre ambas. `verification` es independiente y no tiene FK a `user`. El esquema estándar incluye `account.password`, pero el login por contraseña local está deshabilitado.
 
@@ -190,20 +173,6 @@ Los campos siguientes son representativos; la cantidad es el total de columnas d
 
 Los controles se detallan y sus límites se mantienen en [Seguridad y accesos](02-seguridad.md). El esquema operativo solo cambia mediante actualización incremental explícita y respaldada, fuera del build.
 
-<!-- END:database-map -->
+## Evolución posterior
 
-## Toda la base de datos en un único lienzo
-
-El [diagrama completo con zoom y búsqueda](diagramas/06-base-datos-completa.html) reúne **40 tablas, 404 columnas, 44 claves foráneas y nueve tipos enumerados** en una sola vista, sin dividirla en pantallas. Incluye todas las columnas y conecta los campos de cada FK. Seleccionar una tabla o una columna FK resalta sus relaciones; las demás tablas permanecen visibles. También está disponible el [SVG vectorial completo](diagramas/06-base-datos-completa.svg). Es una vista del SQL inicial local; no contiene registros ni modifica la presentación.
-
-## Consistencia y operación
-
-- Stock, cuotas, numeración anual, partidas y recepción se confirman juntos; un fallo revierte la compra completa. UUID/hash de intento evita duplicar un pedido ya creado.
-- Locks ordenados, versión y responsable protegen transiciones; no se reintentan mutaciones ambiguas. Cuotas y pendientes se comparten entre instancias.
-- Google queda fuera de locks de pedido/stock. ID de carga/intención ACL durable permite tratar respuestas perdidas sin hacer público el archivo.
-- BD y Google no comparten transacción distribuida. Fallos se registran; no se promete exactamente una entrega ante timeout ambiguo de Gmail.
-- Sin polling periódico: actualización por acciones, retorno a pestaña limitado y botón manual; pausa durante cargas/borradores.
-
-## Estructura de código
-
-`src/app`: rutas/acciones; `src/components`: UI; `src/lib`: reglas/acceso/integraciones; `src/db`: esquema, SQL inicial, instalador y seed; `src/iframe`: integración WordPress; `src/assets`: PDF e imágenes usadas. Los módulos `server-only` no se importan desde clientes. No hay carpetas de configuración vacías necesarias.
+La plataforma editorial completa y Azure/Microsoft se estudiarán después del cierre de esta versión. No se implementan módulos vacíos ni adaptadores de proveedores todavía no elegidos. Cualquier transición preservará historial, importes, archivos, hashes, permisos y datos operativos mediante cambios incrementales respaldados.

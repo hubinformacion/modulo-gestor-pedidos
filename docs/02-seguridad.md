@@ -10,12 +10,12 @@
 
 | N.º | Requisito | Control y evidencia de código | Qué debe validar TI |
 | --- | --- | --- | --- |
-| 1 | Autenticación | Google OAuth + Better Auth, email verificado y lista cerrada en BD; sin vinculación automática. `src/lib/auth.ts`, `access.ts` | MFA/cliente/callback institucionales. Comprador usa nanoid32 por posesión, sin identidad civil verificada ni expiración/rotación por UI |
+| 1 | Autenticación | Google OAuth + Better Auth, email verificado y lista cerrada en BD; sin vinculación automática. `src/integrations/auth/server.ts`, `src/modules/access` | MFA/cliente/callback institucionales. Comprador usa nanoid32 por posesión, sin identidad civil verificada ni expiración/rotación por UI |
 | 2 | Sesiones | Siete días, renovación cada día solo por proxy, autorización BD sin caché de cookie, revocación y comprobación transaccional. `transaction-access.ts`, `src/proxy.ts` | Logout/revocación/expiración y cookies efectivas Secure/HttpOnly/SameSite. No hay timeout adicional por inactividad |
 | 3 | Usuarios/contraseñas | Solo maestro administra autorizados; contraseña local deshabilitada. Complejidad local **no aplica** | Política Workspace de contraseña, recuperación y MFA; custodia/rotación de secretos técnicos |
 | 4 | Perfiles/roles | Rol, unidad, sesión, asignación y versión comprobados en servidor; `assertOrderOperator` y `assertTreasuryOperator` | Casos permitidos y denegados por rol/unidad, incluidas acciones directas; ver matriz inferior |
 | 5 | Log de usuarios/roles | `management_audit`: altas/cambios/revocaciones, unidades y buzones, actor/fecha y antes/después, en la misma transacción | Lectura de evidencia y privilegios SQL append-only. No hay backfill; cambios de identidad/contraseña en Google se auditan en Workspace |
-| 6 | Entradas maliciosas | Zod servidor, SQL parametrizado, escape React/HTML de correo, validación de URL/origen, tamaño/firma/hash/pertenencia de archivos. `src/lib/payments/inspect.ts`, validaciones de `src/lib` | Casos inválidos y revisión de WordPress/plugins. No hay antivirus/CDR de PDF ni garantía de inmunidad total |
+| 6 | Entradas maliciosas | Zod servidor, SQL parametrizado, escape React/HTML de correo, validación de URL/origen, tamaño/firma/hash/pertenencia de archivos. `src/modules/orders/domain/receipt.ts`, validaciones de los módulos | Casos inválidos y revisión de WordPress/plugins. No hay antivirus/CDR de PDF ni garantía de inmunidad total |
 | 7 | Criptografía | Cifrado en tránsito/reposo de proveedores; secretos privados y HMAC de cuotas. **Sin cifrado propio por campo** | Región, IAM/custodia y cifrado efectivos; aceptar o exigir KMS/cifrado adicional de PII/tokens. Cifrar dumps antes de subir |
 | 8 | Protección CIA | Confidencialidad: permisos y DTOs mínimos. Integridad: transacciones/snapshots/hash/auditoría. Disponibilidad: errores/límites y procedimiento de respaldo | RPO 7 días/RTO 4 h como objetivos, no garantías; restauración medida, privilegios y monitorización. Planes gratuitos no aportan un SLA contratado por el proyecto |
 | 9 | Consentimiento | Casilla obligatoria con política enlazada, validada servidor; `consentAcceptedAt` y `consentVersion` persistidos | Aprobar texto/finalidad, datos del tercero receptor, conservación y derechos del titular; la casilla no prueba cumplimiento legal completo |
@@ -39,7 +39,7 @@ Ocultar controles no es autorización: sesión/rol/unidad se revalidan en consul
 
 ## Datos, confidencialidad y cifrado
 
-El [modelo de datos e inventario de tablas](01-arquitectura.md#base-de-datos-tablas-información-y-protección) relaciona cada tabla con la información que conserva y los controles aplicables. Sus diagramas distinguen claves foráneas, asociaciones lógicas y listas JSON; no presentan la separación por rol/unidad como RLS ni acreditan privilegios SQL efectivos.
+El [modelo de datos e inventario de tablas](01-arquitectura.md#base-de-datos-tablas-información-y-protección) relaciona cada tabla con la información que conserva y los controles aplicables. El inventario distingue claves foráneas, asociaciones lógicas y listas JSON; no presenta la separación por rol/unidad como RLS ni acreditan privilegios SQL efectivos.
 
 | Datos | Dónde viven y quién los necesita |
 | --- | --- |
@@ -72,12 +72,18 @@ Solo maestro ve los últimos 30 registros administrativos en Seguridad; historia
 
 Revisión de fuente guiada por [Cloudflare security-audit-skill](https://github.com/cloudflare/security-audit-skill/tree/main/skills/security-audit). El expediente detallado está fuera del repositorio; no se ejecutaron ataques ni se acreditaron vulnerabilidades en producción.
 
-| Riesgo revisado | Tratamiento en código | Validación pendiente |
+| Riesgo revisado | Tratamiento en código | Comprobación y alcance |
 | --- | --- | --- |
 | Creación anónima sin cuota agregada | Cuotas transaccionales compartidas y editables por maestro, idempotencia preservada | Concurrencia en ambiente aislado, cabecera IP Vercel/firewall y consumo real. No protege de todo tráfico HTTP |
-| Permiso Drive sin intención durable previa | Registro antes de API, recuperación por email/carpeta aun tras revocación y lectura de rol/herencia antes de retirar | Pérdida de respuesta en entorno controlado e inventario real por propietario; registros previos pueden tener procedencia indistinguible |
+| Permiso Drive sin intención durable previa | Registro antes de API, recuperación por email/carpeta aun tras revocación y lectura de rol/herencia antes de retirar | Pruebas Drive confirmadas por el responsable; la revisión de fuente no inventaría ACL efectivas |
+| Cambio de correo de una identidad Google vinculada | En nuevo inicio OAuth se exige coincidencia entre correo verificado entrante y usuario local seleccionado, incluso si ambas direcciones están autorizadas; discrepancia deniega sin trasladar roles | Pruebas OAuth confirmadas por el responsable; un cambio institucional legítimo requiere conciliar explícitamente vínculo y permisos |
+| Intención de permiso de archivo no visible tras revocación | Conservar registro sin ID cuando una lista vacía o un GET sin resultado no resuelven el alta ambigua; reconciliar después. Releer identidad, rol y herencia antes de retirar un reader directo gestionado | Pruebas Drive confirmadas por el responsable; no se atribuye al agente una reproducción contra Google |
 
 Carpeta operativa exclusiva. No adoptar/retirar permisos manuales preexistentes; el técnico supervisa a quién se añade. No modificar manualmente el mismo principal mientras la aplicación lo gestiona: Google no ofrece un borrado condicional de ese permiso. Preservar owners/writers/organizadores/heredados. La recuperación ACL técnica no es una cola de correo.
+
+## Validación de la versión 1.0.0
+
+El responsable del módulo declara verificadas las pruebas de OAuth, Drive y restauración. Esta es la fuente de su aceptación operativa; no se presenta como ejecución independiente del agente ni certificación de proveedor. Las correcciones están en el código de la versión. La auditoría estática anterior no constituye por sí sola una reproducción de incidentes en producción.
 
 ## Evidencias para TI
 
