@@ -1,13 +1,13 @@
 "use client";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { SortableTable } from "@/components/sortable-table";
+import { SortableTable } from "@/components/workspace/sortable-table";
 import { useState, useTransition } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Pencil, Plus, Trash2, WandSparkles } from "lucide-react";
-import { notifyAction } from "@/lib/ui/notifications";
+import { notifyAction } from "@/components/feedback/notify-action";
 import { Button } from "@/components/ui/button";
-import { Field, SelectField } from "@/components/order-wizard/fields";
-import { couponSchema, peruInputDate, peruIsoDate, type CouponRow } from "@/lib/discounts/validation";
+import { Field, SelectField } from "@/components/ui/form-fields";
+import { couponSchema, peruInputDate, peruIsoDate, type CouponRow } from "@/modules/discounts/domain/validation";
 import { saveCouponAction, deleteCouponAction } from "@/app/admin/cupones/actions";
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeZone: "America/Lima" });
 const empty = { scope: "all" as CouponRow["scope"], bookIds: [] as string[], code: "", percent: "", audience: "all" as CouponRow["audience"], unlimited: true, maxUses: "", startsAt: "", endsAt: "", status: "INACTIVO" as CouponRow["status"] };

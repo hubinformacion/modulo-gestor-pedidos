@@ -1,5 +1,5 @@
-import { requirePageAccess } from "@/lib/access";
-import { managerGuide } from "@/lib/guides/content";
+import { requirePageAccess } from "@/modules/access/application/session";
+import { managerGuide } from "@/components/guides/content";
 import { WorkflowGuide } from "@/components/guides/workflow-guide";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 export const metadata = { title: "Guía del gestor" };

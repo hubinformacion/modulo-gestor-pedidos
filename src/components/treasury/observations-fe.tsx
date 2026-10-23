@@ -1,10 +1,10 @@
 "use client";
 import dynamic from "next/dynamic";
 import { useState, useTransition } from "react";
-import { notifyAction } from "@/lib/ui/notifications";
+import { notifyAction } from "@/components/feedback/notify-action";
 import { Button } from "@/components/ui/button";
 import { resolveObservationAction } from "@/app/tesoreria-recaudacion/operations";
-import { resolveSchema } from "@/lib/treasury/validation";
+import { resolveSchema } from "@/modules/treasury/domain/notes";
 const SupportingPond = dynamic(() => import("./supporting-pond"), { ssr: false });
 type Correction = { name: string; document: string; phone: string; billingRuc: string; billingBusinessName: string; billingAddress: string };
 export function ResolveTreasuryObservation({ id, observationId, current }: { id: string; observationId: string; current: Correction }) {

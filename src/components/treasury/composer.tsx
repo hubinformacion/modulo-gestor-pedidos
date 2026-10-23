@@ -1,9 +1,9 @@
 "use client";
 import { useState, useTransition } from "react";
-import { notifyAction } from "@/lib/ui/notifications";
+import { notifyAction } from "@/components/feedback/notify-action";
 import { Button } from "@/components/ui/button";
 import { addTreasuryNoteAction, addObservationAction } from "@/app/tesoreria-recaudacion/operations";
-import { noteSchema, observationSchema } from "@/lib/treasury/validation";
+import { noteSchema, observationSchema } from "@/modules/treasury/domain/notes";
 export function TreasuryComposer({ id, version, note = false }: { id: string; version: string; note?: boolean }) {
   const [content, setContent] = useState("");
   const [error, setError] = useState("");

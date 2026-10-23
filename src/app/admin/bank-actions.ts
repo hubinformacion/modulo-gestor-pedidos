@@ -3,10 +3,10 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { withDatabase } from "@/db";
-import { getAuthorizedSession } from "@/lib/access";
-import { AccessError } from "@/lib/access-policy";
-import { deleteBank, saveBank } from "@/lib/payments/banks-service";
-import { bankIdSchema, bankFormSchema, bankUpdateSchema, type BankResult } from "@/lib/payments/banks-validation";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { AccessError } from "@/modules/access/domain/policy";
+import { deleteBank, saveBank } from "@/modules/settings/data/banks";
+import { bankIdSchema, bankFormSchema, bankUpdateSchema, type BankResult } from "@/modules/settings/domain/banks";
 
 function databaseError(error: unknown): string | undefined {
   if (!error || typeof error !== "object") return undefined;

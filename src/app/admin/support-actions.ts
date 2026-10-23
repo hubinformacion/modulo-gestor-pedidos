@@ -4,12 +4,12 @@ import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { pickupContacts, orders } from "@/db/schema";
-import { getAuthorizedSession } from "@/lib/access";
-import { assertAuthorized } from "@/lib/transaction-access";
-import { AccessError } from "@/lib/access-policy";
-import { writeManagementAudit } from "@/lib/audit/management";
-import { supportSchema, deleteSupportSchema } from "@/lib/delivery/support-validation";
-import { reportServerError, safeErrorDetails } from "@/lib/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { assertAuthorized } from "@/modules/access/data/transaction-access";
+import { AccessError } from "@/modules/access/domain/policy";
+import { writeManagementAudit } from "@/modules/access/data/management-audit";
+import { supportSchema, deleteSupportSchema } from "@/modules/settings/domain/pickup-support";
+import { reportServerError, safeErrorDetails } from "@/shared/logging/server-diagnostics";
 class SupportError extends Error {}
 function failure(error: unknown) {
   if (!(error instanceof SupportError || error instanceof AccessError)) reportServerError("pickup.support.change", error);

@@ -2,8 +2,8 @@ import "server-only";
 import { neon, Pool, type PoolClient } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
 import { drizzle as drizzleHttp } from "drizzle-orm/neon-http";
-import { getDatabaseUrl } from "@/lib/env";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getDatabaseUrl } from "@/shared/config/env";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 import { DatabaseOperationError, isDatabaseFailure, transientDatabaseFailure } from "./errors";
 import * as schema from "./schema";
 

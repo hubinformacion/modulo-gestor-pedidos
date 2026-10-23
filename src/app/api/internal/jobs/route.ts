@@ -1,7 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { z } from "zod";
-import { processBackgroundJobs } from "@/lib/orders/background-jobs";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { processBackgroundJobs } from "@/integrations/google/maintenance";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 180;

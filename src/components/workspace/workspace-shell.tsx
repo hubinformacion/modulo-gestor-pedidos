@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { ChevronRight, ClipboardList, ChartNoAxesCombined, Package, Tags, TicketPercent, Settings2, ReceiptText, PanelLeftClose, PanelLeftOpen, Menu, X, BookOpen, LayoutDashboard } from "lucide-react";
-import { LogoutButton } from "@/components/logout-button";
-import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/access/logout-button";
+import { cn } from "@/shared/utils/cn";
 
 const managerItems = [
   { href: "/admin/pedidos", label: "Pedidos", icon: ClipboardList, group: "Operación" },
@@ -61,7 +61,7 @@ export function WorkspaceShell({ kind, profile, children }: { kind: "manager" | 
       <div className="workspace-identity"><span className="workspace-mark" role="img" aria-label="Universidad Continental">
         {/* The local SVG is also the app favicon; keep its original rendering without an image proxy. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/icon.svg" width={32} height={32} alt="" />
+        <img src="/isotipo.svg" width={32} height={32} alt="" />
       </span><div className="workspace-expanded"><p>{title}</p></div></div>
       <nav aria-label={title} className="workspace-nav">{items.map(({ href, label, icon: Icon, group }, index) => {
         const active = current.href === href;

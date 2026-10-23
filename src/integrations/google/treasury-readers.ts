@@ -1,0 +1,94 @@
+import { withDatabase } from "@/db";
+import { authorizedEmails, cajaRequests, driveFileReaderGrants, paymentReceipts, saleDocuments, treasurySupportingFiles } from "@/db/schema";
+import { ownerAuth } from "@/integrations/google/auth";
+import { reportServerError, safeErrorDetails } from "@/shared/logging/server-diagnostics";
+import { assertAccessRole } from "@/modules/access/data/transaction-access";
+import { AccessError, type AuthorizedActor } from "@/modules/access/domain/policy";
+import { treasuryScopes } from "@/modules/treasury/domain/scope";
+import { and, eq, isNull, or, sql } from "drizzle-orm";
+import { drive, type drive_v3 } from "googleapis/build/src/apis/drive/index.js";
+import "server-only";
+
+async function reconcileFile(fileId: string, email: string) {
+  const api = drive({ version: "v3", auth: ownerAuth() });
+  await withDatabase((db) => db.transaction(async (tx) => {
+    // Service-only lock: no authentication, order or inventory lock across I/O.
+    await tx.execute(sql`SET LOCAL lock_timeout = '10s'`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`caja-file:${fileId}`}))`);
+    const [grant] = await tx.select().from(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, email)));
+    if (!grant) return;
+    const [member] = await tx.select().from(authorizedEmails).where(and(eq(authorizedEmails.role, "caja"), eq(authorizedEmails.email, email)));
+    const [scope] = await tx.select({ imprint: cajaRequests.publisherImprint }).from(cajaRequests).where(eq(cajaRequests.id, grant.requestId));
+    const allowed = member && scope && treasuryScopes(member).includes(scope.imprint);
+    const permissions = []; let pageToken: string | undefined;
+    do {
+      const response = await api.permissions.list({ fileId, supportsAllDrives: true, pageToken, fields: "nextPageToken,permissions(id,type,role,emailAddress,permissionDetails)" }, { timeout: 15_000, retry: false });
+      permissions.push(...(response.data.permissions ?? [])); pageToken = response.data.nextPageToken ?? undefined;
+    } while (pageToken);
+    const existing = permissions.find((item) => item.type === "user" && item.emailAddress?.toLowerCase() === email);
+    if (!allowed) {
+      const permissionId = grant.permissionId ?? existing?.id;
+      // An empty listing cannot resolve an accepted create with a lost ACK.
+      // Keep its durable intent so later reconciliation still knows this pair.
+      if (!permissionId) return;
+      let effective: drive_v3.Schema$Permission | undefined;
+      try {
+        effective = (await api.permissions.get({ fileId, permissionId, supportsAllDrives: true, fields: "id,type,role,emailAddress,permissionDetails" }, { timeout: 15_000, retry: false })).data;
+      } catch (error) {
+        if (safeErrorDetails(error).status !== 404) throw error;
+      }
+      if (!effective && !grant.permissionId) return;
+      // Recheck current ownership, role and inheritance immediately before
+      // deleting; a listing or historical grant does not authorize deletion.
+      const removable = effective?.type === "user" && effective.emailAddress?.toLowerCase() === email
+        && effective.role === "reader" && !effective.permissionDetails?.some((detail) => detail.inherited);
+      if (grant.managed && removable) {
+        try { await api.permissions.delete({ fileId, permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
+        catch (error) { if (safeErrorDetails(error).status !== 404) throw error; }
+      }
+      await tx.delete(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, email))); return;
+    }
+    const managed = !existing || (existing.role === "reader" && !existing.permissionDetails?.some((detail) => detail.inherited));
+    const permissionId = existing?.id ?? (await api.permissions.create({ fileId, supportsAllDrives: true, sendNotificationEmail: false, requestBody: { type: "user", role: "reader", emailAddress: email }, fields: "id" }, { timeout: 15_000, retry: false })).data.id;
+    if (!permissionId) throw new Error("CAJA_PERMISSION_ID_MISSING");
+    // Commit provider acknowledgement independently so a later error cannot
+    // orphan an ACL. Pending intents reconcile ambiguous create responses.
+    await withDatabase((writer) => writer.update(driveFileReaderGrants).set({ permissionId, managed }).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, email))));
+  }));
+}
+async function retryFile(fileId: string, email: string) { try { await reconcileFile(fileId, email); } catch { await reconcileFile(fileId, email); } }
+export async function ensureCajaFileReader(actor: AuthorizedActor, requestId: string, fileId: string, refresh = false) {
+  const ready = await withDatabase((db) => db.transaction(async (tx) => {
+    await assertAccessRole(tx, actor, "caja");
+    const [request] = await tx.select().from(cajaRequests).where(eq(cajaRequests.id, requestId));
+    if (!request || !actor.publisherImprints.includes(request.publisherImprint)) throw new AccessError("FORBIDDEN");
+    const [document] = await tx.select({ id: saleDocuments.id }).from(saleDocuments).where(and(eq(saleDocuments.requestId, requestId), eq(saleDocuments.driveFileId, fileId), sql`${saleDocuments.uploadedAt} IS NOT NULL`));
+    const [supporting] = await tx.select({ id: treasurySupportingFiles.id }).from(treasurySupportingFiles).where(and(eq(treasurySupportingFiles.requestId, requestId), eq(treasurySupportingFiles.driveFileId, fileId), sql`${treasurySupportingFiles.uploadedAt} IS NOT NULL`));
+    const [receipt] = document || supporting ? [] : await tx.select({ id: paymentReceipts.id }).from(paymentReceipts).where(and(eq(paymentReceipts.orderId, request.orderId), eq(paymentReceipts.publisherImprint, request.publisherImprint), eq(paymentReceipts.driveFileId, fileId)));
+    if (!document && !receipt && !supporting) throw new AccessError("FORBIDDEN");
+    const [grant] = await tx.select({ permissionId: driveFileReaderGrants.permissionId }).from(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, actor.email), eq(driveFileReaderGrants.requestId, requestId)));
+    if (grant?.permissionId) return true;
+    await tx.insert(driveFileReaderGrants).values({ driveFileId: fileId, email: actor.email, requestId }).onConflictDoNothing();
+    return false;
+  }));
+  // Current authorization and file ownership were checked above. Established
+  // grants need no Google request on every render; the recovery link forces a
+  // fresh reconciliation if an ACL was changed outside this application.
+  if (!ready || refresh) await retryFile(fileId, actor.email);
+  await withDatabase((db) => db.transaction(async (tx) => { await assertAccessRole(tx, actor, "caja"); }));
+}
+export async function synchronizeCajaFileReaders() {
+  // Reconcile pending creates/revocations, not every established ACL daily.
+  // File opening rechecks its grant; idle jobs must stay bounded on free Neon.
+  const rows = await withDatabase((db) => db.select({ fileId: driveFileReaderGrants.driveFileId, email: driveFileReaderGrants.email }).from(driveFileReaderGrants)
+    .leftJoin(cajaRequests, eq(cajaRequests.id, driveFileReaderGrants.requestId))
+    .leftJoin(authorizedEmails, and(eq(authorizedEmails.email, driveFileReaderGrants.email), eq(authorizedEmails.role, "caja"), sql`(CASE WHEN jsonb_array_length(${authorizedEmails.publisherImprints}) > 0 THEN ${authorizedEmails.publisherImprints} ELSE jsonb_build_array(${authorizedEmails.publisherImprint}) END) ? ${cajaRequests.publisherImprint}::text`))
+    .where(or(isNull(driveFileReaderGrants.permissionId), isNull(authorizedEmails.email)))
+    .orderBy(sql`CASE WHEN ${authorizedEmails.email} IS NULL THEN 0 ELSE 1 END`).limit(25));
+  const started = Date.now();
+  for (const row of rows) {
+    if (Date.now() - started >= 50_000) break;
+    try { await retryFile(row.fileId, row.email); }
+    catch (error) { reportServerError("caja.file.permission.pending", error); }
+  }
+}

@@ -1,13 +1,13 @@
 "use client";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
-import { SortableTable } from "@/components/sortable-table";
+import { SortableTable } from "@/components/workspace/sortable-table";
 import { useState, useTransition } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { notifyAction } from "@/lib/ui/notifications";
+import { notifyAction } from "@/components/feedback/notify-action";
 import { Button } from "@/components/ui/button";
-import { Field, SelectField } from "@/components/order-wizard/fields";
-import { promotionSchema, peruInputDate, peruIsoDate, type PromotionRow } from "@/lib/discounts/validation";
+import { Field, SelectField } from "@/components/ui/form-fields";
+import { promotionSchema, peruInputDate, peruIsoDate, type PromotionRow } from "@/modules/discounts/domain/validation";
 import { savePromotionAction, deletePromotionAction } from "@/app/admin/promociones/actions";
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeStyle: "short", timeZone: "America/Lima" });
 type Book = { id: string; title: string; code: string; imprint: "universidad" | "instituto" };

@@ -1,15 +1,15 @@
-import { formatRequestNumber } from "@/lib/orders/number";
+import { formatRequestNumber } from "@/modules/orders/domain/number";
 import { Select } from "@/components/ui/select";
-import { formatMoney, toCents } from "@/lib/orders/money";
+import { formatMoney, toCents } from "@/modules/orders/domain/money";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
-import { ServerSortHeader } from "@/components/server-sort-header";
-import { ImprintBadge } from "@/components/order-wizard/imprint-badge";
-import { DetailButton } from "@/components/detail-button";
+import { ServerSortHeader } from "@/components/workspace/server-sort-header";
+import { ImprintBadge } from "@/components/catalog/imprint-badge";
+import { DetailButton } from "@/components/workspace/detail-button";
 import Link from "next/link";
 import { FileText } from "lucide-react";
-import { cajaInbox } from "@/lib/caja/data";
-import { cajaFiltersSchema, cajaLabels } from "@/lib/caja/validation";
-import { OrderLiveRefresh } from "@/components/order-live-refresh";
+import { cajaInbox } from "@/modules/treasury/application/requests";
+import { cajaFiltersSchema, cajaLabels } from "@/modules/treasury/domain/documents";
+import { OrderLiveRefresh } from "@/components/orders/live-refresh";
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeZone: "America/Lima" });
 export default async function CajaPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const filters = cajaFiltersSchema.parse(await searchParams);

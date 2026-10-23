@@ -1,0 +1,103 @@
+import { withDatabase, type Database } from "@/db";
+import { DatabaseOperationError, isDatabaseFailure, transientDatabaseFailure } from "@/db/errors";
+import { authorizedEmails } from "@/db/schema";
+import { createAuth } from "@/integrations/auth/server";
+import { getAuthEnvironment } from "@/shared/config/env";
+import { reportServerError, safeErrorDetails } from "@/shared/logging/server-diagnostics";
+import { AccessError, authorizedEmailSchema, type AuthorizedActor } from "@/modules/access/domain/policy";
+import { treasuryScopes } from "@/modules/treasury/domain/scope";
+import { APIError } from "better-auth/api";
+import { eq } from "drizzle-orm";
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import { cache } from "react";
+import "server-only";
+
+type SessionIdentity = { user: { email: string; emailVerified: boolean; id: string; name: string; image?: string | null }; session: { id: string } };
+async function authorizeIdentity(db: Database, result: SessionIdentity | null): Promise<AuthorizedActor> {
+  if (!result) throw new AccessError("UNAUTHENTICATED");
+  const email = authorizedEmailSchema.safeParse(result.user.email);
+  if (!result.user.emailVerified || !email.success) throw new AccessError("FORBIDDEN");
+  const [allowed] = await db.select().from(authorizedEmails).where(eq(authorizedEmails.email, email.data)).limit(1);
+  if (!allowed) throw new AccessError("FORBIDDEN");
+  return { userId: result.user.id, sessionId: result.session.id, email: email.data, name: result.user.name, image: result.user.image ?? null, role: allowed.role, publisherImprint: allowed.publisherImprint, publisherImprints: treasuryScopes(allowed), treasuryService: allowed.treasuryService };
+}
+function accessFailure(error: unknown): never {
+  if (error instanceof AccessError) throw error;
+  const status = safeErrorDetails(error).status;
+  if (error instanceof APIError && status === 401) throw new AccessError("UNAUTHENTICATED");
+  if (error instanceof APIError && status === 403) throw new AccessError("FORBIDDEN");
+  reportServerError("access.session.unavailable", { stage: "auth.session", cause: error });
+  throw new AccessError("UNAVAILABLE");
+}
+export async function getSignedInSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+  // Better Auth wraps driver failures in FAILED_TO_GET_SESSION. Capture their
+  // cause without logging payloads, and retry only this non-renewing read once.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    let source: unknown;
+    try {
+      const read = async (connection: Database) => {
+        const auth = createAuth(connection, getAuthEnvironment(), (error) => { source = error; });
+        const result = await auth.api.getSession({ headers: requestHeaders, query: { disableCookieCache: true, disableRefresh: true } });
+        return authorizeIdentity(connection, result);
+      };
+      // A disconnected client cannot recover by reading it again. Retry only
+      // this non-renewing session lookup, with a fresh request-scoped client.
+      return attempt === 0 ? await read(db) : await withDatabase(read);
+    } catch (error) {
+      if (error instanceof AccessError) throw error;
+      const details = safeErrorDetails(error);
+      const retryable = transientDatabaseFailure(source ?? error) || (!source && details.code === "FAILED_TO_GET_SESSION" && details.status === 500);
+      if (attempt === 0 && retryable) continue;
+      if (source) reportServerError("access.session.source", isDatabaseFailure(source) ? new DatabaseOperationError(source, "auth.session.read") : { stage: "auth.session.read", cause: source });
+      return accessFailure(error);
+    }
+  }
+  throw new AccessError("UNAVAILABLE");
+}
+
+export async function getAuthorizedSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+  const actor = await getSignedInSession(db, requestHeaders);
+  if (actor.role !== "gestor") throw new AccessError("FORBIDDEN");
+  return actor;
+}
+export async function getCajaSession(db: Database, requestHeaders: Headers): Promise<AuthorizedActor> {
+  const actor = await getSignedInSession(db, requestHeaders);
+  if (actor.role !== "caja" || !actor.publisherImprints.length) throw new AccessError("FORBIDDEN");
+  return actor;
+}
+
+// Only proxy can forward renewed cookies. RSC/actions retain authoritative,
+// read-only session checks; every protected request still checks the allowlist.
+export async function getAuthorizedRequestSession(db: Database, requestHeaders: Headers) {
+  try {
+    const result = await createAuth(db).api.getSession({ headers: requestHeaders, query: { disableCookieCache: true }, returnHeaders: true });
+    const actor = await authorizeIdentity(db, result.response);
+    return { actor, responseHeaders: result.headers };
+  } catch (error) { return accessFailure(error); }
+}
+
+// Only memoized within a React render. Actions call getAuthorizedSession again.
+export const requirePageAccess = cache(async (): Promise<AuthorizedActor> => {
+  const requestHeaders = await headers();
+  let actor: AuthorizedActor;
+  try {
+    actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
+  } catch (error) {
+    const code = error instanceof AccessError ? error.code : "UNAVAILABLE";
+    if (code === "UNAUTHENTICATED") redirect("/login");
+    if (code === "FORBIDDEN") redirect("/login?error=access_denied");
+    throw new AccessError("UNAVAILABLE");
+  }
+  return actor;
+});
+
+export const requireCajaAccess = cache(async () => {
+  const requestHeaders = await headers();
+  try { return await withDatabase((db) => getCajaSession(db, requestHeaders)); }
+  catch (error) {
+    if (error instanceof AccessError && error.code === "UNAUTHENTICATED") redirect("/login");
+    if (error instanceof AccessError && error.code === "FORBIDDEN") redirect("/acceso");
+    throw error;
+  }
+});

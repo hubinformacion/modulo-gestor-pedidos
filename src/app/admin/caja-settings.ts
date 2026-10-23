@@ -1,20 +1,20 @@
 "use server";
-import { writeManagementAudit, accessSnapshot } from "@/lib/audit/management";
+import { writeManagementAudit, accessSnapshot } from "@/modules/access/data/management-audit";
 import { headers } from "next/headers";
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { and, eq, sql } from "drizzle-orm";
 import { withDatabase } from "@/db";
 import { authorizedEmails, treasuryMailboxes, user, session } from "@/db/schema";
-import { getAuthorizedSession } from "@/lib/access";
-import { AccessError, isMasterEmail } from "@/lib/access-policy";
-import { assertAuthorized } from "@/lib/transaction-access";
-import { releaseCajaAssignments } from "@/lib/caja/release-assignments";
-import { treasuryScopes } from "@/lib/treasury/scope";
-import { teamSchema, mailboxSchema } from "@/lib/treasury/validation";
-import { synchronizeCajaFileReaders } from "@/lib/caja/drive-access";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { AccessError, isMasterEmail } from "@/modules/access/domain/policy";
+import { assertAuthorized } from "@/modules/access/data/transaction-access";
+import { releaseCajaAssignments } from "@/modules/treasury/data/release-assignments";
+import { treasuryScopes } from "@/modules/treasury/domain/scope";
+import { teamSchema, mailboxSchema } from "@/modules/treasury/domain/notes";
+import { synchronizeCajaFileReaders } from "@/integrations/google/treasury-readers";
 import { DatabaseOperationError } from "@/db/errors";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 class SettingsError extends Error {}
 function rejectReserved(email: string) { if (isMasterEmail(email) || email === process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase()) throw new SettingsError("Usa una cuenta distinta del maestro de Fondo Editorial y del propietario Google."); }
 function fail(error: unknown) { if (!(error instanceof SettingsError || error instanceof AccessError)) reportServerError("treasury.settings", error); return { success: false, message: error instanceof SettingsError || error instanceof AccessError ? error.message : error instanceof DatabaseOperationError ? "Se interrumpió la conexión con la base de datos. Actualiza la configuración para comprobar si el cambio quedó guardado antes de reintentar." : "No pudimos guardar los accesos." }; }

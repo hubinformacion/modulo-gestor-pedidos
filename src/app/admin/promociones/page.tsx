@@ -1,9 +1,9 @@
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
-import { pricingClock } from "@/lib/discounts/catalog";
+import { pricingClock } from "@/modules/discounts/data/catalog";
 import { asc, desc, notLike } from "drizzle-orm";
 import { withReadDatabase } from "@/db";
 import { books, promotions, promotionBooks } from "@/db/schema";
-import { requirePageAccess } from "@/lib/access";
+import { requirePageAccess } from "@/modules/access/application/session";
 import { PromotionsPanel } from "@/components/discounts/promotions-panel";
 export const metadata = { title: "Promociones" };
 export default async function PromotionsPage() {

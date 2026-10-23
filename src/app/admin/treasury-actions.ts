@@ -2,12 +2,12 @@
 import { headers } from "next/headers";
 import { z } from "zod";
 import { withDatabase } from "@/db";
-import { getAuthorizedSession } from "@/lib/access";
-import { uploadSupportingFile } from "@/lib/treasury/supporting-files";
-import { receiptFileSchema } from "@/lib/payments/validation";
-import { CajaError } from "@/lib/caja/service";
-import { AccessError } from "@/lib/access-policy";
-import { reportServerError } from "@/lib/server-diagnostics";
+import { getAuthorizedSession } from "@/modules/access/application/session";
+import { uploadSupportingFile } from "@/modules/treasury/application/supporting-files";
+import { receiptFileSchema } from "@/modules/orders/domain/receipt-upload";
+import { CajaError } from "@/modules/treasury/domain/errors";
+import { AccessError } from "@/modules/access/domain/policy";
+import { reportServerError } from "@/shared/logging/server-diagnostics";
 export async function uploadTreasurySupportingAction(input: unknown) {
   const form = z.instanceof(FormData).safeParse(input); if (!form.success) return { success: false as const, message: "Carga inválida." };
   const parsed = z.object({ id: z.uuid(), uploadId: z.uuid() }).safeParse(Object.fromEntries(form.data)); const file = receiptFileSchema.safeParse(form.data.get("file"));

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
-import { requireCajaAccess } from "@/lib/access";
+import { requireCajaAccess } from "@/modules/access/application/session";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 180;

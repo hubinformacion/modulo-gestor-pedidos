@@ -2,7 +2,7 @@
 import { useId, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { ArrowRight, Check, Info, ShieldCheck } from "lucide-react";
-import type { RoleGuide } from "@/lib/guides/content";
+import type { RoleGuide } from "@/components/guides/content";
 
 export function WorkflowGuide({ guide, service = false }: { guide: RoleGuide; service?: boolean }) {
   const [selected, setSelected] = useState(0);

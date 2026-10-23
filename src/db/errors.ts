@@ -1,4 +1,4 @@
-import { safeErrorDetails } from "@/lib/server-diagnostics";
+import { safeErrorDetails } from "@/shared/logging/server-diagnostics";
 
 function records(error: unknown) {
   const values: Record<string, unknown>[] = [];

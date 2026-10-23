@@ -4,14 +4,15 @@ import "sileo/styles.css";
 import "filepond/dist/filepond.min.css";
 import "./globals.css";
 import { IframeHeightBridge } from "@/components/iframe/height-bridge";
-import { getWordPressOrigins } from "@/lib/iframe/config";
-import { ToastProvider } from "@/components/toast-provider";
+import { getWordPressOrigins } from "@/integrations/wordpress/config";
+import { ToastProvider } from "@/components/feedback/toast-provider";
 import { PerformanceInsights } from "@/components/performance-insights";
 
 export const metadata: Metadata = {
   title: { default: "Gestor de pedidos", template: "%s · Gestor de pedidos" },
   description: "Gestión de pedidos y acceso del equipo.",
   robots: { index: false, follow: false },
+  icons: { icon: { url: "/isotipo.svg", type: "image/svg+xml" } },
 };
 
 export const viewport: Viewport = { colorScheme: "light", themeColor: "#ffffff" };

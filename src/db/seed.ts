@@ -5,12 +5,12 @@ import { sql } from "drizzle-orm";
 import { pathToFileURL } from "node:url";
 import { resolve } from "node:path";
 import { authorizedEmails, bankAccounts, campuses, orderAdmissionPolicy, deliveryRates } from "./schema";
-import { initialDeliveryRates, deliveryRateSchema } from "../lib/delivery/rates-validation";
+import { initialDeliveryRates, deliveryRateSchema } from "@/modules/settings/domain/delivery-rates";
 import { initialBankAccounts, initialCampuses } from "./seed-data";
-import { MASTER_EMAIL } from "../lib/access-policy";
-import { getDatabaseUrl } from "../lib/env";
-import { bankFormSchema } from "../lib/payments/banks-validation";
-import { campusSchema } from "../lib/campuses/validation";
+import { MASTER_EMAIL } from "@/modules/access/domain/policy";
+import { getDatabaseUrl } from "@/shared/config/env";
+import { bankFormSchema } from "@/modules/settings/domain/banks";
+import { campusSchema } from "@/modules/settings/domain/campuses";
 
 config({ path: ".env.local", quiet: true });
 config({ path: ".env", quiet: true });
