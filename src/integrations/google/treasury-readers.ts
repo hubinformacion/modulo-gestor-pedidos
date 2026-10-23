@@ -6,7 +6,7 @@ import { assertAccessRole } from "@/modules/access/data/transaction-access";
 import { AccessError, type AuthorizedActor } from "@/modules/access/domain/policy";
 import { treasuryScopes } from "@/modules/treasury/domain/scope";
 import { and, eq, isNull, or, sql } from "drizzle-orm";
-import { drive } from "googleapis/build/src/apis/drive/index.js";
+import { drive, type drive_v3 } from "googleapis/build/src/apis/drive/index.js";
 import "server-only";
 
 async function reconcileFile(fileId: string, email: string) {
@@ -27,10 +27,23 @@ async function reconcileFile(fileId: string, email: string) {
     } while (pageToken);
     const existing = permissions.find((item) => item.type === "user" && item.emailAddress?.toLowerCase() === email);
     if (!allowed) {
-      const effective = existing ?? permissions.find((item) => item.id === grant.permissionId);
-      const removable = !effective || (effective.role === "reader" && !effective.permissionDetails?.some((detail) => detail.inherited));
-      if (grant.managed && removable && (grant.permissionId || existing?.id)) {
-        try { await api.permissions.delete({ fileId, permissionId: grant.permissionId ?? existing!.id!, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
+      const permissionId = grant.permissionId ?? existing?.id;
+      // An empty listing cannot resolve an accepted create with a lost ACK.
+      // Keep its durable intent so later reconciliation still knows this pair.
+      if (!permissionId) return;
+      let effective: drive_v3.Schema$Permission | undefined;
+      try {
+        effective = (await api.permissions.get({ fileId, permissionId, supportsAllDrives: true, fields: "id,type,role,emailAddress,permissionDetails" }, { timeout: 15_000, retry: false })).data;
+      } catch (error) {
+        if (safeErrorDetails(error).status !== 404) throw error;
+      }
+      if (!effective && !grant.permissionId) return;
+      // Recheck current ownership, role and inheritance immediately before
+      // deleting; a listing or historical grant does not authorize deletion.
+      const removable = effective?.type === "user" && effective.emailAddress?.toLowerCase() === email
+        && effective.role === "reader" && !effective.permissionDetails?.some((detail) => detail.inherited);
+      if (grant.managed && removable) {
+        try { await api.permissions.delete({ fileId, permissionId, supportsAllDrives: true }, { timeout: 15_000, retry: false }); }
         catch (error) { if (safeErrorDetails(error).status !== 404) throw error; }
       }
       await tx.delete(driveFileReaderGrants).where(and(eq(driveFileReaderGrants.driveFileId, fileId), eq(driveFileReaderGrants.email, email))); return;

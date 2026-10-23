@@ -50,7 +50,17 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
           return { error: "ACCESS_DENIED" };
         }
         try {
-          await assertAllowed(providerUser.email ?? "", providerUser.emailVerified ?? false);
+          const email = await assertAllowed(providerUser.email ?? "", providerUser.emailVerified ?? false);
+          if (source.action === "sign-in") {
+            // Returning OAuth validation receives the selected local user ID
+            // alongside the fresh provider email. Never carry an old address's
+            // authority across a provider rename, even if both are allowed.
+            if (typeof providerUser.id !== "string" || !providerUser.id) return { error: "access_denied" };
+            const [owner] = await (transactionScope.getStore() ?? db).select({ email: schema.user.email })
+              .from(schema.user).where(eq(schema.user.id, providerUser.id)).limit(1);
+            const storedEmail = authorizedEmailSchema.safeParse(owner?.email);
+            if (!storedEmail.success || storedEmail.data !== email) return { error: "access_denied" };
+          }
         } catch (error) {
           if (error instanceof APIError && error.status === "FORBIDDEN") return { error: "access_denied" };
           throw error;
