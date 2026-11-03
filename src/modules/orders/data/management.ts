@@ -16,7 +16,8 @@ export async function reviewPaymentRecord(tx: Transaction, actor: AuthorizedActo
   await assertOrderOperator(tx, actor);
   const [order] = await tx.select().from(orders).where(eq(orders.id, data.id)).for("update");
   if (!order) throw new OperationError("El pedido no existe.");
-  checkVersion(order.updatedAt, data.version);
+  // The latest receipt and EN_REVISION are this imprint's review version.
+  // Under the order lock, a decision for the other imprint must not invalidate it.
   if (order.assignedTo !== actor.userId) throw new OperationError("Toma la atención del pedido para actualizarlo. Si está asignado a otro gestor, solo puedes consultarlo.");
   const status = data.imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
   if (order.orderStatus !== "PENDIENTE_PAGO" || status !== "EN_REVISION") throw new OperationError("Este pago ya no está pendiente de revisión.");

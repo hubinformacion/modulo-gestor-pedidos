@@ -1,0 +1,1 @@
+export const pickupEntryInstructions = "Para ingresar al campus y recoger tus publicaciones, presenta en vigilancia tu DNI, el correo de confirmación del pedido, el comprobante de pago y tu boleta o factura, si ya fue emitida.";

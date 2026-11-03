@@ -20,13 +20,13 @@ export function AssignmentControls({ id, version, mine, assigned, closed }: { id
   }}>{pending ? "Guardando…" : mine ? "Dejar atención disponible" : "Atender este pedido"}</Button>{error ? <p role="alert" className="mt-3 text-xs text-destructive">{error}</p> : null}</div>;
 }
 
-export function PaymentReview({ id, imprint, receiptId, version }: { id: string; imprint: "universidad" | "instituto"; receiptId: string; version: string }) {
+export function PaymentReview({ id, imprint, receiptId }: { id: string; imprint: "universidad" | "instituto"; receiptId: string }) {
   const [decision, setDecision] = useState<"VERIFICADO" | "RECHAZADO" | null>(null);
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const [pending, startTransition] = useTransition();
   function submit() {
-    const parsed = reviewSchema.safeParse({ id, imprint, receiptId, version, decision, reason });
+    const parsed = reviewSchema.safeParse({ id, imprint, receiptId, decision, reason });
     if (!parsed.success) { setError(parsed.error.issues[0].message); return; }
     startTransition(async () => { try { const result = await notifyAction(() => reviewPaymentAction(parsed.data), { loading: { title: "Guardando revisión", description: "Registramos la decisión sobre el comprobante." }, success: { title: decision === "VERIFICADO" ? "Pago verificado" : "Corrección solicitada", description: decision === "VERIFICADO" ? "La revisión quedó guardada. La distribución se habilita cuando todos los pagos requeridos están verificados." : "El motivo quedó registrado para que el comprador pueda presentar otro comprobante." }, error: { title: "No se pudo guardar la revisión", description: "Actualiza el pedido y revisa el estado del comprobante." } }); if (result.success) { setDecision(null); setReason(""); } else setError(result.message); } catch { setError("No se pudo guardar la revisión."); } });
   }

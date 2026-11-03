@@ -1,5 +1,6 @@
 import { ArrowUpRight, MapPin, PackageCheck, Truck } from "lucide-react";
 import { courierEstimate } from "@/modules/orders/domain/courier";
+import { pickupEntryInstructions } from "@/modules/orders/domain/pickup";
 import type { orders } from "@/db/schema";
 
 type DeliveryOrder = Pick<typeof orders.$inferSelect, "orderStatus" | "deliveryType" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryPickupHours" | "pickupContactName" | "deliveryMapUrl" | "deliveryDistrict" | "deliveryProvince" | "deliveryDepartment" | "deliveryReference" | "deliveryRecipient" | "deliveryRecipientPhone" | "courier" | "shippingTrackingCode" | "shippingTrackingUrl" | "dispatchedAt" | "deliveredAt">;
@@ -26,7 +27,7 @@ export function DeliveryCard({ order }: { order: DeliveryOrder }) {
         {order.deliveryReference ? <p className="mt-2 text-xs leading-6 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
       </div>
       <div><p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{pickup ? "Persona que recoge" : "Persona que recibe"}</p><p className="mt-2 text-sm font-medium">{order.deliveryRecipient}</p>{order.deliveryRecipientPhone ? <p className="mt-2 text-xs text-muted-foreground">{order.deliveryRecipientPhone}</p> : null}
-        {pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Para ingresar, presenta en vigilancia tu DNI, el correo de la orden y el comprobante del depósito.</p> : null}
+        {pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">{pickupEntryInstructions}</p> : null}
       </div>
     </div>
     {!pickup && !delivered && order.orderStatus !== "CANCELADO" ? <p className="border-t border-border bg-secondary/20 px-5 py-3 text-xs leading-6 text-muted-foreground sm:px-6">{courierEstimate(order.deliveryZone)}</p> : null}
