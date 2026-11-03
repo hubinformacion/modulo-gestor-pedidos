@@ -4,17 +4,20 @@ const databaseSchema = z.object({
   DATABASE_URL: z.url().refine((value) => /^postgres(ql)?:\/\//.test(value)),
 });
 
+export const applicationUrlSchema = z.url().refine((value) => {
+  try {
+    const url = new URL(value);
+    const local = process.env.NODE_ENV !== "production" && ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
+    return (url.protocol === "https:" || (url.protocol === "http:" && local)) &&
+      !url.username && !url.password && url.pathname === "/" && !url.search && !url.hash;
+  } catch {
+    return false;
+  }
+}).transform((value) => new URL(value).origin);
+
 const authSchema = databaseSchema.extend({
   BETTER_AUTH_SECRET: z.string().min(32),
-  BETTER_AUTH_URL: z.url().refine((value) => {
-    try {
-      const url = new URL(value);
-      return url.protocol === "https:" ||
-        (url.protocol === "http:" && ["localhost", "127.0.0.1"].includes(url.hostname));
-    } catch {
-      return false;
-    }
-  }),
+  APP_URL: applicationUrlSchema,
   GOOGLE_CLIENT_ID: z.string().min(1),
   GOOGLE_CLIENT_SECRET: z.string().min(1),
 });

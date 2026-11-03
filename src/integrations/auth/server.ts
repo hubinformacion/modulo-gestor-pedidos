@@ -36,10 +36,10 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
 
   return betterAuth({
     appName: "Gestor de pedidos",
-    baseURL: env.BETTER_AUTH_URL,
+    baseURL: env.APP_URL,
     secret: env.BETTER_AUTH_SECRET,
-    trustedOrigins: [new URL(env.BETTER_AUTH_URL).origin],
-    onAPIError: { errorURL: new URL("/login", env.BETTER_AUTH_URL).toString() },
+    trustedOrigins: [env.APP_URL],
+    onAPIError: { errorURL: new URL("/login", env.APP_URL).toString() },
     database: adapterFactory,
     emailAndPassword: { enabled: false },
     user: {

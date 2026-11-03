@@ -2,7 +2,7 @@
 
 **Versión 1.0.0.** Aplicación para comprar publicaciones, validar depósitos, coordinar distribución y gestionar boletas/facturas con Tesorería Recaudación. Compra y seguimiento se integran en WordPress; los equipos internos usan la aplicación directamente.
 
-**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Fondo Editorial](https://modulo-gestor-pedidos.vercel.app/admin/pedidos)** · **[Tesorería Recaudación](https://modulo-gestor-pedidos.vercel.app/tesoreria-recaudacion)**
+**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Fondo Editorial](https://gestoreditorial.continental.edu.pe/admin/pedidos)** · **[Tesorería Recaudación](https://gestoreditorial.continental.edu.pe/tesoreria-recaudacion)**
 
 ## Documentación
 
@@ -61,14 +61,14 @@ Vercel selecciona la rama 24 desde `engines.node` y administra sus versiones men
 
 | Variable | Producción |
 | --- | --- |
-| `APP_URL`, `BETTER_AUTH_URL` | `https://modulo-gestor-pedidos.vercel.app` |
+| `APP_URL` | `https://gestoreditorial.continental.edu.pe` |
 | `WORDPRESS_ORIGINS` | `https://fondoeditorial.continental.edu.pe` |
-| `WORDPRESS_ORDER_URL` | `https://fondoeditorial.continental.edu.pe/pedido/` |
-| `ENABLE_EXPERIMENTAL_COREPACK` | `1` |
+| `WORDPRESS_ORDER_URL` | Opcional: solo para sobreescribir la página WordPress; producción ya usa `https://fondoeditorial.continental.edu.pe/pedido/` por defecto |
+| `ENABLE_EXPERIMENTAL_COREPACK` | `1` en el build de Vercel para respetar `packageManager: pnpm@11.3.0`; sin uso en runtime |
 
 Configurar además conexión SQL, secreto Better Auth y credenciales Google/cron según `.env.example`. No versionar valores privados ni ponerlos en WordPress.
 
-Google: cliente Web, callback `<BETTER_AUTH_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/03-operacion-y-cierre.md).
+Google: cliente Web, callback `<APP_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/03-operacion-y-cierre.md).
 
 `CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos privados de Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
 
@@ -79,7 +79,7 @@ Speed Insights está integrado con `@vercel/speed-insights` en el layout princip
 Copiar el bloque completo [wordpress-pedido.html](src/integrations/wordpress/wordpress-pedido.html). Valida origen/source, ajusta altura y desplaza etapas con espacio para el header móvil. Tras cambiar el receptor, regenerar y reemplazar el bloque real:
 
 ```bash
-pnpm iframe:snippet --url https://modulo-gestor-pedidos.vercel.app/pedido --output src/integrations/wordpress/wordpress-pedido.html
+pnpm iframe:snippet --url https://gestoreditorial.continental.edu.pe/pedido --output src/integrations/wordpress/wordpress-pedido.html
 ```
 
 Administración se abre en una pestaña propia, con sesión Google y autorización vigente en BD.

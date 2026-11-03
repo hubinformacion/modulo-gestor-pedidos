@@ -1,7 +1,7 @@
 import "server-only";
-import { z } from "zod";
+import { applicationUrlSchema } from "./env";
 export function getPublicOrigin() {
-  const origin = new URL(z.url().parse(process.env.APP_URL));
-  if (origin.protocol !== "https:" && !(process.env.NODE_ENV !== "production" && origin.hostname === "localhost" && origin.protocol === "http:")) throw new Error("INVALID_APP_URL");
-  return origin.origin;
+  const result = applicationUrlSchema.safeParse(process.env.APP_URL);
+  if (!result.success) throw new Error("INVALID_APP_URL");
+  return result.data;
 }

@@ -18,7 +18,7 @@ Los tiempos estimados de delivery desde despacho son tres días hábiles Lima/Ca
 
 ## Gestor de Fondo Editorial
 
-Acceder a [Pedidos](https://modulo-gestor-pedidos.vercel.app/admin/pedidos) mediante Google con correo previamente autorizado. La navegación incluye Pedidos, Reporte, Inventario, Promociones, Cupones, Configuración y guía.
+Acceder a [Pedidos](https://gestoreditorial.continental.edu.pe/admin/pedidos) mediante Google con correo previamente autorizado. La navegación incluye Pedidos, Reporte, Inventario, Promociones, Cupones, Configuración y guía.
 
 1. Filtrar/ordenar bandeja y pulsar **Ver detalles**. Tomar atención para ser responsable.
 2. **1 Atención:** consultar comprador, entrega/receptor, facturación desplegable y compra. El acceso a seguimiento está en el encabezado de responsable. No compartir ese enlace fuera del equipo/titular.
@@ -34,7 +34,7 @@ Inventario permite editar y añadir filas. Mantener código y unidad coherentes;
 
 ## Operador de Tesorería Recaudación
 
-Acceder a [Solicitudes](https://modulo-gestor-pedidos.vercel.app/tesoreria-recaudacion) con correo personal Google autorizado. Un mismo operador puede tener una o ambas unidades. El buzón de servicio identifica el destino de los correos; no debe utilizarse para atender porque no identifica a una persona responsable.
+Acceder a [Solicitudes](https://gestoreditorial.continental.edu.pe/tesoreria-recaudacion) con correo personal Google autorizado. Un mismo operador puede tener una o ambas unidades. El buzón de servicio identifica el destino de los correos; no debe utilizarse para atender porque no identifica a una persona responsable.
 
 1. Filtrar por unidad, estado o responsable, ordenar tabla y abrir **Ver detalles**. El número corresponde a solicitud de emisión; no es el código de pedido del comprador.
 2. Tomar atención. Si reemplaza a otra persona, registrar motivo de reasignación; queda trazabilidad y aviso al buzón de servicio de la unidad.

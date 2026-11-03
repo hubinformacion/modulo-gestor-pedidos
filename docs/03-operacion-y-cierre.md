@@ -39,16 +39,16 @@ Para publicar cambios posteriores: revisar el diff y comprobaciones pertinentes,
 | `DATABASE_URL` | Conexión del runtime, privada; separar rama/rol de revisión |
 | `DATABASE_SETUP_URL` | Opcional, solo terminal administrativa de instalación; no Vercel runtime |
 | `BETTER_AUTH_SECRET` | Aleatorio, mínimo 32 caracteres; rotación controlada |
-| `APP_URL`, `BETTER_AUTH_URL` | Origen estable Vercel: `https://modulo-gestor-pedidos.vercel.app` |
+| `APP_URL` | Origen estable Vercel: `https://gestoreditorial.continental.edu.pe` |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Cliente OAuth Web privado |
 | `GOOGLE_REFRESH_TOKEN` | Token propietario independiente del login |
 | `GOOGLE_OWNER_EMAIL`, `GOOGLE_DRIVE_FOLDER_ID` | Identidad propietaria y carpeta privada |
 | `WORDPRESS_ORIGINS` | `https://fondoeditorial.continental.edu.pe`, sin ruta ni comodines |
-| `WORDPRESS_ORDER_URL` | `https://fondoeditorial.continental.edu.pe/pedido/` |
+| `WORDPRESS_ORDER_URL` | Opcional: solo para sobreescribir la página WordPress; producción ya usa `https://fondoeditorial.continental.edu.pe/pedido/` por defecto |
 | `CRON_SECRET` | Secreto aleatorio mínimo 32; protege reconciliación ACL |
-| `ENABLE_EXPERIMENTAL_COREPACK` | `1` en Vercel para pnpm declarado |
+| `ENABLE_EXPERIMENTAL_COREPACK` | `1` en el build de Vercel para respetar `packageManager: pnpm@11.3.0`; sin uso en runtime |
 
-Habilitar Drive API y Gmail API. Callback OAuth exacto: `https://modulo-gestor-pedidos.vercel.app/api/auth/callback/google`. Login solicita solo `openid email profile`; token propietario requiere `drive`, `gmail.send`, `gmail.metadata`. Mantener el consentimiento y la cuenta propietaria bajo gobierno institucional; un token External/Testing puede expirar a los siete días. No distribuir el refresh token a gestores.
+Habilitar Drive API y Gmail API. Callback OAuth exacto: `https://gestoreditorial.continental.edu.pe/api/auth/callback/google`. Login solicita solo `openid email profile`; token propietario requiere `drive`, `gmail.send`, `gmail.metadata`. Mantener el consentimiento y la cuenta propietaria bajo gobierno institucional; un token External/Testing puede expirar a los siete días. No distribuir el refresh token a gestores.
 
 Si Drive y Gmail fallan con HTTP 400 y `reason: invalid_grant`, Google rechazó el token propietario: puede haber vencido o sido revocado. Revisar primero el estado de publicación/las políticas institucionales, volver a autorizar con el mismo cliente OAuth y los tres scopes, actualizar `GOOGLE_REFRESH_TOKEN` en Vercel (Production) y localmente, y desplegar de nuevo. No imprimir tokens ni respuestas OAuth completas. La corrección permite eventos nuevos; los correos fallidos no se reenvían automáticamente.
 

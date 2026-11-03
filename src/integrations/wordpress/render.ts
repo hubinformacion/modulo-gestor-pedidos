@@ -10,8 +10,8 @@ const escapeAttribute = (value: string) => value.replace(/[&<>"']/g, (char) => (
 export async function renderWordPressEmbed(url: string) {
   const validUrl = embedUrlSchema.parse(url);
   const [template, script] = await Promise.all([
-    readFile(new URL("@/integrations/wordpress/wordpress-embed.template.html", import.meta.url), "utf8"),
-    readFile(new URL("@/integrations/wordpress/wordpress-embed.js", import.meta.url), "utf8"),
+    readFile(new URL("./wordpress-embed.template.html", import.meta.url), "utf8"),
+    readFile(new URL("./wordpress-embed.js", import.meta.url), "utf8"),
   ]);
   return template.replaceAll("__APP_URL__", escapeAttribute(validUrl)).replace("__RECEIVER_SCRIPT__", script.trim());
 }
