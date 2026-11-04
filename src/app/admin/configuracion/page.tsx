@@ -19,6 +19,8 @@ import { getPaymentSetupStatus } from "@/modules/settings/application/payment-co
 import { CampusesPanel } from "@/components/settings/campuses-panel";
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { BankAccountsPanel } from "@/components/settings/bank-accounts-panel";
+import { MailEndpointTestPanel } from "@/components/settings/mail-endpoint-test-panel";
+import { isMailEndpointConfigured } from "@/shared/config/mail-endpoint";
 
 export const metadata: Metadata = { title: "Configuración" };
 
@@ -66,6 +68,7 @@ export default async function AuthorizedEmailsPage() {
         <h2 id="payment-setup-title" className="text-lg font-semibold tracking-tight">Estado de configuración e integraciones</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Revisa la configuración de compra, acceso, entrega y servicios. La presencia de credenciales no confirma una conexión válida; puedes comprobar Google manualmente.</p>
         <IntegrationStatusPanel rows={paymentSetup} />
+        {isMasterEmail(actor.email) ? <MailEndpointTestPanel configured={isMailEndpointConfigured()} /> : null}
       </section>} />
     </>
   );
