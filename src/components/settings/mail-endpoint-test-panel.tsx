@@ -58,7 +58,7 @@ export function MailEndpointTestPanel({ configured }: { configured: boolean }) {
         <Field id="mail-test-attachment" name="attachment" label="Adjunto PDF (opcional)" type="file" accept="application/pdf,.pdf" hint="Un archivo de hasta 3 MiB. Elige otro archivo para sustituirlo." className="h-auto min-h-11 py-2" />
         <Button type="submit" disabled={pending || !configured}><Send aria-hidden="true" />{pending ? "Enviando prueba…" : "Enviar correo de prueba"}</Button>
       </fieldset>
-      <p className="mt-3 text-xs leading-5 text-muted-foreground">El envío se realiza al pulsar el botón, sin copias automáticas a gestores. Los avisos de pedidos continúan usando Gmail.</p>
+      <p className="mt-3 text-xs leading-5 text-muted-foreground">El envío se realiza al pulsar el botón, sin copias automáticas a gestores. Esta prueba no cambia el proveedor de los avisos de pedidos.</p>
       {error ? <p role="alert" className="mt-4 text-sm text-destructive">{error}</p> : null}
       {result ? <div role={result.success ? "status" : "alert"} className="mt-5 space-y-2 rounded-lg border border-border p-4">
         <p className={`text-sm font-semibold ${result.success ? "text-emerald-700" : "text-destructive"}`}>{result.success ? "Correo aceptado por el servicio" : "Envío sin confirmar"}</p>

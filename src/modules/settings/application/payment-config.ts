@@ -6,6 +6,8 @@ import { bankAccountsFromRows, bankAccountsSchema } from "@/modules/settings/dom
 import { deliveryZoneLabels } from "@/modules/settings/domain/delivery-rates";
 import { getPublicOrigin } from "@/shared/config/application";
 import { isAuthConfigured } from "@/shared/config/env";
+import { getMailProvider } from "@/shared/config/mail";
+import { isMailEndpointConfigured } from "@/shared/config/mail-endpoint";
 import { googleConfigured } from "@/shared/config/google";
 import { asc, eq } from "drizzle-orm";
 import "server-only";
@@ -19,6 +21,7 @@ export async function getBankAccounts() {
 export async function paymentSetupReady() {
   if (!googleConfigured() || !await getBankAccounts()) return false;
   try {
+    if (getMailProvider() === "endpoint" && !isMailEndpointConfigured()) return false;
     getPublicOrigin();
     await Promise.all(Object.keys(pdfNames).map((type) => readPaymentGuide(type as PaymentOrderType)));
     return true;
@@ -55,6 +58,7 @@ export async function getPaymentSetupStatus(configuration: {
     { group: "Aplicación y acceso", label: "Acceso con Google", ready: isAuthConfigured(), detail: "URL de autenticación, secreto de sesión y cliente OAuth presentes; no comprueba el login real." },
     { group: "Aplicación y acceso", label: "Dirección pública", ready: originReady, detail: "APP_URL tiene un formato válido; no comprueba DNS ni disponibilidad externa." },
     { group: "Aplicación y acceso", label: "WordPress autorizado para iframe", ready: embedReady, detail: "WORDPRESS_ORIGINS contiene orígenes válidos; no comprueba el bloque publicado en WordPress." },
+    { group: "Google y servicios", label: "Proveedor de correo activo", ready: getMailProvider() === "gmail" ? googleConfigured() : isMailEndpointConfigured(), detail: getMailProvider() === "gmail" ? "Gmail activo. El endpoint institucional permanece disponible para pruebas manuales." : "Servicio institucional activo. Mensajes independientes; sin respaldo automático por Gmail." },
     { group: "Google y servicios", label: "Credenciales propietarias Drive / Gmail", ready: googleConfigured(), detail: "Variables presentes. Usa la comprobación manual para validar token, buzón y carpeta." },
     { group: "Google y servicios", label: "Protección del cron de permisos", ready: (process.env.CRON_SECRET?.length ?? 0) >= 32, detail: "Secreto de al menos 32 caracteres; no acredita que el cron esté habilitado en Vercel." },
     { group: "Pagos y documentos", label: "Cuentas activas de ambos sellos", ready: Boolean(banks), detail: "Revisa titular, cuenta y CCI. La validación de formato no confirma la titularidad bancaria." }, ...guides,

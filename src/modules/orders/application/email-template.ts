@@ -4,8 +4,9 @@ import type { getTrackedOrder } from "@/modules/orders/data/tracking";
 import { formatMoney, toCents } from "@/modules/orders/domain/money";
 import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { imprintNames } from "@/modules/orders/domain/types";
-export type EmailOrder = NonNullable<Awaited<ReturnType<typeof getTrackedOrder>>>;
-export const emailSubject = (number: string) => `Hemos recibido tu orden #${formatOrderNumber(number)}`;
+type Tracked = NonNullable<Awaited<ReturnType<typeof getTrackedOrder>>>;
+export type EmailOrder = { order: Pick<Tracked["order"], "orderNumber" | "createdAt" | "customerName" | "orderType" | "paymentStatusUniversidad" | "paymentStatusInstituto" | "totalUniversidad" | "totalInstituto" | "shippingCost" | "deliveryType" | "courier" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryPickupHours" | "pickupContactName" | "deliveryMapUrl"> };
+export const emailSubject = (number: string) => `Pedido #${formatOrderNumber(number)} · Pedido registrado`;
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 export function renderOrderEmail(tracking: EmailOrder, { intro, link, logoCid }: { intro: string; link: string; logoCid: string }) {
   const { order } = tracking;

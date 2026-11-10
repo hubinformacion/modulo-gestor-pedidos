@@ -1,14 +1,15 @@
 import { withDatabase } from "@/db";
 import { orderEmails, orderNotifications, orders } from "@/db/schema";
 import { readSentMailHeaders } from "@/integrations/google/gmail";
-import { sendOrderConfirmationEmail, sendOrderUpdateEmail } from "@/modules/orders/application/email-sender";
+import { NoMailRecipients, sendOrderConfirmationEmail, sendOrderUpdateEmail } from "@/modules/orders/application/email-sender";
 import { reportServerError, safeErrorDetails } from "@/shared/logging/server-diagnostics";
 import { getTrackedOrder } from "@/modules/orders/data/tracking";
 import { readSaleBatch, salePdfBytes } from "@/modules/treasury/application/documents";
 import { StaleDocumentBatch } from "@/modules/treasury/domain/errors";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne, isNotNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
 import "server-only";
+import { getMailProvider } from "@/shared/config/mail";
 
 // Verify Gmail's actual headers, not the Message-ID we hoped it would preserve.
 // This helper only reads metadata; it never sends a message.
@@ -20,7 +21,7 @@ export async function synchronizeOrderThread(token: string): Promise<boolean> {
       const headers = await readSentMailHeaders(tracking.emailMessageId);
       await withDatabase((db) => db.update(orderEmails).set({ gmailThreadId: headers.threadId, rfcMessageId: headers.rfcMessageId, subjectHeader: headers.subjectHeader, headersVerified: true, lastRfcMessageId: headers.rfcMessageId, rfcReferences: [headers.rfcMessageId], threadIssue: null }).where(and(eq(orderEmails.orderId, tracking.order.id), eq(orderEmails.headersVerified, false))));
     }
-    const [latest] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), eq(orderNotifications.status, "ENVIADO"))).orderBy(desc(orderNotifications.createdAt), desc(orderNotifications.id)).limit(1));
+    const [latest] = await withDatabase((db) => db.select().from(orderNotifications).where(and(eq(orderNotifications.orderId, tracking.order.id), eq(orderNotifications.status, "ENVIADO"), ne(orderNotifications.eventType, "COMPROBANTE_RECIBIDO"), isNotNull(orderNotifications.gmailMessageId))).orderBy(desc(orderNotifications.createdAt), desc(orderNotifications.id)).limit(1));
     if (latest?.gmailMessageId && !latest.rfcMessageId) {
       const headers = await readSentMailHeaders(latest.gmailMessageId);
       const current = await getTrackedOrder(token);
@@ -69,24 +70,25 @@ export async function deliverOrderEmail(token: string, notificationId: string | 
       return { event };
     }));
     if (!claim) return false;
-    if (claim.event && tracking.emailMessageId && !await synchronizeOrderThread(token)) throw new Error("GMAIL_THREAD_UNAVAILABLE");
+    if (getMailProvider() === "gmail" && claim.event && claim.event.eventType !== "COMPROBANTE_RECIBIDO" && tracking.emailMessageId && !await synchronizeOrderThread(token)) throw new Error("GMAIL_THREAD_UNAVAILABLE");
     const current = await getTrackedOrder(token);
     if (!current) throw new Error("ORDER_UNAVAILABLE");
     const event = claim.event;
     const attachments = event?.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
     const sent = event ? await sendOrderUpdateEmail(current, event, attachments) : await sendOrderConfirmationEmail(current);
-    accepted = true; // Never submit again after Gmail accepted the message.
+    accepted = true; // Never submit again after the selected provider accepted the message.
     await withDatabase((db) => db.transaction(async (tx) => {
-      if (event) await tx.update(orderNotifications).set({ status: "ENVIADO", gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id));
-      if (!event || !current.emailMessageId) await tx.update(orderEmails).set({ ...(!event ? { status: "ENVIADO", sentAt: new Date() } : {}), gmailMessageId: sent.id, gmailThreadId: sent.threadId, headersVerified: false }).where(eq(orderEmails.orderId, current.order.id));
+      const audit = { status: "ENVIADO", provider: sent.provider, providerMessageId: sent.providerMessageId };
+      if (event) await tx.update(orderNotifications).set({ ...audit, gmailMessageId: sent.id }).where(eq(orderNotifications.id, event.id));
+      else await tx.update(orderEmails).set({ ...audit, sentAt: new Date(), ...(sent.provider === "gmail" ? { gmailMessageId: sent.id, gmailThreadId: sent.threadId, headersVerified: false } : {}) }).where(eq(orderEmails.orderId, current.order.id));
     }));
-    await synchronizeOrderThread(token); // Metadata only; failure never resends.
+    if (sent.provider === "gmail" && event?.eventType !== "COMPROBANTE_RECIBIDO") await synchronizeOrderThread(token);
     return true;
   } catch (error) {
     if (orderId && !accepted) {
       try {
         await withDatabase(async (db) => {
-          if (notificationId) await db.update(orderNotifications).set({ status: error instanceof StaleDocumentBatch ? "OMITIDO" : "ERROR" }).where(and(eq(orderNotifications.id, notificationId), eq(orderNotifications.orderId, orderId!), eq(orderNotifications.status, "ENVIANDO")));
+          if (notificationId) await db.update(orderNotifications).set({ status: error instanceof StaleDocumentBatch || error instanceof NoMailRecipients ? "OMITIDO" : "ERROR" }).where(and(eq(orderNotifications.id, notificationId), eq(orderNotifications.orderId, orderId!), eq(orderNotifications.status, "ENVIANDO")));
           else await db.update(orderEmails).set({ status: "ERROR" }).where(and(eq(orderEmails.orderId, orderId!), eq(orderEmails.status, "ENVIANDO")));
         });
       } catch (persistError) { reportServerError("order.mail.audit", persistError); }

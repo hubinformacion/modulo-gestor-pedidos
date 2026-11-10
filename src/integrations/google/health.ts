@@ -3,6 +3,7 @@ import { reportServerError, safeErrorDetails } from "@/shared/logging/server-dia
 import { drive } from "googleapis/build/src/apis/drive/index.js";
 import { gmail } from "googleapis/build/src/apis/gmail/index.js";
 import "server-only";
+import { getMailProvider } from "@/shared/config/mail";
 
 export type IntegrationCheck = { label: string; ready: boolean; detail: string };
 function problem(error: unknown) {
@@ -28,13 +29,13 @@ export async function checkGoogleConnection(): Promise<IntegrationCheck[]> {
         return { label: "Carpeta de Google Drive", ready, detail: ready ? "La cuenta puede consultar la carpeta configurada. No se cargaron archivos ni se cambiaron permisos." : "El identificador no corresponde a una carpeta disponible." };
       } catch (error) { reportServerError("integration.google.drive", error); return { label: "Carpeta de Google Drive", ready: false, detail: problem(error) }; }
     })(),
-    (async () => {
+    ...(getMailProvider() === "gmail" ? [(async () => {
       try {
         const { data } = await gmail({ version: "v1", auth }).users.getProfile({ userId: "me", fields: "emailAddress" }, { timeout: 10_000, retry: false });
         const ready = data.emailAddress?.toLowerCase() === process.env.GOOGLE_OWNER_EMAIL?.trim().toLowerCase();
         return { label: "Cuenta de Gmail", ready, detail: ready ? "El buzón autenticado corresponde al remitente configurado. No se envió ningún correo." : "El token pertenece a un buzón distinto del remitente configurado." };
       } catch (error) { reportServerError("integration.google.gmail", error); return { label: "Cuenta de Gmail", ready: false, detail: problem(error) }; }
-    })(),
+    })()] : []),
     (async () => {
       try {
         const info = await auth.getTokenInfo(auth.credentials.access_token!);
@@ -42,8 +43,9 @@ export async function checkGoogleConnection(): Promise<IntegrationCheck[]> {
         const fullMail = scopes.has("https://mail.google.com/");
         const read = fullMail || ["gmail.metadata", "gmail.readonly", "gmail.modify"].some((scope) => scopes.has(`https://www.googleapis.com/auth/${scope}`));
         const send = fullMail || ["gmail.send", "gmail.compose", "gmail.modify"].some((scope) => scopes.has(`https://www.googleapis.com/auth/${scope}`));
-        const ready = scopes.has("https://www.googleapis.com/auth/drive") && read && send;
-        return { label: "Permisos OAuth", ready, detail: ready ? "El token incluye permisos para Drive, envío y metadatos de Gmail; esto no acredita un envío real." : "Faltan permisos de Drive, envío o metadatos de Gmail. Vuelve a autorizar con los scopes requeridos." };
+        const gmailRequired = getMailProvider() === "gmail";
+        const ready = scopes.has("https://www.googleapis.com/auth/drive") && (!gmailRequired || (read && send));
+        return { label: "Permisos OAuth", ready, detail: ready ? (gmailRequired ? "El token incluye permisos para Drive, envío y metadatos de Gmail; esto no acredita un envío real." : "El token incluye Drive. Gmail no es requerido por el proveedor activo.") : "Faltan permisos requeridos por el proveedor activo. Revisa la autorización de Google." };
       } catch (error) { reportServerError("integration.google.scopes", error); return { label: "Permisos OAuth", ready: false, detail: problem(error) }; }
     })(),
   ];
