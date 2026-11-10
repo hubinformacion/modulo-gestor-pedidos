@@ -6,7 +6,7 @@
 
 ## Documentación
 
-Empieza por [00 · Inicio](docs/00-inicio.md). La documentación del módulo se mantiene en cinco archivos numerados: arquitectura, seguridad, operación y guía de uso. [AGENTS.md](AGENTS.md) conserva las convenciones y el contexto técnico.
+Este README reúne instalación, despliegue y operación. Las guías de trabajo se consultan desde las áreas de Fondo Editorial y Tesorería. [AGENTS.md](AGENTS.md) conserva las convenciones técnicas.
 
 ## Funciones principales
 
@@ -43,7 +43,7 @@ Para desarrollo local usar `pnpm dev`. `db:setup` instala un único esquema inic
 
 Se conservan `schema.ts`, las tablas Better Auth generadas por CLI y un solo `src/db/schema.sql`. No hay historial de migraciones/snapshots de desarrollo ni comandos de borrado. **Un cambio de esquema con datos operativos requiere una actualización explícita y un respaldo**, fuera del build.
 
-Para actualizar una instalación anterior con el flujo de apoyo para recojo, seguir el [procedimiento operativo](docs/03-operacion-y-cierre.md) y aplicar una sola vez `src/db/updates/20261020-pickup-support.sql` antes de desplegar. No ejecutar `db:setup` como migrador.
+Para actualizar una instalación anterior con el flujo de apoyo para recojo, hacer un respaldo y aplicar una sola vez `src/db/updates/20261020-pickup-support.sql` antes de desplegar. No ejecutar `db:setup` como migrador.
 
 Las instalaciones anteriores a las tarifas editables requieren además `src/db/updates/20261021-delivery-rates.sql` antes de desplegar esa versión. Conserva los importes históricos.
 
@@ -51,7 +51,7 @@ Las instalaciones anteriores a las tarifas editables requieren además `src/db/u
 
 `pnpm db:seed` incorpora el maestro `distribucionfe@continental.edu.pe`, cuatro cuentas receptoras confirmadas y ocho campus con dirección, ubicación interna y coordenadas. Omite conflictos y conserva registros existentes; no crea libros, pedidos, identidades OAuth ni mensajes.
 
-La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se sincronizan automáticamente con ese archivo. Ver [datos iniciales](docs/03-operacion-y-cierre.md) para mantener configuración recuperable en nuevas instalaciones; un seed no reemplaza el respaldo operativo.
+La fuente es [seed-data.ts](src/db/seed-data.ts). Los cambios por interfaz no se sincronizan automáticamente con ese archivo. Mantener el respaldo operativo para recuperar la configuración vigente.
 
 ## Configuración y despliegue
 
@@ -68,7 +68,7 @@ Vercel selecciona la rama 24 desde `engines.node` y administra sus versiones men
 
 Configurar además conexión SQL, secreto Better Auth y credenciales Google/cron según `.env.example`. No versionar valores privados ni ponerlos en WordPress.
 
-Google: cliente Web, callback `<APP_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Instrucciones de custodia/producción en [operación](docs/03-operacion-y-cierre.md).
+Google: cliente Web, callback `<APP_URL>/api/auth/callback/google`, Drive API y Gmail API habilitadas. Login usa identidad; token propietario independiente con scopes `drive`, `gmail.send` y `gmail.metadata`. Guardar las credenciales en el entorno privado y bajo custodia institucional.
 
 Correos operativos: `MAIL_PROVIDER=gmail` (predeterminado si se omite) conserva Gmail y sus conversaciones. Cuando TI habilite el remitente, `MAIL_PROVIDER=endpoint` activa el servicio institucional con mensajes independientes y asuntos `Pedido #… · Acción`; no hay fallback automático entre proveedores. Google sigue a cargo del login y de Drive. La prueba exitosa del endpoint fue declarada por el responsable; no acredita que el remitente definitivo esté habilitado.
 
@@ -119,10 +119,19 @@ pnpm build
 
 `pnpm db:schema:export` regenera **solo el SQL inicial** desde Drizzle; revisar su diff, no usarlo como actualización de una BD con datos. `pnpm db:auth:generate` mantiene las tablas Better Auth por CLI. Las guías de pago viven en `src/resources/payment-guides/`, el ubigeo en `src/resources/ubigeo/` y los logos en `public/`. Son recursos de producción. Reemplazar las guías con los nombres `guia_pago_universidad.pdf`, `guia_pago_instituto.pdf` y `guia_pago_mixta.pdf`, PDF válidos de hasta 3 MiB.
 
-El [documento de seguridad](docs/02-seguridad.md) distingue controles implementados, validaciones declaradas y responsabilidades de Neon/Vercel/Workspace que TI debe acreditar. La revisión de código no certifica backups, cifrado efectivo, WAF o permisos reales. Consultar antes de operar con datos sensibles; no probar mediante pedidos/envíos ficticios en producción.
+Los límites de creación se administran en **Configuración → Seguridad** desde la cuenta maestra. Son compartidos en BD y surten efecto sin redespliegue. El seed conserva los límites personalizados. El rol SQL de ejecución debe tener permisos mínimos y acceso de solo lectura e inserción a las tablas de auditoría.
 
-Los límites de creación se administran en **Configuración → Seguridad**, exclusivamente por el correo maestro, con historial de cambios. Son compartidos en BD y no requieren redeploy. El seed conserva la configuración personalizada. Responsables, conservación indefinida y respaldo manual semanal (RPO objetivo siete días, RTO objetivo cuatro horas) están en [el expediente técnico](docs/00-inicio.md).
+### Respaldo y recuperación
 
-## Alcance de la versión
+- Conservar los pedidos y documentos de negocio sin purgas automáticas. Cualquier reinicio requiere autorización explícita y reconciliación de permisos de Drive.
+- Hacer una copia manual semanal con `pg_dump --format=custom` por conexión directa de Neon. Verificar el archivo con `pg_restore --list`, cifrarlo y conservarlo en almacenamiento privado separado de los comprobantes, con la clave bajo custodia separada.
+- Restaurar solo en una base aislada, con correos y cron desactivados. Comprobar integridad, referencias a Drive y permisos antes de reabrir tráfico. La copia de PostgreSQL guarda referencias a Drive y metadatos de Gmail. Los archivos y mensajes requieren su propia estrategia de respaldo.
+- Objetivos operativos de recuperación: RPO de siete días y RTO de cuatro horas. Registrar fecha y duración de los ejercicios. El responsable confirmó la verificación de OAuth, Drive y restauración. La duración de la recuperación sigue por acreditar.
 
-La versión 1.0.0 cierra el módulo actual de pedidos, seguimiento, catálogo simple y Tesorería. El responsable confirma la verificación de OAuth, Drive y restauración; lint, tipos, build y disponibilidad pública se comprueban técnicamente. Esa confirmación no equivale a una certificación de proveedores. La evolución editorial completa y la migración a Azure se diseñarán por separado; no están implementadas en esta versión.
+## Lanzamiento a producción
+
+La versión 1.0.0 cierra el módulo de pedidos, seguimiento, inventario y Tesorería. Para publicar cambios posteriores, confirmar el despliegue de `main` en Vercel y comprobar las rutas públicas sin crear pedidos ni enviar mensajes de prueba en producción. Aplicar por separado cualquier actualización SQL requerida.
+
+Antes de atender los primeros pedidos, habilitar al personal de Fondo Editorial y Tesorería con sus roles y unidades, registrar el apoyo de recojo y configurar los buzones de servicio que deban recibir avisos de Tesorería. Sin un buzón, la solicitud permanece en bandeja. El despacho para recojo requiere un contacto de apoyo activo.
+
+Gmail es el proveedor predeterminado. La activación del correo institucional queda sujeta a la habilitación del remitente y a la confirmación de la URL de producción por TI. La ampliación editorial y la migración a Azure quedan fuera del lanzamiento actual.
