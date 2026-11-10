@@ -42,7 +42,16 @@ function Card({ children, lilac = false }: { children: ReactNode; lilac?: boolea
 function Filters({ count = 3, boxed = false, compact = false }: { count?: number; boxed?: boolean; compact?: boolean }) {
   return <div className={`mt-5 grid items-end gap-4 sm:grid-cols-2 ${count === 2 ? "xl:grid-cols-[minmax(0,1fr)_11rem_auto]" : count === 4 ? "xl:grid-cols-[minmax(12rem,1fr)_auto_auto_auto_auto]" : "xl:grid-cols-[minmax(0,1fr)_11rem_11rem_auto]"} ${compact ? "workspace-compact-filters" : boxed ? "workspace-filters" : ""}`}>{Array.from({ length: count }, (_, i) => <Bones key={i} kind="field" />)}<div className="w-28"><Bones kind="action" /></div></div>;
 }
-function Table({ inventory = false, compact = false, orders = false }: { inventory?: boolean; compact?: boolean; orders?: boolean }) { return <div className="mt-5 overflow-x-auto rounded-xl border border-border"><div className={orders ? "min-w-[1200px]" : inventory ? "min-w-[1120px]" : compact ? "min-w-[1120px]" : "min-w-[850px]"}><Bones kind={orders ? "ordersTable" : inventory ? "inventoryTable" : compact ? "requestsTable" : "table"} /></div></div>; }
+function Table({ inventory = false, compact = false, orders = false }: { inventory?: boolean; compact?: boolean; orders?: boolean }) {
+  return <div className="mt-5 overflow-hidden rounded-xl border border-border">
+    <div className="divide-y divide-border md:hidden">{Array.from({ length: 3 }, (_, index) => <div key={index} className="space-y-4 p-5">
+      <Bones kind="back" /><Bones kind={inventory ? "lines" : "heading"} />
+      <div className="grid grid-cols-2 gap-4"><Bones kind="field" /><Bones kind="field" /></div>
+      <div className="w-36"><Bones kind="action" /></div>
+    </div>)}</div>
+    <div className="hidden overflow-x-auto md:block"><div className={orders ? "min-w-[1200px]" : inventory ? "min-w-[1120px]" : compact ? "min-w-[1120px]" : "min-w-[850px]"}><Bones kind={orders ? "ordersTable" : inventory ? "inventoryTable" : compact ? "requestsTable" : "table"} /></div></div>
+  </div>;
+}
 function SidePanel() { return <aside className="space-y-5"><Card><Bones kind="summary" /></Card><Card><Bones kind="lines" /></Card></aside>; }
 
 function WorkspaceHeadingBones() {

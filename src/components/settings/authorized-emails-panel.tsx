@@ -73,7 +73,7 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                     <p className="break-all text-sm font-medium">{row.email}</p>
-                    {row.email === MASTER_EMAIL ? <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-[11px] font-medium text-primary"><ShieldCheck className="size-3" aria-hidden="true" />Maestro</span> : null}
+                    {row.email === MASTER_EMAIL ? <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-1 text-xs font-medium text-primary"><ShieldCheck className="size-3" aria-hidden="true" />Maestro</span> : null}
                   </div>
                   <p className="mt-2 break-all text-xs leading-5 text-muted-foreground">Añadido el {row.createdAt} · Por {row.addedBy}</p>
                 </div>

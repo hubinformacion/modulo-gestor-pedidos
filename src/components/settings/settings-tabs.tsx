@@ -18,7 +18,7 @@ export function SettingsTabs({ emails, mailTemplates, campuses, banks, integrati
   const content = { correos: emails, plantillas: mailTemplates, campus: campuses, cuentas: banks, integraciones: integrations, caja, seguridad: security, apoyo: support, delivery };
   const visibleSections = sections.filter(({ value }) => value !== "plantillas" || mailTemplates);
   return <Tabs.Root defaultValue="correos" className="mt-7">
-    <Tabs.List aria-label="Secciones de configuración" className="workspace-settings-tabs">{visibleSections.map(({ value, label, detail, Icon }) => <Tabs.Tab key={value} value={value} className="workspace-settings-tab"><Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0 text-left"><span className="block text-xs font-semibold">{label}</span><span className="mt-1 hidden text-[10px] text-muted-foreground sm:block">{detail}</span></span></Tabs.Tab>)}</Tabs.List>
+    <Tabs.List aria-label="Secciones de configuración" className="workspace-settings-tabs">{visibleSections.map(({ value, label, detail, Icon }) => <Tabs.Tab key={value} value={value} className="workspace-settings-tab"><Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0 text-left"><span className="block text-xs font-semibold">{label}</span><span className="mt-1 hidden text-xs text-muted-foreground sm:block">{detail}</span></span></Tabs.Tab>)}</Tabs.List>
     {visibleSections.map(({ value }) => <Tabs.Panel key={value} value={value} keepMounted className="mt-7 outline-none data-[hidden]:hidden">{content[value]}</Tabs.Panel>)}
   </Tabs.Root>;
 }

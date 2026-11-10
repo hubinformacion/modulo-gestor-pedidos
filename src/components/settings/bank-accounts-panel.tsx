@@ -36,7 +36,7 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
   return <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
     <div className="divide-y divide-border rounded-xl border border-border">
       {rows.length ? rows.map((row) => <div key={row.id} className="p-5">
-        <div className="flex items-center justify-between gap-3"><ImprintBadge imprint={row.publisherImprint} /><span className="text-[11px] text-muted-foreground">{row.status === "ACTIVO" ? "Activa" : "Inactiva"}</span></div>
+        <div className="flex items-center justify-between gap-3"><ImprintBadge imprint={row.publisherImprint} /><span className="text-xs text-muted-foreground">{row.status === "ACTIVO" ? "Activa" : "Inactiva"}</span></div>
         <p className="mt-3 text-sm font-semibold">{row.bank} · soles</p>
         <p className="mt-2 text-xs leading-6">Titular: {row.holder || "Pendiente de completar"}<br />Cuenta: {row.account}<br />CCI: {formatCci(row.cci) || "Pendiente de completar"}</p>
         {row.cci.length !== 20 || !row.holder ? <p className="mt-2 text-xs text-destructive">Completa titular y CCI válido antes de activar.</p> : null}

@@ -83,7 +83,7 @@ export function OrderWizard({ initialDeliveryRates, catalog, campuses, initialPr
     setErrors(fieldErrors);
     setErrorMessage(issues[0]?.message ?? "Revisa los datos para continuar.");
     if (showToast) sileo.warning({ title: "Revisa este paso", description: issues[0]?.message ?? "Corrige los campos señalados para continuar." });
-    requestAnimationFrame(() => errorRef.current?.focus());
+    requestAnimationFrame(() => scrollWizardTo(errorRef.current, errorRef.current));
   }
 
   function quantityChange(book: CatalogBook, quantity: number) {
@@ -152,8 +152,8 @@ export function OrderWizard({ initialDeliveryRates, catalog, campuses, initialPr
       <nav aria-label="Pasos del pedido" className="mb-8 border-b border-border">
         <ol className="grid grid-cols-4">
           {steps.map((item, index) => <li key={item.name}>
-            <button type="button" disabled={index > step || submitting} onClick={() => goTo(index)} aria-current={index === step ? "step" : undefined} className={cn("-mb-px flex min-h-16 w-full flex-col items-center justify-center gap-1.5 border-b-2 px-1 pb-3 text-[10px] font-medium sm:flex-row sm:gap-2 sm:text-xs", index === step ? "border-primary text-primary" : "border-transparent text-muted-foreground", index > step && "opacity-50")}>
-              <span className={cn("flex size-6 items-center justify-center rounded-full text-[10px] tabular-nums", index === step ? "bg-primary text-white" : index < step ? "bg-secondary text-primary" : "bg-muted")}>{index + 1}</span>{item.name}
+            <button type="button" disabled={index > step || submitting} onClick={() => goTo(index)} aria-current={index === step ? "step" : undefined} className={cn("-mb-px flex min-h-16 w-full flex-col items-center justify-center gap-1.5 border-b-2 px-1 pb-3 text-xs font-medium sm:flex-row sm:gap-2 sm:text-xs", index === step ? "border-primary text-primary" : "border-transparent text-muted-foreground", index > step && "opacity-50")}>
+              <span className={cn("flex size-6 items-center justify-center rounded-full text-xs tabular-nums", index === step ? "bg-primary text-white" : index < step ? "bg-secondary text-primary" : "bg-muted")}>{index + 1}</span>{item.name}
             </button>
           </li>)}
         </ol>
@@ -162,11 +162,20 @@ export function OrderWizard({ initialDeliveryRates, catalog, campuses, initialPr
         <form id="order-wizard-form" noValidate onSubmit={submit} className="min-w-0" aria-busy={submitting}>
           <fieldset disabled={submitting} className="min-w-0">
           <div className="mb-7 text-center">
-            <p className="mb-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paso {step + 1} de 4</p>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-muted-foreground">Paso {step + 1} de 4</p>
             <h2 ref={headingRef} tabIndex={-1} className="page-heading scroll-mt-6 outline-none">{steps[step].title}</h2>
             <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-muted-foreground">{steps[step].description}</p>
           </div>
-          {errorMessage ? <div ref={errorRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm leading-6 text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive">{errorMessage}</div> : null}
+          {errorMessage ? <div ref={errorRef} tabIndex={-1} role="alert" className="mb-5 rounded-lg border border-destructive/20 bg-destructive/5 p-4 text-sm leading-6 text-destructive outline-none focus-visible:ring-2 focus-visible:ring-destructive">
+            <p className="font-semibold">Revisa los datos para continuar</p>
+            {Object.keys(errors).length ? <ul className="mt-2 list-disc space-y-1 pl-5">{Object.entries(errors).map(([field, message]) => {
+              const targetId = field === "billingRuc" ? "billing-ruc" : field === "billingBusinessName" ? "billing-business" : field === "billingAddress" ? "billing-address" : field === "accepted" ? "privacy-consent" : field === "recipientDocument" ? "delivery-recipient-document" : field === "recipientPhone" ? "delivery-recipient-phone" : field === "form" ? null : step === 0 ? "book-search" : `${step === 1 ? "buyer" : "delivery"}-${field}`;
+              return <li key={field}>{targetId ? <a href={`#${targetId}`} className="inline-flex min-h-11 items-center underline underline-offset-4" onClick={(event) => {
+                const target = document.getElementById(targetId);
+                if (target) { event.preventDefault(); scrollWizardTo(target.parentElement ?? target, target); }
+              }}>{message}</a> : message}</li>;
+            })}</ul> : <p className="mt-2">{errorMessage}</p>}
+          </div> : null}
           <div key={step} className="enter-page">
             {step === 0 ? <CatalogStep at={pricingAt} catalog={currentCatalog} cart={cart} customerType={buyer.type} onQuantity={quantityChange} /> : null}
             {step === 1 ? <BuyerStep buyer={buyer} campuses={campuses} errors={errors} onChange={(value) => { setBuyer(value); resetValidation(); }} /> : null}
@@ -182,7 +191,7 @@ export function OrderWizard({ initialDeliveryRates, catalog, campuses, initialPr
         </form>
         <aside className="space-y-5 lg:sticky lg:top-6" aria-label="Resumen y envío del pedido">
         <OrderSummary quote={quote} editable={step === 0 && !submitting} onRemove={(bookId) => { setCart((current) => current.filter((item) => item.bookId !== bookId)); resetValidation(); }} onEdit={step === 3 && !submitting ? () => goTo(0) : undefined} confirmation={step === 3} />
-        {step === 3 ? <details className="group rounded-xl border border-border bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 text-xs font-medium [&::-webkit-details-marker]:hidden">¿Tienes un cupón?<ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" /></summary><div className="border-t border-border p-5"><label htmlFor="order-coupon" className="sr-only">Código de cupón</label><div className="flex gap-2"><input id="order-coupon" value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponOffer(null); setCouponMessage(""); setConsentAccepted(false); }} maxLength={32} placeholder="Ingresa tu código" disabled={submitting} className="h-10 min-w-0 flex-1 rounded-lg border border-input px-3 text-xs" /><Button type="button" variant="outline" className="h-10" disabled={submitting || !couponInput.trim()} onClick={applyCoupon}>Aplicar</Button></div>{couponOffer ? <Button type="button" variant="ghost" className="mt-2 h-8 px-0 text-xs text-primary" disabled={submitting} onClick={() => { setCouponOffer(null); setCouponInput(""); setCouponMessage(""); setConsentAccepted(false); }}>Retirar cupón</Button> : null}<p className="mt-3 text-[10px] leading-5 text-muted-foreground">Promociones y cupones no se combinan. Conservamos la opción con mayor ahorro.</p>{couponMessage ? <p role="status" className="mt-3 text-xs leading-6 text-primary">{couponMessage}</p> : null}</div></details> : null}
+        {step === 3 ? <details className="group rounded-xl border border-border bg-white"><summary className="flex min-h-12 cursor-pointer list-none items-center justify-between px-5 text-xs font-medium [&::-webkit-details-marker]:hidden">¿Tienes un cupón?<ChevronDown className="size-4 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" /></summary><div className="border-t border-border p-5"><label htmlFor="order-coupon" className="sr-only">Código de cupón</label><div className="flex gap-2"><input id="order-coupon" value={couponInput} onChange={(event) => { setCouponInput(event.target.value.toUpperCase()); setCouponOffer(null); setCouponMessage(""); setConsentAccepted(false); }} maxLength={32} placeholder="Ingresa tu código" disabled={submitting} className="h-10 min-w-0 flex-1 rounded-lg border border-input px-3 text-xs" /><Button type="button" variant="outline" className="h-10" disabled={submitting || !couponInput.trim()} onClick={applyCoupon}>Aplicar</Button></div>{couponOffer ? <Button type="button" variant="ghost" className="mt-2 h-8 px-0 text-xs text-primary" disabled={submitting} onClick={() => { setCouponOffer(null); setCouponInput(""); setCouponMessage(""); setConsentAccepted(false); }}>Retirar cupón</Button> : null}<p className="mt-3 text-xs leading-5 text-muted-foreground">Promociones y cupones no se combinan. Conservamos la opción con mayor ahorro.</p>{couponMessage ? <p role="status" className="mt-3 text-xs leading-6 text-primary">{couponMessage}</p> : null}</div></details> : null}
           {step === 3 ? <OrderConsent accepted={consentAccepted} onAccepted={(value) => { setConsentAccepted(value); setErrorMessage(""); }} disabled={!consentAccepted || submitting || !submissionEnabled} pending={submitting} enabled={submissionEnabled} /> : null}
           <AccountBreakdown quote={quote} />
         </aside>

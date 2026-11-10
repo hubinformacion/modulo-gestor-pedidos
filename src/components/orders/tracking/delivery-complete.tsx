@@ -21,7 +21,7 @@ export function DeliveryComplete({ deliveredAt }: { deliveredAt?: Date | null })
         <circle cx="83" cy="36" r="3" fill="#c9abe5" /><circle cx="239" cy="104" r="3" fill="#6802c1" />
       </svg>
     </div>
-    <p className="mt-2 text-[10px] font-semibold uppercase tracking-[.18em] text-primary">Entrega completada</p>
+    <p className="mt-2 text-xs font-semibold uppercase tracking-[.18em] text-primary">Entrega completada</p>
     <h2 className="mx-auto mt-3 max-w-sm text-3xl font-semibold leading-tight tracking-tight sm:text-4xl">Tus próximas páginas<br />ya están contigo.</h2>
     <p className="mx-auto mt-4 max-w-sm text-sm leading-7 text-muted-foreground">Gracias por tu compra. Tu pedido está entregado; esperamos que disfrutes de cada lectura.</p>
     {deliveredAt ? <p className="mx-auto mt-6 inline-block rounded-full bg-secondary/60 px-4 py-2 text-xs font-medium text-primary">Entrega registrada el {dateFormat.format(deliveredAt)}</p> : null}

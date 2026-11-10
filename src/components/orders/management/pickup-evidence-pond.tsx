@@ -49,5 +49,5 @@ export default function PickupEvidencePond({ id, version, disabled, existingEvid
       // until the request resolves even if the FilePond processing is aborted.
       return { abort: () => { if (!resolved) onErrorChange("La carga sigue en curso. Espera a que termine."); } };
     } }} />
-    <p className="mt-2 text-[10px] text-muted-foreground">JPG o PNG · hasta 3 MB.</p></>;
+    <p className="mt-2 text-xs text-muted-foreground">JPG o PNG · hasta 3 MB.</p></>;
 }

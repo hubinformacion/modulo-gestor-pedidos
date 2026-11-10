@@ -80,11 +80,11 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <div className="flex items-start gap-3">
               <MapPin className="mt-1 hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden="true" />
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{row.name}</h4><span className={`rounded-md px-2 py-1 text-[10px] font-medium ${row.status === "ACTIVO" ? "bg-secondary text-primary" : "bg-muted text-muted-foreground"}`}>{row.status === "ACTIVO" ? "Activo" : "Inactivo"}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><h4 className="text-sm font-semibold">{row.name}</h4><span className={`rounded-md px-2 py-1 text-xs font-medium ${row.status === "ACTIVO" ? "bg-secondary text-primary" : "bg-muted text-muted-foreground"}`}>{row.status === "ACTIVO" ? "Activo" : "Inactivo"}</span></div>
                 <p className="mt-2 text-xs leading-6 text-muted-foreground">{row.libraryAddress}</p>
                 {row.libraryLocation ? <p className="mt-1 text-xs font-medium">{row.libraryLocation}</p> : null}
                 {row.pickupHours ? <p className="mt-1 text-xs leading-6 text-muted-foreground">{row.pickupHours}</p> : null}
-                <p className="mt-1 text-[11px] text-muted-foreground">{row.googleMapsEmbedUrl ? "Mapa personalizado" : row.latitude && row.longitude ? "Mapa por coordenadas" : "Mapa por dirección"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{row.googleMapsEmbedUrl ? "Mapa personalizado" : row.latitude && row.longitude ? "Mapa por coordenadas" : "Mapa por dirección"}</p>
               </div>
               <div className="flex shrink-0 gap-1">
                 <Button variant="ghost" size="icon" className="size-9" disabled={pending} aria-label={`Editar campus ${row.name}`} onClick={() => edit(row)}><Pencil aria-hidden="true" /></Button>

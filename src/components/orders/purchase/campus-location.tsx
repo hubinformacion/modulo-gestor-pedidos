@@ -19,7 +19,7 @@ export function CampusLocation({ campus }: { campus: Campus }) {
       </div>
       <iframe key={map.embedUrl} title={`Ubicación de la biblioteca del campus ${campus.name}`} src={map.embedUrl} width="100%" height="240" className="block w-full border-0 bg-muted" loading="lazy" referrerPolicy="no-referrer-when-downgrade" allowFullScreen />
       <div className="flex flex-wrap items-center justify-between gap-2 p-4">
-        {map.approximate ? <p className="text-[11px] text-muted-foreground">Ubicación por dirección; confirma el punto de recojo.</p> : null}
+        {map.approximate ? <p className="text-xs text-muted-foreground">Ubicación por dirección; confirma el punto de recojo.</p> : null}
         <a href={map.searchUrl} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-2 text-xs font-medium text-primary underline underline-offset-4">Abrir en Google Maps<ExternalLink className="size-3" aria-hidden="true" /></a>
       </div>
     </div>
