@@ -19,7 +19,7 @@ import { AccessError } from "@/modules/access/domain/policy";
 import { deliverOrderEmail } from "@/modules/orders/application/email";
 import { finalizeSaleDocument, returnSaleDocument, uploadSaleDocument } from "@/modules/treasury/application/documents";
 import { deliverCajaEmail } from "@/modules/treasury/application/email";
-import { finalizeSaleSchema, pdfSchema, returnSaleSchema, uploadSaleSchema } from "@/modules/treasury/domain/documents";
+import { finalizeSaleSchema, saleFileSchema, returnSaleSchema, uploadSaleSchema } from "@/modules/treasury/domain/documents";
 import { CajaError } from "@/modules/treasury/domain/errors";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
@@ -28,26 +28,25 @@ import { z } from "zod";
 function failure(error: unknown) { if (!(error instanceof AccessError || error instanceof CajaError)) reportServerError("caja.action.failed", error); return { success: false as const, message: error instanceof AccessError || error instanceof CajaError ? error.message : "No pudimos guardar el cambio. Reintenta." }; }
 export async function uploadSaleAction(input: unknown) {
   const form = z.instanceof(FormData).safeParse(input);
-  if (!form.success) return { success: false as const, message: "Selecciona un PDF válido." };
+  if (!form.success) return { success: false as const, message: "Selecciona un archivo válido." };
   const parsed = uploadSaleSchema.safeParse(Object.fromEntries(form.data));
-  const file = pdfSchema.safeParse(form.data.get("file"));
-  if (!parsed.success || !file.success) return { success: false as const, message: "Adjunta un PDF de hasta 3 MB." };
+  const file = saleFileSchema.safeParse(form.data.get("file"));
+  if (!parsed.success || !file.success) return { success: false as const, message: "Adjunta un archivo de hasta 3 MB." };
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
-    const document = await uploadSaleDocument(actor, parsed.data.id, parsed.data.uploadId, parsed.data.cycle, file.data);
+    const document = await uploadSaleDocument(actor, parsed.data.id, parsed.data.uploadId, parsed.data.cycle, parsed.data.format, file.data);
     // No refresh during FilePond processing and no email before Finalizar.
-    let href = `/tesoreria-recaudacion/${parsed.data.id}/archivos/${document.documentId}`;
     try {
       const { ensureCajaFileReader } = await import("@/integrations/google/treasury-readers");
-      await ensureCajaFileReader(actor, parsed.data.id, document.driveFileId); href = document.driveViewUrl;
+      if (parsed.data.format === "pdf") await ensureCajaFileReader(actor, parsed.data.id, document.driveFileId);
     } catch (error) { reportServerError("caja.upload.access.pending", error); }
-    return { success: true as const, documentId: document.documentId, fileName: document.fileName, version: document.version, href };
+    return { success: true as const, documentId: document.documentId, fileName: document.fileName, version: document.version };
   } catch (error) { return failure(error); }
 }
 export async function finalizeSaleAction(input: unknown) {
   const parsed = finalizeSaleSchema.safeParse(input);
-  if (!parsed.success) return { success: false as const, message: "Revisa la solicitud y su PDF." };
+  if (!parsed.success) return { success: false as const, message: "Adjunta el PDF y el XML de la emisión." };
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));
@@ -74,7 +73,7 @@ export async function removeSaleDraftAction(input: unknown) {
   const { removeDraftSchema } = await import("@/modules/treasury/domain/documents");
   const { removeSaleDraft } = await import("@/modules/treasury/application/documents");
   const parsed = removeDraftSchema.safeParse(input);
-  if (!parsed.success) return { success: false as const, message: "Revisa el PDF que deseas retirar." };
+  if (!parsed.success) return { success: false as const, message: "Revisa el archivo que deseas retirar." };
   try {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getCajaSession(db, requestHeaders));

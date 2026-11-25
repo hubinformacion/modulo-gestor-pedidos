@@ -5,10 +5,10 @@ import { getMailProvider, getMailLogoUrl, type MailProvider } from "@/shared/con
 import { sendRawMail } from "@/integrations/google/gmail";
 import { buildEmailMessage } from "./message";
 import { sendEndpointMail } from "./endpoint";
-import type { PdfAttachment } from "./types";
+import type { MailAttachment } from "./types";
 
 export type SentMail = { id: string | null; threadId: string | null; provider: MailProvider; providerMessageId: string | null };
-export type StandaloneMail = { to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; text: string; attachments?: PdfAttachment[]; logoCid: string };
+export type StandaloneMail = { to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; text: string; attachments?: MailAttachment[]; logoCid: string };
 
 export function formatMailSubject(subject: string): string {
   if (/[\r\n\0]/.test(subject)) throw new Error("INVALID_SUBJECT_HEADER");

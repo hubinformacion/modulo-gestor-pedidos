@@ -132,6 +132,8 @@ Los límites de creación se administran en **Configuración → Seguridad** des
 
 La versión 1.0.0 cierra el módulo de pedidos, seguimiento, inventario y Tesorería. Para publicar cambios posteriores, confirmar el despliegue de `main` en Vercel y comprobar las rutas públicas sin crear pedidos ni enviar mensajes de prueba en producción. Aplicar por separado cualquier actualización SQL requerida.
 
+Para desplegar la emisión con PDF y XML en una base operativa, respaldar la base y aplicar una vez [la actualización SQL de Tesorería](src/db/updates/20261125-treasury-xml.sql) antes de desplegar. Las emisiones históricas conservan sus PDF. Para finalizar una emisión nueva o corregida, Tesorería adjunta un PDF y el XML original, de hasta 3 MiB cada uno. El seguimiento ofrece ambos como descargas y el aviso al comprador incluye los archivos vigentes de los sellos requeridos. El proveedor endpoint recibe el contenido de cada adjunto en Base64, con su nombre original y tipo MIME.
+
 Antes de atender los primeros pedidos, habilitar al personal de Fondo Editorial y Tesorería con sus roles y unidades, registrar el apoyo de recojo y configurar los buzones de servicio que deban recibir avisos de Tesorería. Sin un buzón, la solicitud permanece en bandeja. El despacho para recojo requiere un contacto de apoyo activo.
 
 Gmail es el proveedor predeterminado. La activación del correo institucional queda sujeta a la habilitación del remitente y a la confirmación de la URL de producción por TI. La ampliación editorial y la migración a Azure quedan fuera del lanzamiento actual.

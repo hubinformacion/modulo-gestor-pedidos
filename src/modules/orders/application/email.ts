@@ -4,7 +4,7 @@ import { readSentMailHeaders } from "@/integrations/google/gmail";
 import { NoMailRecipients, sendOrderConfirmationEmail, sendOrderUpdateEmail } from "@/modules/orders/application/email-sender";
 import { reportServerError, safeErrorDetails } from "@/shared/logging/server-diagnostics";
 import { getTrackedOrder } from "@/modules/orders/data/tracking";
-import { readSaleBatch, salePdfBytes } from "@/modules/treasury/application/documents";
+import { readSaleBatch, saleDocumentBytes } from "@/modules/treasury/application/documents";
 import { StaleDocumentBatch } from "@/modules/treasury/domain/errors";
 import { and, desc, eq, ne, isNotNull } from "drizzle-orm";
 import { randomUUID } from "node:crypto";
@@ -74,7 +74,7 @@ export async function deliverOrderEmail(token: string, notificationId: string | 
     const current = await getTrackedOrder(token);
     if (!current) throw new Error("ORDER_UNAVAILABLE");
     const event = claim.event;
-    const attachments = event?.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, content: await salePdfBytes(document.driveFileId, document.contentHash) }))) : undefined;
+    const attachments = event?.eventType === "DOCUMENTOS_VENTA" ? await Promise.all((await readSaleBatch(current.order.id, event.payload.batchId)).map(async ({ document }) => ({ filename: document.fileName, mimeType: document.mimeType, content: await saleDocumentBytes(document.driveFileId, document.contentHash, document.mimeType) }))) : undefined;
     const sent = event ? await sendOrderUpdateEmail(current, event, attachments) : await sendOrderConfirmationEmail(current);
     accepted = true; // Never submit again after the selected provider accepted the message.
     await withDatabase((db) => db.transaction(async (tx) => {

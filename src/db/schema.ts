@@ -368,6 +368,8 @@ export const cajaRequests = pgTable("caja_requests", {
   cycle: integer("cycle").default(1).notNull(),
   draftDocumentId: uuid("draft_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   finalizedDocumentId: uuid("finalized_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
+  draftXmlDocumentId: uuid("draft_xml_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
+  finalizedXmlDocumentId: uuid("finalized_xml_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   returnReason: text("return_reason"),
   assignedTo: text("assigned_to").references(() => authUser.id, { onDelete: "restrict" }),
   assignedName: text("assigned_name"),
@@ -399,10 +401,11 @@ export const saleDocuments = pgTable("sale_documents", {
   driveViewUrl: text("drive_view_url"),
   contentHash: text("content_hash").notNull(),
   fileName: text("file_name").notNull(),
+  mimeType: text("mime_type").$type<"application/pdf" | "application/xml">().default("application/pdf").notNull(),
   size: integer("size").notNull(),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("sale_documents_request_idx").on(table.requestId), check("sale_documents_size", sql`${table.size} BETWEEN 1 AND 3145728 AND ${table.cycle} > 0`)]);
+}, (table) => [index("sale_documents_request_idx").on(table.requestId), check("sale_documents_size", sql`${table.size} BETWEEN 1 AND 3145728 AND ${table.cycle} > 0`), check("sale_documents_mime_type", sql`${table.mimeType} IN ('application/pdf', 'application/xml')`)]);
 export const cajaNotifications = pgTable("caja_notifications", {
   id: uuid("id").defaultRandom().primaryKey(),
   requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),

@@ -65,7 +65,7 @@ export async function deliverCajaEmail(id: string, notificationId: string): Prom
     const logoCid = `brand-caja-${event.id}@${new URL(getPublicOrigin()).hostname}`;
     const notice = renderCajaNotice({
       orderNumber: formatOrderNumber(order.orderNumber), requestNumber: formatRequestNumber(request.requestNumber),
-      imprint: request.publisherImprint, invoice: Boolean(order.billingRuc), assignedName: request.assignedName,
+      imprint: request.publisherImprint, invoice: Boolean(order.billingRuc),
       customerName: order.customerName, customerDocument: order.customerDocument, customerPhone: order.customerPhone,
       billingRuc: order.billingRuc, billingBusinessName: order.billingBusinessName, billingAddress: order.billingAddress,
       amount: formatMoney(toCents(request.publisherImprint === "universidad" ? order.totalUniversidad : order.totalInstituto)),

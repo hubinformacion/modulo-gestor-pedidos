@@ -2,7 +2,8 @@ import "server-only";
 import { z } from "zod";
 import { getMailEndpointEnvironment } from "@/shared/config/mail-endpoint";
 import type { MailEndpointTestResult } from "@/modules/settings/domain/mail-endpoint-test";
-import type { PdfAttachment } from "./types";
+import { isWellFormedXml } from "@/shared/utils/xml";
+import type { MailAttachment } from "./types";
 
 export class MailDeliveryError extends Error {
   constructor(public readonly result: MailEndpointTestResult) {
@@ -13,7 +14,7 @@ export class MailDeliveryError extends Error {
 
 const responseSchema = z.object({ isSuccess: z.boolean(), message: z.unknown().optional() });
 
-export async function sendEndpointMail(input: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; attachments?: PdfAttachment[] }): Promise<{ providerMessageId: string | null; httpStatus: number }> {
+export async function sendEndpointMail(input: { to: string[]; cc?: string[]; bcc?: string[]; subject: string; html: string; attachments?: MailAttachment[] }): Promise<{ providerMessageId: string | null; httpStatus: number }> {
   const environment = getMailEndpointEnvironment();
   if (!environment.success) throw new MailDeliveryError({ success: false, message: "Completa la configuración del servicio de correo en el servidor." });
   const config = environment.data;
@@ -24,8 +25,14 @@ export async function sendEndpointMail(input: { to: string[]; cc?: string[]; bcc
   if (recipients.length !== 1) throw new MailDeliveryError({ success: false, message: "El servicio requiere un destinatario principal." });
   const attachments = input.attachments ?? [];
   for (const file of attachments) {
-    if (!file.content.length || file.content.length > 3 * 1024 * 1024 || file.content.subarray(0, 5).toString("ascii") !== "%PDF-" || !file.filename.length || file.filename.length > 255 || /[\x00-\x1f\x7f/\\]/.test(file.filename)) {
-      throw new MailDeliveryError({ success: false, message: "El adjunto debe ser un PDF válido de hasta 3 MiB con un nombre seguro." });
+    const { filename, content } = file;
+    const invalid = !content.length || content.length > 3 * 1024 * 1024 ||
+      !filename.length || filename.length > 255 || /[\x00-\x1f\x7f/\\]/.test(filename);
+    const valid = file.mimeType === "application/xml"
+      ? filename.toLowerCase().endsWith(".xml") && isWellFormedXml(content)
+      : content.subarray(0, 5).toString("ascii") === "%PDF-";
+    if (invalid || !valid) {
+      throw new MailDeliveryError({ success: false, message: "El adjunto debe ser un PDF o XML válido de hasta 3 MiB con un nombre seguro." });
     }
   }
   let httpStatus: number | undefined;
@@ -36,7 +43,7 @@ export async function sendEndpointMail(input: { to: string[]; cc?: string[]; bcc
       body: JSON.stringify({ from: config.MAIL_ENDPOINT_FROM, fromName: config.MAIL_ENDPOINT_FROM_NAME, asunto: input.subject, mensaje: input.html,
         emailDestino: recipients[0], cc: [...new Set(cc)].join(";"), cco: [...new Set(bcc)].join(";"), sistema: config.MAIL_ENDPOINT_SYSTEM,
         unidadNegocio: config.MAIL_ENDPOINT_BUSINESS_UNIT, retry: 1,
-        adjuntos: attachments.map((file) => ({ base64Encode: file.content.toString("base64"), nombreArchivoConExtension: file.filename, mimeType: "application/pdf" })),
+        adjuntos: attachments.map((file) => ({ base64Encode: file.content.toString("base64"), nombreArchivoConExtension: file.filename, mimeType: file.mimeType ?? "application/pdf" })),
       }),
       signal: AbortSignal.timeout(20_000), redirect: "error", cache: "no-store",
     });

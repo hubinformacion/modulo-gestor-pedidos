@@ -5,13 +5,13 @@ import { buildOrderConfirmationContent, buildOrderUpdateContent, buildReceiptRev
 import { buildPickupSupportContent } from "@/modules/orders/application/pickup-mail-content";
 import { renderCajaNotice } from "@/modules/treasury/application/email-template";
 import { getMailLogoUrl } from "@/shared/config/mail";
-import type { PdfAttachment } from "@/integrations/email/types";
+import type { MailAttachment } from "@/integrations/email/types";
 
 // Explicitly requested examples: no order, inventory, identity or Drive records.
 const sampleDate = new Date("2026-11-10T15:00:00-05:00");
 const logoCid = "mail-sample@preview.invalid";
 
-function samplePdf(filename: string): PdfAttachment {
+function samplePdf(filename: string): MailAttachment {
   const stream = "BT /F1 16 Tf 50 780 Td (PRUEBA - DOCUMENTO FICTICIO SIN VALOR) Tj ET";
   const objects = ["<< /Type /Catalog /Pages 2 0 R >>", "<< /Type /Pages /Kids [3 0 R] /Count 1 >>", "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>", "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>", `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`];
   let pdf = "%PDF-1.4\n";
@@ -35,7 +35,7 @@ export async function buildMailSample(input: MailSampleSelection) {
     deliveryLibraryLocation: "Biblioteca de ejemplo (ficticia)", deliveryPickupHours: "Horario de ejemplo", pickupContactName: "Personal de ejemplo (ficticio)", deliveryMapUrl: "",
   } };
   let content: { subject: string; html: string; text: string };
-  let attachments: PdfAttachment[] = [];
+  let attachments: MailAttachment[] = [];
   if (input.template === "PEDIDO_RECIBIDO") {
     content = buildOrderConfirmationContent(tracking, "#", logoCid);
     attachments = [samplePdf(`guia_pago_${input.variant}_EJEMPLO.pdf`)];
@@ -46,7 +46,7 @@ export async function buildMailSample(input: MailSampleSelection) {
   } else if (input.template.startsWith("CAJA_")) {
     const eventType = input.template === "CAJA_SOLICITUD" ? "SOLICITUD" : input.template === "CAJA_FINALIZADA" ? "FINALIZADA" : input.template === "CAJA_DEVUELTA" ? "DEVUELTA" : "ANULADA";
     content = renderCajaNotice({ orderNumber: tracking.order.orderNumber, requestNumber: "EJEMPLO", imprint: instituto ? "instituto" : "universidad", invoice,
-      assignedName: eventType === "SOLICITUD" ? null : "Responsable de ejemplo (ficticio)", customerName: tracking.order.customerName,
+      customerName: tracking.order.customerName,
       customerDocument: "DOCUMENTO FICTICIO", customerPhone: "TELÉFONO FICTICIO", billingRuc: invoice ? "RUC FICTICIO" : null,
       billingBusinessName: invoice ? "Razón social de ejemplo (ficticia)" : null, billingAddress: invoice ? "Dirección fiscal de ejemplo (ficticia)" : null,
       amount: instituto ? "S/ 30.00" : "S/ 50.00", eventType, reason: "Motivo de ejemplo para revisar la comunicación.", link: "#", logoCid });

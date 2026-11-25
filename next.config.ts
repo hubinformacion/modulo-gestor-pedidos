@@ -4,7 +4,20 @@ import { getEmbedCsp, getWordPressOrigins } from "./src/integrations/wordpress/c
 const nextConfig: NextConfig = {
   experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
-    return [{ source: "/:path*", headers: [{ key: "Content-Security-Policy", value: getEmbedCsp(getWordPressOrigins()) }, { key: "X-Content-Type-Options", value: "nosniff" }, { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" }] }, { source: "/seguimiento/:path*", headers: [{ key: "Cache-Control", value: "private, no-store" }, { key: "Referrer-Policy", value: "no-referrer" }, { key: "X-Content-Type-Options", value: "nosniff" }] }];
+    const origins = getWordPressOrigins();
+    return [
+      { source: "/:path*", headers: [
+        { key: "Content-Security-Policy", value: getEmbedCsp(origins) },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      ] },
+      { source: "/seguimiento/:path*", headers: [
+        { key: "Content-Security-Policy", value: getEmbedCsp(origins, true) },
+        { key: "Cache-Control", value: "private, no-store" },
+        { key: "Referrer-Policy", value: "no-referrer" },
+        { key: "X-Content-Type-Options", value: "nosniff" },
+      ] },
+    ];
   },
   outputFileTracingIncludes: { "/*": ["./src/resources/payment-guides/*.pdf", "./public/isotipo-blanco.png"] },
 };

@@ -38,3 +38,19 @@ export async function readFileFromDrive(fileId: string): Promise<Readable> {
     return response.data as unknown as Readable;
   }, "drive.download");
 }
+
+export async function readSmallDriveFile(fileId: string, maxBytes: number) {
+  const stream = await readFileFromDrive(fileId);
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of stream) {
+    const bytes = Buffer.from(chunk);
+    size += bytes.length;
+    if (size > maxBytes) {
+      stream.destroy();
+      throw new Error("DRIVE_FILE_TOO_LARGE");
+    }
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks, size);
+}

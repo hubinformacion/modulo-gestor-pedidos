@@ -86,6 +86,8 @@ CREATE TABLE "caja_requests" (
 	"cycle" integer DEFAULT 1 NOT NULL,
 	"draft_document_id" uuid,
 	"finalized_document_id" uuid,
+	"draft_xml_document_id" uuid,
+	"finalized_xml_document_id" uuid,
 	"return_reason" text,
 	"assigned_to" text,
 	"assigned_name" text,
@@ -531,11 +533,13 @@ CREATE TABLE "sale_documents" (
 	"drive_view_url" text,
 	"content_hash" text NOT NULL,
 	"file_name" text NOT NULL,
+	"mime_type" text DEFAULT 'application/pdf' NOT NULL,
 	"size" integer NOT NULL,
 	"uploaded_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "sale_documents_drive_file_id_unique" UNIQUE("drive_file_id"),
-	CONSTRAINT "sale_documents_size" CHECK ("sale_documents"."size" BETWEEN 1 AND 3145728 AND "sale_documents"."cycle" > 0)
+	CONSTRAINT "sale_documents_size" CHECK ("sale_documents"."size" BETWEEN 1 AND 3145728 AND "sale_documents"."cycle" > 0),
+	CONSTRAINT "sale_documents_mime_type" CHECK ("sale_documents"."mime_type" IN ('application/pdf', 'application/xml'))
 );
 
 CREATE TABLE "treasury_activity" (
@@ -645,6 +649,8 @@ ALTER TABLE "caja_notifications" ADD CONSTRAINT "caja_notifications_request_id_c
 ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_draft_document_id_sale_documents_id_fk" FOREIGN KEY ("draft_document_id") REFERENCES "public"."sale_documents"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_finalized_document_id_sale_documents_id_fk" FOREIGN KEY ("finalized_document_id") REFERENCES "public"."sale_documents"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_draft_xml_document_id_sale_documents_id_fk" FOREIGN KEY ("draft_xml_document_id") REFERENCES "public"."sale_documents"("id") ON DELETE restrict ON UPDATE no action;
+ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_finalized_xml_document_id_sale_documents_id_fk" FOREIGN KEY ("finalized_xml_document_id") REFERENCES "public"."sale_documents"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "caja_requests" ADD CONSTRAINT "caja_requests_assigned_to_user_id_fk" FOREIGN KEY ("assigned_to") REFERENCES "public"."user"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "coupon_redemptions" ADD CONSTRAINT "coupon_redemptions_order_id_orders_id_fk" FOREIGN KEY ("order_id") REFERENCES "public"."orders"("id") ON DELETE restrict ON UPDATE no action;
 ALTER TABLE "coupon_redemptions" ADD CONSTRAINT "coupon_redemptions_coupon_id_coupons_id_fk" FOREIGN KEY ("coupon_id") REFERENCES "public"."coupons"("id") ON DELETE restrict ON UPDATE no action;
