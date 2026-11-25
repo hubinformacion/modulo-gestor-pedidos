@@ -190,6 +190,8 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .workspace-quick-link:hover { background: var(--secondary); }
 .workspace-unit-badge { display: inline-flex; padding: 6px 10px; border: 1px solid #d6b4f0; border-radius: 7px; background: #e7d5f7; color: #52049a; font-size: 12px; font-weight: 700; }
 .workspace-unit-badge.is-instituto { border-color: #ffbdc2; background: #ffe7e9; color: #b5000a; }
+.treasury-guide-lanes { grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 2.4fr) minmax(0, 1.8fr); }
+@media (min-width: 768px) { .treasury-guide-lanes:where(li) { display: grid; } }
 .workspace-guide-flow { border: 1px solid var(--workspace-line); border-radius: 14px; padding: 24px; background: #fdfbff; }
 .workspace-flow-nodes { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 20px; }
 .workspace-flow-nodes:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(5, minmax(0,1fr)); }

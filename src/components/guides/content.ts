@@ -19,18 +19,32 @@ export const managerGuide: RoleGuide = {
   ],
   reminders: ["Las acciones sensibles requieren la atención asignada.", "Emisión y logística tienen tiempos independientes.", "Los documentos y el historial permanecen disponibles al cerrar el pedido."],
 };
-export const treasuryGuide: RoleGuide = {
-  title: "Emisión de boletas y facturas",
-  intro: "Sigue los cinco pasos para emitir. Selecciona una acción para ver sus instrucciones.",
-  steps: [
-    { title: "Consultar la bandeja", short: "Revisar solicitudes", description: "Las solicitudes aparecen cuando Fondo Editorial verifica el pago de tu unidad de negocio.", checklist: ["Filtra por unidad de negocio, estado o atención.", "Consulta Reporte para ver la carga del equipo y los tiempos de emisión.", "Abre Ver detalles para consultar datos y documentos."], result: "Identificas qué solicitudes necesitan atención.", exception: "Solo ves las unidades habilitadas para tu cuenta. El buzón de servicio permite consultar, pero no atender.", href: "/tesoreria-recaudacion", link: "Abrir solicitudes" },
-    { title: "Tomar atención", short: "Identificar responsable", description: "Usa tu cuenta personal para tomar la atención antes de emitir u observar una solicitud.", checklist: ["Comprueba si la solicitud está libre o a cargo de otra persona.", "Toma atención para habilitar observaciones y carga del documento.", "Si necesitas relevar a otra persona, indica el motivo del cambio."], result: "La solicitud queda asignada y cada acción conserva autor y fecha.", exception: "Puedes consultar sin asignarte. Las notas internas pueden añadirlas otros operadores de la misma unidad.", href: "/tesoreria-recaudacion?owner=unassigned", link: "Ver solicitudes por asignar" },
-    { title: "Validar datos", short: "Revisar la emisión", description: "Consulta el tipo de documento, datos del comprador, códigos de publicaciones, importes y comprobantes con validación inicial de Fondo Editorial.", checklist: ["Para factura verifica RUC, razón social y dirección fiscal.", "Revisa la vista previa del comprobante de pago antes de emitir.", "Si algo requiere corrección, registra una observación con la descripción."], result: "Los datos están listos para emitir o la observación queda en coordinación con Fondo Editorial.", exception: "Una observación abierta impide finalizar. Revisa la respuesta de Fondo Editorial antes de continuar.", href: "/tesoreria-recaudacion", link: "Consultar datos de emisión" },
-    { title: "Registrar observación", short: "Solicitar una corrección", description: "Si detectas datos, importes o comprobantes incorrectos, solicita su revisión a Fondo Editorial desde Observaciones.", checklist: ["Toma la atención de la solicitud con tu cuenta personal.", "En Observaciones describe qué debe corregirse y añade el contexto necesario.", "Espera la respuesta de Fondo Editorial y comprueba los datos actualizados antes de continuar."], result: "La solicitud queda observada y Fondo Editorial coordina la subsanación. La respuesta y los archivos de sustento aparecen en el detalle.", exception: "No uses Notas internas para pedir cambios a Fondo Editorial: esas notas solo las ve tu equipo. No puedes finalizar mientras exista una observación abierta.", href: "/tesoreria-recaudacion?state=observed", link: "Ver solicitudes observadas", optional: true, branchLabel: "Si hay un error" },
-    { title: "Adjuntar PDF y XML", short: "Preparar el documento", description: "Adjunta el PDF de la boleta o factura y su XML original en los campos del panel de emisión.", checklist: ["Usa el PDF y el XML originales. Cada archivo admite hasta 3 MB.", "Espera a que termine la carga y revisa la vista previa del PDF.", "Si elegiste un archivo equivocado, retira el borrador y carga el correcto."], result: "Los dos archivos quedan como borrador hasta que finalices.", exception: "Cargar el archivo no envía el documento ni finaliza la solicitud. Si la carga falla, conserva el archivo y revisa el mensaje de error.", href: "/tesoreria-recaudacion?owner=mine", link: "Abrir mis solicitudes" },
-    { title: "Finalizar", short: "Confirmar la emisión", description: "Pulsa Finalizar solicitud cuando los datos y los dos archivos estén correctos.", checklist: ["Comprueba que no haya observaciones abiertas.", "Confirma el PDF y el XML desde tu atención asignada.", "Consulta el estado Finalizada y el historial para verificar el registro."], result: "Se registra la emisión y se genera el aviso al buzón de servicio. El comprador recibe sus documentos cuando todos los requeridos están finalizados.", exception: "En pedidos mixtos cada unidad atiende su solicitud por separado. El comprador recibe un solo correo con los archivos vigentes de ambas unidades. La entrega sigue su propio flujo.", href: "/tesoreria-recaudacion?state=finished", link: "Ver solicitudes finalizadas" },
-    { title: "Corregir y volver a emitir", short: "Si se devuelve la emisión", description: "Si Fondo Editorial devuelve un documento, la solicitud vuelve a estar disponible para corregirlo.", checklist: ["Consulta el motivo y vuelve a tomar atención.", "Carga el PDF y el XML de la emisión corregida. Revisa la vista previa del PDF.", "Finaliza de nuevo; los archivos anteriores permanecen en el historial."], result: "La nueva versión queda vigente y conserva la trazabilidad del documento previo.", exception: "Esta etapa solo aplica cuando hay una devolución. No reemplaces un documento finalizado fuera de ese flujo.", href: "/tesoreria-recaudacion?state=pending", link: "Consultar solicitudes abiertas", optional: true },
+export const treasuryGuide = {
+  stages: [
+    {
+      title: "Tomar atención",
+      treasury: "Abre la solicitud de tu unidad y pulsa Tomar atención. Si la atiende otra persona, registra el motivo del relevo.",
+      editorial: "Verifica el pago. Esa validación abre una solicitud de emisión por cada sello.",
+      handoff: "to-treasury" as const,
+    },
+    {
+      title: "Revisar la solicitud",
+      treasury: "Compara el importe con el comprobante y verifica los datos de facturación. Si detectas un error, registra una observación y espera la respuesta antes de emitir.",
+      editorial: "Si recibe una observación, coordina la corrección y responde desde Pagos, en el detalle del pedido. Con la respuesta, Tesorería vuelve a revisar los datos.",
+      handoff: "round-trip" as const,
+    },
+    {
+      title: "Emitir y finalizar",
+      treasury: "Adjunta el PDF y el XML originales, de hasta 3 MB cada uno. Revisa la vista previa del PDF, confirma que las observaciones estén resueltas y pulsa Finalizar solicitud.",
+      editorial: "Consulta el comprobante emitido desde la pestaña Pagos del pedido.",
+    },
   ],
+  returned: {
+    title: "Si devuelven la emisión",
+    treasury: "Lee el motivo, vuelve a tomar atención y regresa al paso 3 con el PDF y el XML corregidos. Los archivos anteriores quedan en el historial.",
+    editorial: "Devuelve la emisión desde Pagos e indica el motivo de la corrección.",
+    handoff: "to-treasury" as const,
+  },
   faq: [
     { question: "¿Quién recibe los correos de Tesorería Recaudación?", answer: "Los avisos se dirigen al buzón de servicio de la unidad con copia a Fondo Editorial. Las cuentas personales de Tesorería pueden atender desde la plataforma." },
     { question: "¿Qué pasa si otra persona continúa la solicitud?", answer: "Puedes liberar la atención o tomar la solicitud de otra persona indicando el motivo. El borrador se conserva para el relevo y el cambio queda registrado en el historial." },
@@ -38,5 +52,5 @@ export const treasuryGuide: RoleGuide = {
     { question: "¿Puedo emitir después de la entrega?", answer: "Sí. La emisión tiene su propio flujo y puede completarse después de entregar las publicaciones. Una solicitud anulada no admite continuar la emisión." },
     { question: "¿Cómo actualizo la pantalla?", answer: "Usa el botón de actualizar cuando no tengas una carga o edición en curso. No hay refresco periódico de la bandeja." },
   ],
-  reminders: ["Atiende desde una cuenta personal, no desde el buzón de servicio.", "Las notas internas y las observaciones cumplen funciones distintas.", "Adjuntar prepara el borrador; Finalizar confirma y genera los avisos."],
+  reminders: ["Atiende desde una cuenta personal, no desde el buzón de servicio.", "Las notas internas y las observaciones cumplen funciones distintas.", "Adjuntar prepara el borrador. Finalizar confirma la emisión y genera los avisos."],
 };

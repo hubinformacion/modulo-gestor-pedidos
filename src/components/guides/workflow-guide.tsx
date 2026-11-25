@@ -2,49 +2,36 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check, Info, ShieldCheck } from "lucide-react";
-import { TreasuryFlow, treasuryStepNumbers } from "@/components/guides/treasury-flow";
+import { ArrowRight, Check, Info } from "lucide-react";
 import type { RoleGuide } from "@/components/guides/content";
 
-export function WorkflowGuide({ guide, service = false, treasury = false }: { guide: RoleGuide; service?: boolean; treasury?: boolean }) {
+export function WorkflowGuide({ guide }: { guide: RoleGuide }) {
   const [selected, setSelected] = useState(0);
   const id = useId();
   const step = guide.steps[selected];
 
-  function selectTreasuryStep(index: number) {
-    setSelected(index);
-    requestAnimationFrame(() => {
-      const detail = document.getElementById(`${id}-detail`);
-      const top = detail?.getBoundingClientRect().top;
-      if (top !== undefined && (top < 0 || top > window.innerHeight - 160)) detail?.focus();
-    });
-  }
-
   const flow = <section id={`${id}-flow`} className="workspace-guide-flow scroll-mt-24" aria-label={guide.title}>
-    <div className={`flex flex-wrap items-center justify-between gap-3 ${treasury ? "mb-5" : "mb-6"}`}>
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
       <div>
-        <h2 className="text-sm font-semibold">{treasury ? guide.title : "Tu flujo de trabajo"}</h2>
+        <h2 className="text-sm font-semibold">Tu flujo de trabajo</h2>
         <p className="mt-2 text-xs leading-6 text-muted-foreground">{guide.intro}</p>
       </div>
-      {!treasury ? <span className="text-xs font-medium text-primary">{guide.steps.length} etapas · explora a tu ritmo</span> : null}
+      <span className="text-xs font-medium text-primary">{guide.steps.length} etapas · explora a tu ritmo</span>
     </div>
-    {treasury ? <TreasuryFlow steps={guide.steps} selected={selected} id={id} onSelect={selectTreasuryStep} /> :
-      <ol className="workspace-flow-nodes">{guide.steps.map((node, index) => <li key={node.title}>
-        <button type="button" id={`${id}-step-${index}`} aria-controls={`${id}-detail`} aria-pressed={selected === index} className="workspace-flow-node" onClick={() => setSelected(index)}>
-          <svg viewBox="0 0 56 56" width="48" height="48" aria-hidden="true"><rect x="5" y="5" width="46" height="46" rx="14" fill={selected === index ? "var(--primary)" : "var(--secondary)"} stroke={selected === index ? "var(--primary)" : "#dfc9f0"} strokeDasharray={node.optional ? "3 3" : undefined} /><text x="28" y="33" textAnchor="middle" fill={selected === index ? "white" : "var(--primary)"} fontSize="16" fontWeight={650} fontFamily="inherit">{index + 1}</text></svg>
-          <span className="workspace-flow-node-title">{node.title}</span>
-          <span className="workspace-flow-node-subtitle">{node.short}</span>
-          {node.optional ? <span className="workspace-flow-conditional">{node.branchLabel ?? "En paralelo"}</span> : null}
-        </button>
-        {index < guide.steps.length - 1 ? <svg className="workspace-flow-arrow" viewBox="0 0 32 16" aria-hidden="true"><path d="M1 8H28M23 3L28 8L23 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={node.optional || guide.steps[index + 1].optional ? "3 3" : undefined} /></svg> : null}
-      </li>)}</ol>}
+    <ol className="workspace-flow-nodes">{guide.steps.map((node, index) => <li key={node.title}>
+      <button type="button" id={`${id}-step-${index}`} aria-controls={`${id}-detail`} aria-pressed={selected === index} className="workspace-flow-node" onClick={() => setSelected(index)}>
+        <svg viewBox="0 0 56 56" width="48" height="48" aria-hidden="true"><rect x="5" y="5" width="46" height="46" rx="14" fill={selected === index ? "var(--primary)" : "var(--secondary)"} stroke={selected === index ? "var(--primary)" : "#dfc9f0"} strokeDasharray={node.optional ? "3 3" : undefined} /><text x="28" y="33" textAnchor="middle" fill={selected === index ? "white" : "var(--primary)"} fontSize="16" fontWeight={650} fontFamily="inherit">{index + 1}</text></svg>
+        <span className="workspace-flow-node-title">{node.title}</span>
+        <span className="workspace-flow-node-subtitle">{node.short}</span>
+        {node.optional ? <span className="workspace-flow-conditional">{node.branchLabel ?? "En paralelo"}</span> : null}
+      </button>
+      {index < guide.steps.length - 1 ? <svg className="workspace-flow-arrow" viewBox="0 0 32 16" aria-hidden="true"><path d="M1 8H28M23 3L28 8L23 13" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={node.optional || guide.steps[index + 1].optional ? "3 3" : undefined} /></svg> : null}
+    </li>)}</ol>
   </section>;
 
-  const detail = <section id={`${id}-detail`} aria-labelledby={treasury ? `${id}-title` : `${id}-step-${selected}`} tabIndex={treasury ? -1 : undefined} className="workspace-panel-section min-w-0 scroll-mt-24">
-    <p className={treasury ? "mb-2 text-xs font-semibold text-primary" : "workspace-page-eyebrow"}>
-      {treasury ? `Paso ${treasuryStepNumbers[selected]}` : `Etapa ${selected + 1} de ${guide.steps.length}`}
-    </p>
-    <h2 id={`${id}-title`} className="text-xl font-semibold tracking-tight" aria-live={treasury ? "polite" : undefined}>{step.title}</h2>
+  const detail = <section id={`${id}-detail`} aria-labelledby={`${id}-step-${selected}`} className="workspace-panel-section min-w-0 scroll-mt-24">
+    <p className="workspace-page-eyebrow">Etapa {selected + 1} de {guide.steps.length}</p>
+    <h2 className="text-xl font-semibold tracking-tight">{step.title}</h2>
     <p className="mt-3 text-sm leading-7 text-muted-foreground">{step.description}</p>
     <h3 className="mt-6 text-xs font-semibold">Qué debes revisar</h3>
     <ul className="mt-4 space-y-4">{step.checklist.map((item) => <li key={item} className="flex items-start gap-3 text-sm leading-6">
@@ -57,19 +44,18 @@ export function WorkflowGuide({ guide, service = false, treasury = false }: { gu
     <div className="mt-5 flex items-start gap-3 text-xs leading-6 text-muted-foreground"><Info className="mt-1 size-4 shrink-0 text-primary" /><p>{step.exception}</p></div>
     <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-5">
       <Link href={step.href} prefetch={false} className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-xs font-semibold text-white">{step.link}<ArrowRight className="size-3.5" /></Link>
-      {treasury ? <a href={`#${id}-flow`} className="text-xs font-medium text-primary underline underline-offset-4 lg:hidden">Volver al flujo</a> :
-        <div className="flex gap-3">
-          <button type="button" disabled={selected === 0} onClick={() => setSelected(selected - 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Anterior</button>
-          <button type="button" disabled={selected === guide.steps.length - 1} onClick={() => setSelected(selected + 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Siguiente</button>
-        </div>}
+      <div className="flex gap-3">
+        <button type="button" disabled={selected === 0} onClick={() => setSelected(selected - 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Anterior</button>
+        <button type="button" disabled={selected === guide.steps.length - 1} onClick={() => setSelected(selected + 1)} className="rounded-lg border border-border px-3 py-2 text-xs disabled:opacity-40">Siguiente</button>
+      </div>
     </div>
   </section>;
 
   const reminders = <section className="workspace-panel-section">
     <h2 className="text-sm font-semibold">Antes de continuar</h2>
-    <ul className={treasury ? "mt-4 list-disc space-y-3 pl-4 text-xs leading-6" : "mt-4 space-y-4"}>
-      {guide.reminders.map((reminder, index) => <li key={reminder} className={treasury ? undefined : "flex gap-3 text-xs leading-6"}>
-        {!treasury ? <span className="font-semibold tabular-nums text-primary">0{index + 1}</span> : null}{reminder}
+    <ul className="mt-4 space-y-4">
+      {guide.reminders.map((reminder, index) => <li key={reminder} className="flex gap-3 text-xs leading-6">
+        <span className="font-semibold tabular-nums text-primary">0{index + 1}</span>{reminder}
       </li>)}
     </ul>
   </section>;
@@ -82,16 +68,10 @@ export function WorkflowGuide({ guide, service = false, treasury = false }: { gu
   </section>;
 
   return <div className="mt-7 space-y-6">
-    {service ? <p className="flex items-start gap-3 rounded-xl border border-primary/15 bg-secondary/40 p-4 text-xs leading-6"><ShieldCheck className="mt-1 size-4 shrink-0 text-primary" />Tu buzón tiene acceso de consulta. Las acciones de atención y emisión requieren una cuenta personal autorizada.</p> : null}
-    {treasury ? <>
-      <div className="grid items-start gap-5 lg:grid-cols-[minmax(17rem,2fr)_minmax(0,3fr)]">{flow}{detail}</div>
-      <aside className="grid items-start gap-5 lg:grid-cols-2">{reminders}{faq}</aside>
-    </> : <>
-      {flow}
-      <div className="workspace-panel-grid">
-        {detail}
-        <aside className="min-w-0 space-y-5">{reminders}{faq}</aside>
-      </div>
-    </>}
+    {flow}
+    <div className="workspace-panel-grid">
+      {detail}
+      <aside className="min-w-0 space-y-5">{reminders}{faq}</aside>
+    </div>
   </div>;
 }
