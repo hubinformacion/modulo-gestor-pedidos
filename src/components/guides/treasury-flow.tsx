@@ -1,7 +1,6 @@
-import { ArrowDown, ArrowRight, Check, Inbox, ListChecks, MessageSquareWarning, Paperclip, RotateCcw, UserRoundCheck } from "lucide-react";
 import type { GuideStep } from "@/components/guides/content";
 
-const icons = [Inbox, UserRoundCheck, ListChecks, MessageSquareWarning, Paperclip, Check, RotateCcw];
+export const treasuryStepNumbers = ["1", "2", "3", "3A", "4", "5", "5A"] as const;
 
 export function TreasuryFlow({ steps, selected, id, onSelect }: {
   steps: GuideStep[];
@@ -10,45 +9,36 @@ export function TreasuryFlow({ steps, selected, id, onSelect }: {
   onSelect: (index: number) => void;
 }) {
   function node(index: number) {
-    const Icon = icons[index];
-    const step = steps[index];
+    const number = treasuryStepNumbers[index];
     return <button type="button" id={`${id}-step-${index}`} aria-controls={`${id}-detail`}
       aria-pressed={selected === index} onClick={() => onSelect(index)}
-      className="flex min-h-12 w-full cursor-pointer items-center gap-3 rounded-lg border border-border bg-white px-3 py-2 text-left text-sm font-semibold hover:border-primary/40 aria-pressed:border-primary aria-pressed:bg-secondary aria-pressed:text-primary">
-      <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
-      {step.title}
+      className="group relative flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-1.5 py-1.5 text-left text-sm font-semibold hover:bg-secondary/50 aria-pressed:bg-secondary aria-pressed:text-primary">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full border border-border bg-white text-xs tabular-nums text-primary group-aria-pressed:border-primary group-aria-pressed:bg-primary group-aria-pressed:text-white">
+        <span className="sr-only">Paso </span>{number}
+      </span>
+      {steps[index].title}
     </button>;
   }
 
-  return <div className="mx-auto max-w-2xl">
-    <div className="mx-auto max-w-lg">
-      <div className="grid items-center gap-2 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
-        {node(0)}
-        <ArrowRight className="hidden size-4 text-primary sm:block" aria-hidden="true" />
-        <ArrowDown className="mx-auto size-4 text-primary sm:hidden" aria-hidden="true" />
-        {node(1)}
-      </div>
-      <ArrowDown className="mx-auto my-2 size-4 text-primary" aria-hidden="true" />
+  return <ol className="relative isolate space-y-2 before:absolute before:inset-y-5 before:left-5 before:-z-10 before:w-px before:bg-border">
+    <li>{node(0)}</li>
+    <li>{node(1)}</li>
+    <li>
       {node(2)}
-    </div>
-    <div className="relative grid gap-3 pt-5 sm:grid-cols-2 sm:gap-5 sm:pt-8">
-      <div className="pointer-events-none absolute inset-x-1/4 top-0 hidden h-6 border-x border-b-0 border-t border-primary/30 sm:block" aria-hidden="true" />
-      <div className="space-y-2 rounded-xl border border-primary/15 bg-secondary/35 p-3 sm:p-4">
-        <h3 className="text-xs font-semibold text-primary">Si los datos están conformes</h3>
-        {node(4)}
-        <ArrowDown className="mx-auto size-4 text-primary" aria-hidden="true" />
-        {node(5)}
-        <div className="mt-3 space-y-2 border-t border-primary/15 pt-3">
-          <p className="text-xs font-semibold">Si Fondo Editorial devuelve la emisión</p>
-          {node(6)}
-          <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />Vuelve a tomar atención y emite la corrección.</p>
-        </div>
-      </div>
-      <div className="self-start space-y-2 rounded-xl border border-border bg-muted/30 p-3 sm:p-4">
-        <h3 className="text-xs font-semibold">Si hay algo que corregir</h3>
+      <div className="ml-10 mt-2 rounded-lg border border-dashed border-border bg-white p-2">
+        <p className="px-1.5 text-xs font-medium text-muted-foreground">Si los datos o el pago requieren revisión</p>
         {node(3)}
-        <p className="flex items-start gap-2 text-xs leading-5 text-muted-foreground"><RotateCcw className="mt-0.5 size-3.5 shrink-0 text-primary" aria-hidden="true" />Cuando Fondo Editorial responda, vuelve a validar los datos.</p>
+        <p className="px-1.5 text-xs leading-5 text-muted-foreground">Con la respuesta de Fondo Editorial, vuelve al paso 3.</p>
       </div>
-    </div>
-  </div>;
+    </li>
+    <li>{node(4)}</li>
+    <li>
+      {node(5)}
+      <div className="ml-10 mt-2 rounded-lg border border-dashed border-border bg-white p-2">
+        <p className="px-1.5 text-xs font-medium text-muted-foreground">Si Fondo Editorial devuelve la emisión</p>
+        {node(6)}
+        <p className="px-1.5 text-xs leading-5 text-muted-foreground">Vuelve a tomar atención en el paso 2.</p>
+      </div>
+    </li>
+  </ol>;
 }

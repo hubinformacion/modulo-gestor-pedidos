@@ -21,7 +21,7 @@ export const managerGuide: RoleGuide = {
 };
 export const treasuryGuide: RoleGuide = {
   title: "Emisión de boletas y facturas",
-  intro: "Selecciona una acción para ver sus instrucciones. El flujo indica cuándo emitir, cuándo consultar a Fondo Editorial y cómo retomar una solicitud.",
+  intro: "Sigue los cinco pasos para emitir. Selecciona una acción para ver sus instrucciones.",
   steps: [
     { title: "Consultar la bandeja", short: "Revisar solicitudes", description: "Las solicitudes aparecen cuando Fondo Editorial verifica el pago de tu unidad de negocio.", checklist: ["Filtra por unidad de negocio, estado o atención.", "Consulta Reporte para ver la carga del equipo y los tiempos de emisión.", "Abre Ver detalles para consultar datos y documentos."], result: "Identificas qué solicitudes necesitan atención.", exception: "Solo ves las unidades habilitadas para tu cuenta. El buzón de servicio permite consultar, pero no atender.", href: "/tesoreria-recaudacion", link: "Abrir solicitudes" },
     { title: "Tomar atención", short: "Identificar responsable", description: "Usa tu cuenta personal para tomar la atención antes de emitir u observar una solicitud.", checklist: ["Comprueba si la solicitud está libre o a cargo de otra persona.", "Toma atención para habilitar observaciones y carga del documento.", "Si necesitas relevar a otra persona, indica el motivo del cambio."], result: "La solicitud queda asignada y cada acción conserva autor y fecha.", exception: "Puedes consultar sin asignarte. Las notas internas pueden añadirlas otros operadores de la misma unidad.", href: "/tesoreria-recaudacion?owner=unassigned", link: "Ver solicitudes por asignar" },

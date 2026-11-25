@@ -1,5 +1,5 @@
 import { withDatabase, withReadDatabase } from "@/db";
-import { books, cajaRequests, orderActivity, orderItems, orders, paymentReceipts, paymentUploads, saleDocumentBatches, saleDocuments, treasuryActivity, treasuryNotes, treasuryObservations, treasurySupportingFiles } from "@/db/schema";
+import { books, cajaRequests, driveFileReaderGrants, orderActivity, orderItems, orders, paymentReceipts, paymentUploads, saleDocumentBatches, saleDocuments, treasuryActivity, treasuryNotes, treasuryObservations, treasurySupportingFiles } from "@/db/schema";
 import { ensureCajaFileReader } from "@/integrations/google/treasury-readers";
 import { reportServerError } from "@/shared/logging/server-diagnostics";
 import { getCajaSession } from "@/modules/access/application/session";
@@ -53,7 +53,22 @@ export async function cajaDetail(id: string) {
     if (!record) return null;
     const [items, receipts, documents, batches, notes, activity, observations, supporting] = await Promise.all([
       db.select({ id: orderItems.id, title: sql<string>`coalesce(${orderItems.bookTitle}, ${books.title})`, code: sql<string>`coalesce(${orderItems.bookCode}, ${books.inventoryCode})`, basePrice: orderItems.baseUnitPrice, discountPercent: orderItems.discountPercent, price: orderItems.unitPrice, quantity: orderItems.quantity, subtotal: orderItems.subtotal }).from(orderItems).innerJoin(books, eq(books.id, orderItems.bookId)).where(and(eq(orderItems.orderId, record.request.orderId), eq(orderItems.publisherImprint, record.request.publisherImprint))).orderBy(asc(orderItems.id)),
-      db.select({ id: paymentReceipts.id, fileName: paymentReceipts.fileName, uploadedAt: paymentReceipts.uploadedAt, mimeType: paymentUploads.mimeType }).from(paymentReceipts).leftJoin(paymentUploads, eq(paymentReceipts.uploadId, paymentUploads.id)).where(and(eq(paymentReceipts.orderId, record.request.orderId), eq(paymentReceipts.publisherImprint, record.request.publisherImprint))).orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id)),
+      db.select({
+        id: paymentReceipts.id,
+        fileName: paymentReceipts.fileName,
+        uploadedAt: paymentReceipts.uploadedAt,
+        mimeType: paymentUploads.mimeType,
+        driveViewUrl: paymentReceipts.driveViewUrl,
+        driveReady: sql<boolean>`${driveFileReaderGrants.permissionId} IS NOT NULL`,
+      }).from(paymentReceipts)
+        .leftJoin(paymentUploads, eq(paymentReceipts.uploadId, paymentUploads.id))
+        .leftJoin(driveFileReaderGrants, and(
+          eq(driveFileReaderGrants.driveFileId, paymentReceipts.driveFileId),
+          eq(driveFileReaderGrants.email, actor.email),
+          eq(driveFileReaderGrants.requestId, id),
+        ))
+        .where(and(eq(paymentReceipts.orderId, record.request.orderId), eq(paymentReceipts.publisherImprint, record.request.publisherImprint)))
+        .orderBy(desc(paymentReceipts.uploadedAt), desc(paymentReceipts.id)),
       db.select({ id: saleDocuments.id, fileName: saleDocuments.fileName, mimeType: saleDocuments.mimeType, size: saleDocuments.size, driveFileId: saleDocuments.driveFileId, driveViewUrl: saleDocuments.driveViewUrl, cycle: saleDocuments.cycle, uploadedAt: saleDocuments.uploadedAt, actorEmail: saleDocuments.actorEmail }).from(saleDocuments).where(and(eq(saleDocuments.requestId, id), sql`${saleDocuments.uploadedAt} IS NOT NULL`)).orderBy(desc(saleDocuments.createdAt)),
       db.select({ ids: saleDocumentBatches.documentIds }).from(saleDocumentBatches).where(eq(saleDocumentBatches.orderId, record.request.orderId)),
       db.select().from(treasuryNotes).where(eq(treasuryNotes.requestId, id)).orderBy(desc(treasuryNotes.createdAt), desc(treasuryNotes.id)).limit(100),

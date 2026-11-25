@@ -28,7 +28,7 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
   const mine = request.assignedTo === actorId && !service;
   const version = request.updatedAt.toISOString();
   const openObservations = observations.filter((item) => !item.resolvedAt);
-  const fileLink = (file: { id: string; driveReady: boolean; driveViewUrl: string | null }) => file.driveReady ? file.driveViewUrl! : `/tesoreria-recaudacion/${request.id}/archivos/${file.id}`;
+  const fileLink = (file: { id: string; driveReady: boolean; driveViewUrl: string | null }) => file.driveReady && file.driveViewUrl ? file.driveViewUrl : `/tesoreria-recaudacion/${request.id}/archivos/${file.id}`;
   const draft = documents.find((item) => item.id === request.draftDocumentId);
   const draftXml = documents.find((item) => item.id === request.draftXmlDocumentId);
   const finalizedXml = documents.find((item) => item.id === request.finalizedXmlDocumentId);
@@ -76,7 +76,7 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
               <div className="flex min-w-0 items-start gap-3">
                 <FileText className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0">
-                  <a href={url} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-semibold leading-6 text-primary underline underline-offset-4">{file.fileName}<span className="sr-only"> (abre en Google Drive)</span></a>
+                  <a href={fileLink(file)} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-semibold leading-6 text-primary underline underline-offset-4">{file.fileName}<span className="sr-only"> (abre en Google Drive)</span></a>
                   <p className="text-xs leading-5 text-muted-foreground">{index === 0 ? "Último comprobante" : "Adjunto anterior"} · {dates.format(file.uploadedAt)}</p>
                 </div>
               </div>
@@ -100,7 +100,7 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
 
       <aside className="treasury-issue-column" aria-label="Emisión del documento">
         <section className="treasury-issue-panel" aria-label="Documento de venta">
-          <DetailCardHeading icon={ReceiptText} title="Documento de venta" description={closed || service ? "Archivos de la emisión." : "Adjunta el PDF y el XML originales para finalizar la emisión."} />
+          <DetailCardHeading icon={ReceiptText} title="Documento de venta" description="Documentación fiscal de esta solicitud." />
           <div className="treasury-issue-body">
           <div className="mb-5 flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3"><span className="text-xs font-medium text-muted-foreground">Importe a emitir</span><strong className="text-sm tabular-nums text-primary">{formatMoney(toCents(order.total))}</strong></div>
           {request.returnReason && request.status === "DEVUELTA" ? <div className="mb-4 rounded-lg bg-amber-50 p-4 text-xs leading-6"><strong>Documento devuelto por Fondo Editorial</strong><p>{request.returnReason}</p></div> : null}
