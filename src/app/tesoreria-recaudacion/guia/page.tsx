@@ -5,5 +5,5 @@ import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 export const metadata = { title: "Guía de Tesorería Recaudación" };
 export default async function TreasuryGuidePage() {
   const actor = await requireCajaAccess();
-  return <><WorkspacePageHeading eyebrow="Ayuda para Tesorería Recaudación" title="Guía de uso" description="Consulta el flujo de emisión, las correcciones y las responsabilidades de tu equipo." /><WorkflowGuide guide={treasuryGuide} service={actor.treasuryService} /></>;
+  return <><WorkspacePageHeading eyebrow="Ayuda para Tesorería Recaudación" title="Guía de uso" description="Consulta el flujo de emisión, las correcciones y las responsabilidades de tu equipo." /><WorkflowGuide treasury guide={treasuryGuide} service={actor.treasuryService} /></>;
 }

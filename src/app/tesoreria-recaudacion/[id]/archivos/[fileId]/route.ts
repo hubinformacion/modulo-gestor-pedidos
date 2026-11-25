@@ -54,14 +54,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         if (file.mimeType === "application/xml" && !download) return new Response(null, { status: 404, headers: responseHeaders });
         return serveFile(await saleDocumentBytes(file.driveId, file.hash, file.mimeType), file.mimeType, file.name, download);
       }
-      if (file.kind === "receipt") {
+      if (file.kind === "receipt" && !download) {
         const bytes = await readSmallDriveFile(file.driveId, maxReceiptBytes);
         const mime = receiptMimeType(bytes);
         if (!mime) return new Response(null, { status: 415, headers: responseHeaders });
         if (file.upload && (file.upload.mimeType !== mime || file.upload.size !== bytes.length || file.upload.contentHash !== createHash("sha256").update(bytes).digest("hex"))) {
           return new Response(null, { status: 409, headers: responseHeaders });
         }
-        return serveFile(bytes, mime, file.name, download);
+        return serveFile(bytes, mime, file.name, false);
       }
       return new Response(null, { status: 404, headers: responseHeaders });
     }

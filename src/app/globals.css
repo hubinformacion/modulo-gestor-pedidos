@@ -282,9 +282,12 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .detail-card-icon svg { width: 18px; height: 18px; stroke-width: 1.6; }
 .detail-card-heading :is(h2,h3) { font-size: 14px; font-weight: 650; }
 .detail-card-heading p { margin-top: 5px; font-size: 12px; line-height: 1.7; color: var(--muted-foreground); }
-.treasury-recipient, .purchase-detail, .treasury-payment { min-width: 0; overflow: hidden; border: 1px solid var(--workspace-line); border-radius: 14px; background: white; }
-.treasury-recipient-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border-bottom: 1px solid var(--workspace-line); padding: 18px 24px; }
-.treasury-recipient-heading h2 { font-size: 13px; font-weight: 650; }
+.treasury-recipient, .purchase-detail { min-width: 0; overflow: hidden; border: 1px solid var(--workspace-line); border-radius: 14px; background: white; }
+.treasury-recipient > .detail-card-heading,
+.treasury-issue-panel > .detail-card-heading { margin: 0; border-bottom: 1px solid var(--workspace-line); padding: 18px 24px; }
+.treasury-recipient > .detail-card-heading,
+.treasury-case-sheet > .detail-card-heading,
+.treasury-issue-panel > .detail-card-heading { flex-wrap: nowrap; align-items: flex-start; }
 .treasury-recipient-content { display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); }
 .treasury-billing-identity { padding: 26px 24px; }
 .treasury-field-label { font-size: 12px; font-weight: 500; color: var(--muted-foreground); }
@@ -298,7 +301,7 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .treasury-buyer-contact dl { display: grid; gap: 14px; }
 .treasury-buyer-contact dt { font-size: 12px; color: var(--muted-foreground); }
 .treasury-buyer-contact dd { margin-top: 4px; font-size: 12px; overflow-wrap: anywhere; line-height: 1.7; }
-.purchase-detail > .detail-card-heading, .treasury-payment > .detail-card-heading { padding: 22px 24px; margin: 0; }
+.purchase-detail > .detail-card-heading { padding: 22px 24px; margin: 0; }
 .purchase-detail-table thead { background: #faf9fc; border-block: 1px solid var(--workspace-line); color: var(--muted-foreground); }
 .purchase-detail-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 24px; padding: 22px 24px; }
 .purchase-detail-footer > p { font-size: 12px; color: var(--muted-foreground); }
@@ -308,17 +311,12 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .purchase-detail-footer dd { font-weight: 600; font-variant-numeric: tabular-nums; }
 .purchase-detail-footer dl > div:last-child { border-top: 1px solid #e7d9f2; padding-top: 14px; font-size: 15px; color: var(--primary); }
 .purchase-detail-footer dl > div:last-child dt { font-weight: 600; color: inherit; }
-.treasury-payment-list { padding-inline: 24px; }
-.treasury-payment-file { display: flex; align-items: flex-start; gap: 14px; padding-block: 16px; border-top: 1px solid var(--workspace-line); }
-.treasury-payment-file:last-child { padding-bottom: 24px; }
 .treasury-issue-column { min-width: 0; }
 .treasury-issue-panel { border: 1px solid #decaee; border-radius: 14px; background: white; overflow: hidden; }
-.treasury-issue-heading { border-bottom: 1px solid var(--workspace-line); padding: 24px; }
-.treasury-issue-heading h2 { font-size: 18px; font-weight: 650; letter-spacing: -.03em; }
 .treasury-issue-body { padding: 24px; }
 @media (min-width: 1280px) { .treasury-case-workspace { grid-template-columns: minmax(0,1fr) 352px; } .treasury-issue-column { position: sticky; top: 92px; } }
 @media (min-width: 1600px) { .treasury-case-workspace { grid-template-columns: minmax(0,1fr) 400px; } }
-@media (max-width: 639px) { .treasury-issue-heading, .treasury-issue-body, .treasury-billing-identity, .treasury-buyer-contact { padding: 20px; } .treasury-recipient-content { grid-template-columns: 1fr; } .treasury-buyer-contact { border-left: 0; border-top: 1px solid var(--workspace-line); } .treasury-recipient-heading, .purchase-detail > .detail-card-heading, .treasury-payment > .detail-card-heading, .purchase-detail-footer { padding: 18px 20px; } .treasury-payment-list { padding-inline: 20px; } .purchase-detail-footer dl { width: 100%; } }
+@media (max-width: 639px) { .treasury-issue-body, .treasury-billing-identity, .treasury-buyer-contact { padding: 20px; } .treasury-recipient-content { grid-template-columns: 1fr; } .treasury-buyer-contact { border-left: 0; border-top: 1px solid var(--workspace-line); } .treasury-recipient > .detail-card-heading, .treasury-issue-panel > .detail-card-heading, .purchase-detail > .detail-card-heading, .purchase-detail-footer { padding: 18px 20px; } .purchase-detail-footer dl { width: 100%; } }
 
 .login-surface { display: grid; min-height: min(820px, calc(100svh - 48px)); place-items: center; padding: 48px 20px; background: white; }
 .login-card { width: 100%; max-width: 440px; padding: 40px; border: 1px solid #e9e1f0; border-radius: 20px; background: white; box-shadow: 0 12px 48px -24px #3b14562b; }

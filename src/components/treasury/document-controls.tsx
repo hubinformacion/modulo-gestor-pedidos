@@ -23,8 +23,8 @@ export function SaleDocumentControls({ id, cycle, initialVersion, initialDocumen
   const busy = pdfBusy || xmlBusy || pending;
   const advanceVersion = (value: string) => setVersion((previous) => value > previous ? value : previous);
   return <div className="mt-4 space-y-4" data-treasury-upload-busy={busy ? "true" : undefined} data-order-editing={busy ? "true" : undefined}>
-    <section aria-label="PDF de la emisión">
-      <p className="mb-2 text-xs font-semibold">PDF de la boleta o factura</p>
+    <section aria-label="PDF original de la emisión">
+      <p className="mb-2 text-xs font-semibold">PDF original de la emisión</p>
       <DocumentPond id={id} cycle={cycle} format="pdf" disabled={pending} locked={xmlBusy} initialDocument={initialDocument} onBusy={setPdfBusy} onError={setPdfError}
         onRemoved={(value) => { setPdf(null); advanceVersion(value); }} onUploaded={(file) => { setPdf(file); advanceVersion(file.version); setError(""); }} />
       {pdf ? <PdfPreview requestId={id} documentId={pdf.id} name={pdf.name} /> : null}

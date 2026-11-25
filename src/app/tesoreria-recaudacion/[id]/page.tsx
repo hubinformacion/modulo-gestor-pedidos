@@ -14,6 +14,7 @@ import { SaleDocumentControls } from "@/components/treasury/document-controls";
 import { CajaAssignmentControls } from "@/components/treasury/assignment-controls";
 import { OrderLiveRefresh } from "@/components/orders/live-refresh";
 import { TreasuryComposer } from "@/components/treasury/composer";
+import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
 import { AuxiliaryPanels } from "@/components/workspace/auxiliary-panels";
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
 
@@ -50,8 +51,8 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
 
     <div className="treasury-case-workspace">
       <div className="min-w-0 space-y-5">
-        <section className="treasury-recipient" aria-labelledby="recipient-heading">
-          <div className="treasury-recipient-heading"><span className="detail-card-icon"><UserRound aria-hidden="true" /></span><h2 id="recipient-heading">Destinatario del comprobante</h2></div>
+        <section className="treasury-recipient" aria-label="Destinatario del comprobante">
+          <DetailCardHeading icon={UserRound} title="Destinatario del comprobante" description="Datos de facturación que se usarán para emitir el comprobante." />
           <div className="treasury-recipient-content">
             <div className="treasury-billing-identity">
               <p className="treasury-field-label">{order.billingRuc ? "Razón social" : "Nombre completo"}</p>
@@ -66,22 +67,16 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
         <PurchaseDetail items={items} subtotal={order.subtotal} shipping={order.shipping} total={order.total} totalLabel="Total a emitir" description="Publicaciones e importes de esta unidad de negocio." />
 
         <div className="treasury-review-columns">
-        <section className="treasury-payment" aria-labelledby="payment-heading">
-          <div className="detail-card-heading">
-            <span className="detail-card-icon"><CreditCard aria-hidden="true" /></span>
-            <div>
-              <h2 id="payment-heading">Comprobantes de pago</h2>
-              <p>Validación inicial de Fondo Editorial. {!closed ? "Tesorería Recaudación debe revisar el pago antes de emitir." : null}</p>
-            </div>
-          </div>
-          <ul className="treasury-payment-list">{receipts.map((file, index) => {
+        <section className="treasury-case-sheet p-5 sm:p-6" aria-label="Comprobantes de pago">
+          <DetailCardHeading icon={CreditCard} title="Comprobantes de pago" description="Validación inicial de Fondo Editorial." />
+          <ul className="divide-y divide-border border-t border-border">{receipts.map((file, index) => {
             const url = `/tesoreria-recaudacion/${request.id}/archivos/${file.id}`;
             const preview = `${url}?preview=1`;
-            return <li key={file.id} className="treasury-payment-file flex-col">
+            return <li key={file.id} className="space-y-3 py-4 last:pb-0">
               <div className="flex min-w-0 items-start gap-3">
                 <FileText className="mt-1 size-5 shrink-0 text-primary" aria-hidden="true" />
                 <div className="min-w-0">
-                  <p className="break-all text-xs font-semibold leading-6">{file.fileName}</p>
+                  <a href={url} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-semibold leading-6 text-primary underline underline-offset-4">{file.fileName}<span className="sr-only"> (abre en Google Drive)</span></a>
                   <p className="text-xs leading-5 text-muted-foreground">{index === 0 ? "Último comprobante" : "Adjunto anterior"} · {dates.format(file.uploadedAt)}</p>
                 </div>
               </div>
@@ -93,19 +88,20 @@ export default async function TreasuryRequestPage({ params }: { params: Promise<
                 ) : (
                   <iframe src={preview} title={`Vista previa de ${file.fileName}`} loading="lazy" className="mt-2 h-80 w-full rounded-md border border-border bg-white" referrerPolicy="no-referrer" />
                 )}
-                <a href={`${url}?download=1`} download className="mt-3 inline-block text-xs font-medium text-primary underline underline-offset-4">Descargar comprobante</a>
               </details>
             </li>;
           })}</ul>
-          {!receipts.length ? <p className="px-6 pb-6 text-xs leading-6 text-muted-foreground">No hay comprobantes disponibles para esta solicitud.</p> : null}
+          {!receipts.length ? <p className="text-xs leading-6 text-muted-foreground">No hay comprobantes disponibles para esta solicitud.</p> : null}
         </section>
 
-        <section id={`treasury-observations-${request.id}`} className="treasury-case-sheet scroll-mt-24 p-5 sm:p-6"><div className="detail-card-heading"><span className="detail-card-icon"><MessageSquareWarning aria-hidden="true" /></span><div><h2>Observaciones y correcciones</h2><p>Coordina los datos pendientes con Fondo Editorial.</p></div></div>{observations.length ? <ul className="my-4 space-y-3">{observations.map((item) => <li key={item.id} className={`rounded-xl border p-4 text-xs ${item.resolvedAt ? "border-border" : "border-amber-200 bg-amber-50"}`}><p className="font-semibold">{item.resolvedAt ? "Resuelta" : "Pendiente"}</p><p className="mt-2 whitespace-pre-wrap leading-6">{item.content}</p><p className="mt-2 text-xs text-muted-foreground">{item.actorName} · {dates.format(item.createdAt)}</p>{item.resolvedAt ? <div className="mt-3 border-t border-border pt-3"><p className="font-semibold">Respuesta de Fondo Editorial</p><p className="mt-1 whitespace-pre-wrap leading-6">{item.response}</p><p className="mt-1 text-xs text-muted-foreground">{item.resolvedBy} · {dates.format(item.resolvedAt)}</p></div> : null}</li>)}</ul> : <p className="mb-4 text-xs text-muted-foreground">Sin observaciones registradas.</p>}{mine && !closed ? <TreasuryComposer id={request.id} version={version} /> : null}{supporting.length ? <div className="mt-5 border-t border-border pt-5"><h3 className="text-xs font-semibold">Documentos de subsanación</h3><ul className="mt-3 space-y-3">{supporting.map((file) => <li key={file.id}><a href={`/tesoreria-recaudacion/${request.id}/archivos/${file.id}`} target="_blank" rel="noopener noreferrer" className="break-words text-xs text-primary underline">{file.fileName}</a></li>)}</ul></div> : null}</section>
+        <section id={`treasury-observations-${request.id}`} className="treasury-case-sheet scroll-mt-24 p-5 sm:p-6"><DetailCardHeading icon={MessageSquareWarning} title="Observaciones y correcciones" description="Coordina los datos pendientes con Fondo Editorial." />{observations.length ? <ul className="my-4 space-y-3">{observations.map((item) => <li key={item.id} className={`rounded-xl border p-4 text-xs ${item.resolvedAt ? "border-border" : "border-amber-200 bg-amber-50"}`}><p className="font-semibold">{item.resolvedAt ? "Resuelta" : "Pendiente"}</p><p className="mt-2 whitespace-pre-wrap leading-6">{item.content}</p><p className="mt-2 text-xs text-muted-foreground">{item.actorName} · {dates.format(item.createdAt)}</p>{item.resolvedAt ? <div className="mt-3 border-t border-border pt-3"><p className="font-semibold">Respuesta de Fondo Editorial</p><p className="mt-1 whitespace-pre-wrap leading-6">{item.response}</p><p className="mt-1 text-xs text-muted-foreground">{item.resolvedBy} · {dates.format(item.resolvedAt)}</p></div> : null}</li>)}</ul> : <p className="mb-4 text-xs text-muted-foreground">Sin observaciones registradas.</p>}{mine && !closed ? <TreasuryComposer id={request.id} version={version} /> : null}{supporting.length ? <div className="mt-5 border-t border-border pt-5"><h3 className="text-xs font-semibold">Documentos de subsanación</h3><ul className="mt-3 space-y-3">{supporting.map((file) => <li key={file.id}><a href={`/tesoreria-recaudacion/${request.id}/archivos/${file.id}`} target="_blank" rel="noopener noreferrer" className="break-words text-xs text-primary underline">{file.fileName}</a></li>)}</ul></div> : null}</section>
         </div>
       </div>
 
       <aside className="treasury-issue-column" aria-label="Emisión del documento">
-        <section className="treasury-issue-panel"><div className="treasury-issue-heading"><span className="detail-card-icon"><ReceiptText aria-hidden="true" /></span><p className="workspace-page-eyebrow mt-4">Documento de venta</p><h2>{closed || service ? "Documento de la solicitud" : `Emitir ${order.billingRuc ? "factura" : "boleta"}`}</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">{service ? "Consulta los datos y documentos de emisión. La atención corresponde al personal autorizado." : closed ? "Consulta los archivos de esta emisión." : "Revisa los datos y adjunta el PDF y el XML antes de finalizar."}</p></div><div className="treasury-issue-body">
+        <section className="treasury-issue-panel" aria-label="Documento de venta">
+          <DetailCardHeading icon={ReceiptText} title="Documento de venta" description={closed || service ? "Archivos de la emisión." : "Adjunta el PDF y el XML originales para finalizar la emisión."} />
+          <div className="treasury-issue-body">
           <div className="mb-5 flex items-center justify-between gap-3 rounded-lg bg-secondary/50 px-4 py-3"><span className="text-xs font-medium text-muted-foreground">Importe a emitir</span><strong className="text-sm tabular-nums text-primary">{formatMoney(toCents(order.total))}</strong></div>
           {request.returnReason && request.status === "DEVUELTA" ? <div className="mb-4 rounded-lg bg-amber-50 p-4 text-xs leading-6"><strong>Documento devuelto por Fondo Editorial</strong><p>{request.returnReason}</p></div> : null}
           {closed ? <div className="space-y-3"><p className="text-xs font-medium">{cajaLabels[request.status]}</p>{finalized ? <PdfPreview requestId={request.id} documentId={finalized.id} name={finalized.fileName} /> : null}{finalizedXml ? downloadXml(finalizedXml) : null}</div> : openObservations.length ? <p className="rounded-lg bg-amber-50 p-4 text-xs leading-6">Fondo Editorial debe resolver las observaciones antes de finalizar la emisión.</p> : mine ? <SaleDocumentControls key={`${request.cycle}:${version}`} id={request.id} cycle={request.cycle} initialVersion={version} initialDocument={toDraft(draft)} initialXml={toDraft(draftXml)} /> : <div className="space-y-3"><p className="text-xs leading-6 text-muted-foreground">{service ? "El buzón de servicio tiene acceso de consulta." : request.assignedTo ? "La solicitud está a cargo de otra persona. Puedes consultar sus documentos." : "Toma la atención para emitir el documento."}</p>{draft ? <PdfPreview requestId={request.id} documentId={draft.id} name={draft.fileName} /> : null}{draftXml ? downloadXml(draftXml) : null}</div>}
