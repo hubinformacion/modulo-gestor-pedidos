@@ -25,13 +25,11 @@ export const treasuryGuide = {
       title: "Tomar atención",
       treasury: "Abre la solicitud de tu unidad y pulsa Tomar atención. Si la atiende otra persona, registra el motivo del relevo.",
       editorial: "Verifica el pago. Esa validación abre una solicitud de emisión por cada sello.",
-      handoff: "to-treasury" as const,
     },
     {
       title: "Revisar la solicitud",
       treasury: "Compara el importe con el comprobante y verifica los datos de facturación. Si detectas un error, registra una observación y espera la respuesta antes de emitir.",
       editorial: "Si recibe una observación, coordina la corrección y responde desde Pagos, en el detalle del pedido. Con la respuesta, Tesorería vuelve a revisar los datos.",
-      handoff: "round-trip" as const,
     },
     {
       title: "Emitir y finalizar",
@@ -43,7 +41,6 @@ export const treasuryGuide = {
     title: "Si devuelven la emisión",
     treasury: "Lee el motivo, vuelve a tomar atención y regresa al paso 3 con el PDF y el XML corregidos. Los archivos anteriores quedan en el historial.",
     editorial: "Devuelve la emisión desde Pagos e indica el motivo de la corrección.",
-    handoff: "to-treasury" as const,
   },
   faq: [
     { question: "¿Quién recibe los correos de Tesorería Recaudación?", answer: "Los avisos se dirigen al buzón de servicio de la unidad con copia a Fondo Editorial. Las cuentas personales de Tesorería pueden atender desde la plataforma." },

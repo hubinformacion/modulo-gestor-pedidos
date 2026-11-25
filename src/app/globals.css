@@ -190,8 +190,15 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
 .workspace-quick-link:hover { background: var(--secondary); }
 .workspace-unit-badge { display: inline-flex; padding: 6px 10px; border: 1px solid #d6b4f0; border-radius: 7px; background: #e7d5f7; color: #52049a; font-size: 12px; font-weight: 700; }
 .workspace-unit-badge.is-instituto { border-color: #ffbdc2; background: #ffe7e9; color: #b5000a; }
-.treasury-guide-lanes { grid-template-columns: minmax(9.5rem, 1fr) minmax(0, 2.4fr) minmax(0, 1.8fr); }
-@media (min-width: 768px) { .treasury-guide-lanes:where(li) { display: grid; } }
+.treasury-swimlane { --lane-gap: clamp(1.75rem, 7vw, 4.5rem); position: relative; isolation: isolate; }
+.treasury-swimlane::before, .treasury-swimlane::after { content: ""; position: absolute; inset-block: 0; z-index: -1; width: calc((100% - var(--lane-gap)) / 2); border: 1px solid var(--workspace-line); border-radius: 12px; }
+.treasury-swimlane::before { left: 0; background: #faf8fc; }
+.treasury-swimlane::after { right: 0; background: #f6effc; }
+.treasury-swimlane-row { display: grid; grid-template-columns: minmax(0, 1fr) var(--lane-gap) minmax(0, 1fr); align-items: center; }
+.treasury-swimlane-node { min-width: 0; margin-inline: clamp(.375rem, 1.35vw, 1.25rem); }
+.treasury-swimlane-handoff { position: relative; display: grid; place-items: center; color: var(--primary); }
+.treasury-swimlane-handoff::before { content: ""; position: absolute; inset-inline: -.375rem; top: 50%; border-top: 1px solid currentColor; }
+.treasury-swimlane-handoff-conditional::before { border-top-style: dashed; }
 .workspace-guide-flow { border: 1px solid var(--workspace-line); border-radius: 14px; padding: 24px; background: #fdfbff; }
 .workspace-flow-nodes { display: grid; grid-template-columns: repeat(6, minmax(0,1fr)); gap: 20px; }
 .workspace-flow-nodes:has(> :last-child:nth-child(5)) { grid-template-columns: repeat(5, minmax(0,1fr)); }
