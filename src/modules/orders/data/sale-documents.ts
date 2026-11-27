@@ -10,10 +10,11 @@ import "server-only";
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 type Issuance = typeof orderSaleIssuances.$inferSelect;
 
+// Keep the subquery qualified when Drizzle renders a single-table projection.
 const activeAssignee = sql<boolean>`EXISTS (
-  SELECT 1 FROM ${user} JOIN ${authorizedEmails} ON ${authorizedEmails.email} = ${user.email}
-  WHERE ${user.id} = ${orders.assignedTo} AND ${user.emailVerified}
-    AND ${authorizedEmails.role} = 'gestor' AND ${user.email} <> ${MASTER_EMAIL}
+  SELECT 1 FROM ${user} AS assignee JOIN ${authorizedEmails} AS access ON access.email = assignee.email
+  WHERE assignee.id = ${sql.identifier("orders")}.${sql.identifier("assigned_to")} AND assignee.email_verified
+    AND access.role = 'gestor' AND assignee.email <> ${MASTER_EMAIL}
 )`;
 
 const issuedFile = and(
