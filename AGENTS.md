@@ -67,7 +67,7 @@ Para sintaxis/configuración/debug de librerías, SDK, API, CLI o servicios clou
 
 ## Archivos y Google
 
-- Una zona FilePond por sello (dos mixtos), múltiples PDF/JPG/PNG hasta 3 MiB; validación MIME/firma/tamaño y hash servidor, sin créditos/preview. Carga automática pasa ese sello a EN_REVISION. Al completar lote se oculta carga y queda acuse; vuelve para rechazo. No mostrar archivos/nombres al comprador.
+- Una zona FilePond por sello (dos mixtos), hasta ocho PDF/JPG/PNG de 3 MiB cada uno. Mostrar vista previa automática antes del envío, imágenes con Image Preview y orientación EXIF, y permitir reordenar la lista en una columna. La confirmación inicia la carga y el sello pasa a EN_REVISION. Al completar el lote, solo queda el acuse. Rechazar habilita una nueva carga. Validar MIME, firma, tamaño y hash en servidor.
 - Intentos durables con ID Drive reservado, reintento reutiliza. Google fuera de locks, try/catch y un reintento. Fallo mantiene selección; no revalidar ruta a mitad del lote ni interrumpir el otro sello. Botón de actualizar bloqueado durante edición/carga.
 - Evidencia opcional de entrega/recojo: JPG/PNG hasta 3 MiB, FilePond automático; conservar nombre físico pickup_evidence y API previa por compatibilidad. Solo asignado en DESPACHADO sube para ambas modalidades, sin cambiar estado/versión ni enviar correo. ID/hash/actor/fechas persistidos; una carga lista aparece tras recargar antes de cierre. Confirmar entrega recibe evidenceId, valida pertenencia/lista y asocia en transacción con estado/historial/aviso. Conserva autor original, sin bytes/Google desde cierre. Privada solo administración.
 - Carpeta Drive con lectores nominados de authorized_emails de rol gestor, sin permisos públicos. Antes de revocar, consultar el rol/origen vigente: eliminar solo readers directos, nunca owners/writers/organizadores/permisos heredados; tampoco registrar esos permisos como gestionados. drive_reader_grants conserva revocaciones pendientes; sincronizar al gestionar autorizados y cron, no cada render. Enlaces directos Drive para gestor, sin visor/proxy local.
@@ -135,9 +135,9 @@ Para sintaxis/configuración/debug de librerías, SDK, API, CLI o servicios clou
 ## Navegación lateral de los módulos internos
 
 - Fondo Editorial usa WorkspaceShell con perfil mínimo desde el layout autorizado. Inter, blanco y sidebar lila suave; público /pedido y /seguimiento conservan su diseño. No volver a introducir Top Navigation en estos módulos.
-- Sidebar 256px / plegado 80px desde 1024px; debajo, drawer modal Base UI con foco/Escape/retorno al disparador. Preferencia local fec:sidebar:v1 mediante useSyncExternalStore, sin cookies ni consultas nuevas. No desmontar children al plegar/abrir navegación; preservar formularios y FilePond.
+- Sidebar 248px / plegado 64px desde 1024px; debajo, drawer modal Base UI con foco/Escape/retorno al disparador. Preferencia local fec:sidebar:v1 mediante useSyncExternalStore, sin cookies ni consultas nuevas. No desmontar children al plegar/abrir navegación; preservar formularios y FilePond.
 - Nombre/foto proceden de Better Auth; AuthorizedActor.image nullable solo se añade a la identidad, sin migraciones ni nuevos scopes. El cliente recibe nombre, email, imagen y condición de consulta, sin identificadores de sesión o usuario. Foto HTTPS directa con no-referrer y fallback a iniciales; el correo sustituye nombres vacíos.
-- Marco con breadcrumb y cabecera sticky de 68px (60 móvil), ancho útil hasta1600px. CSS workspace aislado; skeletons internos reflejan encabezados, filtros y paneles actuales. Mantener orden Pedidos → Reporte → Inventario → Promociones → Cupones → Configuración.
+- Cabecera sticky de 60px con breadcrumb y ancho útil hasta1600px. Operación agrupa Pedidos y Reporte. Catálogo agrupa Inventario, Promociones y Cupones. Configuración y Guía de uso aparecen al pie. El menú de la ruta activa se abre al navegar y el panel móvil conserva los mismos enlaces. CSS workspace aislado del flujo público.
 
 
 - La Guía de uso de Fondo Editorial mantiene nodos seleccionables con teclado, panel de acción/resultado/excepción y FAQ. Emisión documental independiente de logística.

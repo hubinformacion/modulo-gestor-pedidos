@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { finalizeSaleAction, reviseSaleAction } from "@/app/admin/sale-document-actions";
 import { notifyAction } from "@/components/feedback/notify-action";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import type { DraftSaleFile } from "@/components/orders/sale-document-pond";
 import { Button } from "@/components/ui/button";
 import { finalizeSaleSchema, reviseSaleSchema } from "@/modules/orders/domain/sale-documents";
@@ -13,8 +14,9 @@ const DocumentPond = dynamic(() => import("@/components/orders/sale-document-pon
   loading: () => <p className="text-xs text-muted-foreground">Cargando área de archivos…</p>,
 });
 
-export function SaleDocumentControls({ id, cycle, initialVersion, initialDocument, initialXml }: {
+export function SaleDocumentControls({ id, orderId, cycle, initialVersion, initialDocument, initialXml }: {
   id: string;
+  orderId: string;
   cycle: number;
   initialVersion: string;
   initialDocument: DraftSaleFile | null;
@@ -55,7 +57,10 @@ export function SaleDocumentControls({ id, cycle, initialVersion, initialDocumen
         <p className="mb-2 text-xs font-semibold">PDF</p>
         <DocumentPond id={id} cycle={cycle} format="pdf" disabled={pending} locked={xmlBusy} initialDocument={initialDocument} onBusy={setPdfBusy} onError={setPdfError}
           onRemoved={(value) => { setPdf(null); advanceVersion(value); }} onUploaded={(file) => { setPdf(file); advanceVersion(file.version); setError(""); }} />
-        {pdf ? <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary underline underline-offset-4">Revisar PDF en Drive</a> : null}
+        {pdf ? <>
+          <AttachmentPreview kind="documento" orderId={orderId} fileId={pdf.id} name={pdf.name} mimeType="application/pdf" />
+          <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-medium text-primary underline underline-offset-4">Abrir PDF en Drive</a>
+        </> : null}
         {pdfError ? <p role="alert" className="mt-2 text-xs text-destructive">{pdfError}</p> : null}
       </section>
       <section aria-label="XML de la emisión" className="min-w-0">

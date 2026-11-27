@@ -8,6 +8,7 @@ import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { AuxiliaryPanels } from "@/components/workspace/auxiliary-panels";
 import { CancelOrderControls } from "@/components/orders/cancel-order-controls";
 import { AdminSaleDocuments } from "@/components/orders/sale-documents";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -84,7 +85,16 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         const amount = imprint === "universidad" ? order.totalUniversidad : order.totalInstituto;
         const files = receipts.filter((file) => file.publisherImprint === imprint);
         const reason = imprint === "universidad" ? order.rejectionUniversidad : order.rejectionInstituto;
-        const receiptLink = (file: (typeof files)[number], latest: boolean) => <li key={file.id} className="flex items-start gap-2 rounded-md bg-muted/30 p-2.5"><FileText className="mt-1 size-4 shrink-0 text-primary" /><div className="min-w-0"><a href={file.driveViewUrl} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-primary underline underline-offset-4">{file.fileName}</a><p className="mt-1 text-xs leading-5 text-muted-foreground">{dateFormat.format(file.uploadedAt)}{latest ? " · Más reciente" : ""}</p></div></li>;
+        const receiptLink = (file: (typeof files)[number], latest: boolean) => <li key={file.id} className="min-w-0 rounded-md bg-muted/30 p-2.5">
+          <div className="flex items-start gap-2">
+            <FileText aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />
+            <div className="min-w-0">
+              <a href={file.driveViewUrl} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-primary underline underline-offset-4">{file.fileName}</a>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">{dateFormat.format(file.uploadedAt)}{latest ? " · Más reciente" : ""}</p>
+            </div>
+          </div>
+          <AttachmentPreview kind="comprobante" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
+        </li>;
         return <section key={imprint} className="rounded-lg border border-border p-4"><DetailCardHeading icon={CreditCard} title="Comprobante de pago" aside={<StatusBadge status={status} />} /><ImprintBadge imprint={imprint} /><div className="my-3 flex items-baseline justify-between border-b border-border pb-3"><span className="text-xs text-muted-foreground">Importe a verificar</span><strong className="text-xl font-semibold tabular-nums">{formatMoney(toCents(amount))}</strong></div>
           {files[0] ? <><ul>{receiptLink(files[0], true)}</ul>{files.length > 1 ? <details className="mt-2"><summary className="cursor-pointer text-xs font-medium text-muted-foreground">Otros comprobantes ({files.length - 1})</summary><ul className="mt-2 space-y-2">{files.slice(1).map((file) => receiptLink(file, false))}</ul></details> : null}</> : <p className="rounded-md bg-muted/20 p-3 text-xs leading-6 text-muted-foreground">Sin comprobante adjunto.</p>}
           {reason ? <p className="mt-3 rounded-md bg-red-50 p-3 text-xs leading-6 text-red-700">Motivo: {reason}</p> : null}
@@ -103,7 +113,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       {order.deliveredAt ? <div className="rounded-md bg-emerald-50 p-3 text-emerald-800"><dt>Entrega confirmada</dt><dd className="mt-1 font-medium">{dateFormat.format(order.deliveredAt)}</dd></div> : null}
       </dl>{order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-semibold text-primary underline">Consultar envío ↗</a> : null}
       {mine && order.orderStatus === "DESPACHADO" ? <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null} delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} /> : !closed && order.orderStatus !== "DESPACHADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Pendiente de registrar salida o disponibilidad.</p> : null}
-      {evidence.length ? <div className="mt-3 border-t border-border pt-3"><h4 className="text-xs font-semibold">{order.deliveryType === "delivery" ? "Evidencia de entrega del courier" : "Evidencia del recojo"}</h4>{evidence.map((file) => <div key={file.id} className="mt-2"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-xs font-medium text-primary underline">{file.fileName}</a><p className="mt-1 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p></div>)}</div> : null}
+      {evidence.length ? <div className="mt-3 border-t border-border pt-3"><h4 className="text-xs font-semibold">{order.deliveryType === "delivery" ? "Evidencia de entrega del courier" : "Evidencia del recojo"}</h4>{evidence.map((file) => <div key={file.id} className="mt-2"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-xs font-medium text-primary underline">{file.fileName}</a><p className="mt-1 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>{!(mine && order.orderStatus === "DESPACHADO" && file.id === evidence[0]?.id) ? <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} /> : null}</div>)}</div> : null}
       {order.orderStatus === "CANCELADO" ? <p className="mt-3 text-xs text-muted-foreground">Este pedido está cancelado.{order.cancellationReason ? ` Motivo: ${order.cancellationReason}` : ""}</p> : null}
       </section></div>
     </div>,

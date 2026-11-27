@@ -1,11 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { FilePond, registerPlugin } from "react-filepond";
-import FileValidateType from "filepond-plugin-file-validate-type";
-import FileValidateSize from "filepond-plugin-file-validate-size";
+import { FilePond } from "@/components/orders/filepond";
 import { removeSaleDraftAction, uploadSaleAction } from "@/app/admin/sale-document-actions";
 import { saleFileSchema, uploadSaleSchema, type SaleFormat } from "@/modules/orders/domain/sale-documents";
-registerPlugin(FileValidateType, FileValidateSize);
 export type DraftSaleFile = { id: string; name: string; size: number; url: string };
 export default function DocumentPond({ id, cycle, format, disabled, locked, initialDocument, onUploaded, onRemoved, onBusy, onError }: {
   id: string;

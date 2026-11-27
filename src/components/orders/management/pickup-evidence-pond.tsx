@@ -1,20 +1,21 @@
 "use client";
 import { useState } from "react";
-import { FilePond, registerPlugin } from "react-filepond";
-import FileValidateType from "filepond-plugin-file-validate-type";
-import FileValidateSize from "filepond-plugin-file-validate-size";
+import { FilePond } from "@/components/orders/filepond";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import { CheckCircle2 } from "lucide-react";
 import { pickupImageSchema, pickupUploadSchema } from "@/modules/orders/domain/management";
 import { uploadPickupEvidenceAction } from "@/app/admin/operations";
-registerPlugin(FileValidateType, FileValidateSize);
 
 export default function PickupEvidencePond({ id, version, disabled, existingEvidenceId, onUploaded, onBusyChange, onErrorChange }: {
   id: string; version: string; disabled: boolean; existingEvidenceId: string | null;
   onUploaded: (id: string) => void; onBusyChange: (busy: boolean) => void; onErrorChange: (error: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
-  if (existingEvidenceId) return <p role="status" className="flex items-center gap-2 text-xs text-emerald-700"><CheckCircle2 className="size-4" />Imagen adjunta.</p>;
-  return <><FilePond name="pickup-evidence" credits={false} disabled={disabled} allowMultiple={false} maxFiles={1} instantUpload allowRevert={false} allowRemove={!uploading}
+  if (existingEvidenceId) return <>
+    <p role="status" className="flex items-center gap-2 text-xs text-emerald-700"><CheckCircle2 aria-hidden="true" className="size-4" />Imagen adjunta.</p>
+    <AttachmentPreview kind="evidencia" orderId={id} fileId={existingEvidenceId} name="la evidencia de entrega" />
+  </>;
+  return <><FilePond name="pickup-evidence" credits={false} disabled={disabled} allowMultiple={false} maxFiles={1} instantUpload allowRevert={false} allowRemove={!uploading} imagePreviewMaxHeight={288}
     acceptedFileTypes={["image/jpeg", "image/png"]} maxFileSize="3MB"
     labelIdle='Arrastra la foto o <span class="filepond--label-action">selecciona una imagen</span>'
     labelFileTypeNotAllowed="Usa JPG o PNG" fileValidateTypeLabelExpectedTypes="Formatos permitidos: JPG y PNG"

@@ -1,6 +1,7 @@
 import "server-only";
 import { ReceiptText } from "lucide-react";
 import { ImprintBadge } from "@/components/catalog/imprint-badge";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import { ReviseSaleControls, SaleDocumentControls } from "@/components/orders/sale-document-controls";
 import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
 import type { AuthorizedActor } from "@/modules/access/domain/policy";
@@ -36,14 +37,18 @@ export async function AdminSaleDocuments({ orderId, actor, invoice }: { orderId:
             <ul className="mt-3 space-y-2">
               {issued.map((file) => <li key={file.id}>
                 <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-primary underline underline-offset-4">{file.fileName}</a>
+                <AttachmentPreview kind="documento" orderId={orderId} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
               </li>)}
             </ul>
             {issuance.finalizedAt ? <p className="mt-2 text-xs text-muted-foreground">Publicado {dates.format(issuance.finalizedAt)} · {issuance.finalizedBy}</p> : null}
           </> : null}
           {issuance.status === "DEVUELTA" && issuance.returnReason ? <p className="mt-3 whitespace-pre-wrap break-words rounded-md bg-amber-50 p-3 text-xs leading-6 text-amber-900">{issuance.returnReason}</p> : null}
-          {canEdit && !closed ? <SaleDocumentControls key={version} id={issuance.id} cycle={issuance.cycle} initialVersion={version} initialDocument={initialFile(issuance.draftDocumentId)} initialXml={initialFile(issuance.draftXmlDocumentId)} /> : null}
+          {canEdit && !closed ? <SaleDocumentControls key={version} id={issuance.id} orderId={orderId} cycle={issuance.cycle} initialVersion={version} initialDocument={initialFile(issuance.draftDocumentId)} initialXml={initialFile(issuance.draftXmlDocumentId)} /> : null}
           {!canEdit && !closed ? <div className="mt-3 space-y-2">
-            {files.filter((file) => draftIds.includes(file.id)).map((file) => <p key={file.id} className="break-words text-xs"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">{file.fileName}</a> · Borrador</p>)}
+            {files.filter((file) => draftIds.includes(file.id)).map((file) => <div key={file.id}>
+              <p className="break-words text-xs"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">{file.fileName}</a> · Borrador</p>
+              <AttachmentPreview kind="documento" orderId={orderId} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
+            </div>)}
             <p className="text-xs text-muted-foreground">La carga está a cargo del gestor responsable.</p>
           </div> : null}
           {canEdit && issuance.status === "FINALIZADA" ? <ReviseSaleControls id={issuance.id} version={version} /> : null}
@@ -53,6 +58,7 @@ export async function AdminSaleDocuments({ orderId, actor, invoice }: { orderId:
               {history.map((file) => <li key={file.id}>
                 <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-words text-xs text-primary underline underline-offset-4">{file.fileName}</a>
                 <p className="text-xs text-muted-foreground">{dates.format(file.uploadedAt!)}</p>
+                <AttachmentPreview kind="documento" orderId={orderId} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
               </li>)}
             </ul>
           </details> : null}
