@@ -32,10 +32,7 @@ export type AuthorizedActor = {
   email: string;
   name: string;
   image: string | null;
-  role: "gestor" | "caja";
-  publisherImprint: "universidad" | "instituto" | null;
-  publisherImprints: ("universidad" | "instituto")[];
-  treasuryService: boolean;
+  role: "gestor";
 };
 
 export type AccessActionResult = {
@@ -43,7 +40,6 @@ export type AccessActionResult = {
   message: string;
 };
 
-// Shared mailboxes identify a service, not the person attending a case.
-export function canAttendOrders(actor: Pick<AuthorizedActor, "role" | "email" | "treasuryService">): boolean {
-  return actor.role === "gestor" && !isMasterEmail(actor.email) && !actor.treasuryService;
+export function canAttendOrders(actor: Pick<AuthorizedActor, "email">): boolean {
+  return !isMasterEmail(actor.email);
 }

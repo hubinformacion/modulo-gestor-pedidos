@@ -6,8 +6,7 @@ import { SecuritySettings } from "@/components/settings/security-settings";
 import { admissionPolicySchema } from "@/modules/orders/domain/admission-policy";
 import { WorkspacePageHeading } from "@/components/workspace/page-heading";
 import type { Metadata } from "next";
-import { treasuryScopes } from "@/modules/treasury/domain/scope";
-import { CajaSettings } from "@/components/settings/treasury-settings";
+import { TreasuryMailboxes } from "@/components/settings/treasury-settings";
 import { asc, desc } from "drizzle-orm";
 import { withDatabase, withReadDatabase } from "@/db";
 import { authorizedEmails, bankAccounts, campuses, treasuryMailboxes, orderAdmissionPolicy, managementAudit, pickupContacts, deliveryRates } from "@/db/schema";
@@ -58,7 +57,7 @@ export default async function AuthorizedEmailsPage() {
       <h2 id="emails-title" className="text-lg font-semibold tracking-tight">Correos autorizados</h2>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Controla quién puede ingresar al sistema. Cada persona utiliza su propia cuenta de Google.</p>
       <AuthorizedEmailsPanel canManage={isMasterEmail(actor.email)} rows={rows.filter((row) => row.role === "gestor").map((row) => ({ email: row.email, addedBy: row.addedBy, createdAt: dateFormat.format(row.createdAt) }))} />
-      </section>} caja={<section><h2 className="text-lg font-semibold tracking-tight">Tesorería Recaudación</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Configura los buzones de servicio y los accesos personales a una o ambas unidades de negocio. Ingresa desde /tesoreria-recaudacion con Google.</p><CajaSettings canManage={isMasterEmail(actor.email)} mailboxes={mailboxRows.map((row) => ({ imprint: row.publisherImprint, email: row.email }))} rows={rows.filter((row) => row.role === "caja").map((row) => ({ email: row.email, imprints: treasuryScopes(row), service: row.treasuryService }))} /></section>} campuses={<section aria-labelledby="campuses-title">
+      </section>} treasury={<section><h2 className="text-lg font-semibold tracking-tight">Buzones de Tesorería</h2><p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Estos buzones reciben el voucher y los datos de emisión al verificar un pago. Configurar un destinatario no concede acceso al Gestor.</p><TreasuryMailboxes canManage={isMasterEmail(actor.email)} mailboxes={mailboxRows.map((row) => ({ imprint: row.publisherImprint, email: row.email }))} /></section>} campuses={<section aria-labelledby="campuses-title">
         <h2 id="campuses-title" className="text-lg font-semibold tracking-tight">Campus y bibliotecas</h2>
         <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">Gestiona las sedes y sus lugares de recojo. Puedes ajustar la ubicación exacta del mapa y desactivar campus temporalmente.</p>
         <CampusesPanel rows={campusRows.map((row) => ({ id: row.id, name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, pickupHours: row.pickupHours, latitude: row.latitude ?? "", longitude: row.longitude ?? "", googleMapsEmbedUrl: row.googleMapsEmbedUrl ?? "", status: row.status }))} />

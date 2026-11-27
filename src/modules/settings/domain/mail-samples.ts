@@ -11,10 +11,6 @@ export const mailSampleOptions = {
   ANULADO: "Pedido anulado por gestor",
   DOCUMENTOS_VENTA: "Boleta / factura",
   DOCUMENTOS_CORREGIDOS: "Documentos corregidos",
-  CAJA_SOLICITUD: "Tesorería · solicitud de emisión",
-  CAJA_FINALIZADA: "Tesorería · documento finalizado",
-  CAJA_DEVUELTA: "Tesorería · corrección requerida",
-  CAJA_ANULADA: "Tesorería · solicitud anulada",
   APOYO_RECOJO: "Apoyo para recojo",
 } as const;
 

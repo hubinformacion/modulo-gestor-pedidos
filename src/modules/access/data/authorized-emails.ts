@@ -1,21 +1,20 @@
 import type { Database } from "@/db";
-import { authorizedEmails, orderActivity, orders, session, user } from "@/db/schema";
-import { accessSnapshot, writeManagementAudit } from "@/modules/access/data/management-audit";
+import { authorizedEmails, orderActivity, orders, session, treasuryMailboxes, user } from "@/db/schema";
+import { writeManagementAudit } from "@/modules/access/data/management-audit";
 import {
   AccessError, authorizedEmailSchema, isMasterEmail, MASTER_EMAIL,
   type AccessActionResult,
   type AuthorizedActor,
 } from "@/modules/access/domain/policy";
-import { releaseCajaAssignments } from "@/modules/treasury/data/release-assignments";
 import { and, eq, gt, inArray, notInArray } from "drizzle-orm";
 import "server-only";
 
 type Transaction = Parameters<Parameters<Database["transaction"]>[0]>[0];
 
-async function assertCurrentMaster(tx: Transaction, actor: AuthorizedActor) {
+export async function assertCurrentMaster(tx: Transaction, actor: AuthorizedActor) {
   if (!isMasterEmail(actor.email)) throw new AccessError("FORBIDDEN");
   const [allowed] = await tx.select().from(authorizedEmails)
-    .where(eq(authorizedEmails.email, MASTER_EMAIL)).for("share");
+    .where(eq(authorizedEmails.email, MASTER_EMAIL)).for("update");
   if (!allowed || allowed.role !== "gestor") throw new AccessError("FORBIDDEN");
   const [validSession] = await tx.select({ id: session.id }).from(session)
     .innerJoin(user, eq(user.id, session.userId))
@@ -35,9 +34,11 @@ export async function addAuthorizedEmail(db: Database, actor: AuthorizedActor, i
   if (!email.success) return { success: false, message: "Ingresa un correo válido." };
   return db.transaction(async (tx) => {
     await assertCurrentMaster(tx, actor);
+    const [mailbox] = await tx.select({ email: treasuryMailboxes.email }).from(treasuryMailboxes).where(eq(treasuryMailboxes.email, email.data)).limit(1);
+    if (mailbox) return { success: false, message: "Este correo está configurado como destinatario de Tesorería." };
     const inserted = await tx.insert(authorizedEmails).values({ email: email.data, addedBy: actor.email })
       .onConflictDoNothing().returning({ email: authorizedEmails.email });
-    if (inserted.length) await writeManagementAudit(tx, actor, "ACCESS_CREATED", "access", email.data, { previous: null, next: { role: "gestor", units: [], service: false } });
+    if (inserted.length) await writeManagementAudit(tx, actor, "ACCESS_CREATED", "access", email.data, { previous: null, next: { role: "gestor" } });
     return inserted.length
       ? { success: true, message: "Correo autorizado correctamente." }
       : { success: false, message: "Este correo ya está autorizado." };
@@ -56,10 +57,9 @@ export async function removeAuthorizedEmail(db: Database, actor: AuthorizedActor
     const deleted = await tx.delete(authorizedEmails).where(and(eq(authorizedEmails.email, email.data), eq(authorizedEmails.role, "gestor")))
       .returning();
     if (!deleted.length) return { success: false, message: "El correo ya no está autorizado." };
-    await writeManagementAudit(tx, actor, "ACCESS_REVOKED", "access", email.data, { previous: accessSnapshot(deleted[0]), next: null });
+    await writeManagementAudit(tx, actor, "ACCESS_REVOKED", "access", email.data, { previous: { role: deleted[0].role }, next: null });
     const owners = await tx.select({ id: user.id }).from(user).where(eq(user.email, email.data));
     if (owners.length) {
-      await releaseCajaAssignments(tx, owners.map((owner) => owner.id), actor);
       const released = await tx.update(orders).set({ assignedTo: null, assignedName: null, assignedAt: null }).where(and(inArray(orders.assignedTo, owners.map((owner) => owner.id)), notInArray(orders.orderStatus, ["ENTREGADO", "CANCELADO"]))).returning({ id: orders.id });
       if (released.length) await tx.insert(orderActivity).values(released.map((order) => ({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: "LIBERADO", detail: "El pedido está disponible para un gestor del equipo." })));
       await tx.delete(session).where(inArray(session.userId, owners.map((owner) => owner.id)));

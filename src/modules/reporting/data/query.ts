@@ -31,8 +31,8 @@ export function dashboardQuery(filters: DashboardFilters) {
         coalesce(sum(scoped_total) FILTER (WHERE order_status <> 'CANCELADO'), 0) * 100 AS requested,
         coalesce(sum(verified_total) FILTER (WHERE order_status <> 'CANCELADO'), 0) * 100 AS verified
       FROM cohort GROUP BY 1
-    ), cash_cohort AS (
-      SELECT r.* FROM caja_requests r INNER JOIN cohort c ON c.id = r.order_id
+    ), issuance_cohort AS (
+      SELECT r.* FROM order_sale_issuances r INNER JOIN cohort c ON c.id = r.order_id
         WHERE c.order_status <> 'CANCELADO' AND (${filters.imprint} = '' OR r.publisher_imprint::text = ${filters.imprint})
     )
     SELECT json_build_object(
@@ -47,7 +47,7 @@ export function dashboardQuery(filters: DashboardFilters) {
         'assignment', (SELECT json_build_object('hours', percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (a.at - c.created_at)) / 3600), 'sample', count(*)) FROM cohort c INNER JOIN first_attention a ON a.order_id = c.id WHERE c.order_status <> 'CANCELADO' AND a.at >= c.created_at),
         'dispatch', (SELECT json_build_object('hours', percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (dispatched_at - created_at)) / 3600), 'sample', count(*)) FROM cohort WHERE order_status <> 'CANCELADO' AND dispatched_at >= created_at),
         'delivery', (SELECT json_build_object('hours', percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (delivered_at - created_at)) / 3600), 'sample', count(*)) FROM cohort WHERE order_status = 'ENTREGADO' AND delivered_at >= created_at),
-        'emission', (SELECT json_build_object('hours', percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (finalized_at - created_at)) / 3600), 'sample', count(*)) FROM cash_cohort WHERE status = 'FINALIZADA' AND finalized_at >= created_at)
+        'emission', (SELECT json_build_object('hours', percentile_cont(0.5) WITHIN GROUP (ORDER BY extract(epoch FROM (finalized_at - created_at)) / 3600), 'sample', count(*)) FROM issuance_cohort WHERE status = 'FINALIZADA' AND finalized_at >= created_at)
       ),
       'trend', (SELECT coalesce(json_agg(json_build_object('day', d.day::text, 'count', coalesce(a.count, 0), 'requestedCents', coalesce(a.requested, 0), 'verifiedCents', coalesce(a.verified, 0)) ORDER BY d.day), '[]'::json)
         FROM (SELECT generate_series(${filters.from}::date::timestamp, ${filters.to}::date::timestamp, interval '1 day')::date AS day) d LEFT JOIN daily a USING (day)),
@@ -56,7 +56,7 @@ export function dashboardQuery(filters: DashboardFilters) {
         'waiting', count(*) FILTER (WHERE order_status = 'PENDIENTE_PAGO' AND payment_status_universidad <> 'EN_REVISION' AND payment_status_instituto <> 'EN_REVISION'),
         'review', count(*) FILTER (WHERE order_status = 'PENDIENTE_PAGO' AND (payment_status_universidad = 'EN_REVISION' OR payment_status_instituto = 'EN_REVISION')),
         'distribution', count(*) FILTER (WHERE order_status = 'EN_PREPARACION'), 'dispatched', count(*) FILTER (WHERE order_status = 'DESPACHADO'),
-        'cashPending', (SELECT count(*) FROM caja_requests r INNER JOIN scoped l ON l.id = r.order_id WHERE l.order_status <> 'CANCELADO' AND r.status IN ('PENDIENTE', 'DEVUELTA') AND (${filters.imprint} = '' OR r.publisher_imprint::text = ${filters.imprint}))
+        'issuancePending', (SELECT count(*) FROM order_sale_issuances r INNER JOIN scoped l ON l.id = r.order_id WHERE l.order_status <> 'CANCELADO' AND r.status IN ('PENDIENTE', 'DEVUELTA') AND (${filters.imprint} = '' OR r.publisher_imprint::text = ${filters.imprint}))
       ) FROM live),
       'stock', (SELECT json_build_object('units', coalesce(sum(stock), 0), 'titles', count(*), 'exhausted', count(*) FILTER (WHERE stock = 0), 'low', count(*) FILTER (WHERE stock BETWEEN 1 AND 5),
         'alerts', (SELECT coalesce(json_agg(json_build_object('id', id, 'title', title, 'imprint', publisher_imprint, 'stock', stock) ORDER BY stock, title), '[]'::json) FROM (SELECT * FROM inventory WHERE stock <= 5 ORDER BY stock, title, id LIMIT 8) b)) FROM inventory),
@@ -68,7 +68,7 @@ export function dashboardQuery(filters: DashboardFilters) {
         SELECT c.assigned_to AS id, coalesce(max(c.assigned_name), 'Sin asignar') AS name, count(*) FILTER (WHERE c.created_at >= (${filters.from}::date::timestamp AT TIME ZONE 'America/Lima') AND c.created_at < ((${filters.to}::date + 1)::timestamp AT TIME ZONE 'America/Lima')) AS count, count(*) FILTER (WHERE c.order_status = 'ENTREGADO' AND c.created_at >= (${filters.from}::date::timestamp AT TIME ZONE 'America/Lima') AND c.created_at < ((${filters.to}::date + 1)::timestamp AT TIME ZONE 'America/Lima')) AS delivered,
           (SELECT count(*) FROM live l WHERE l.assigned_to IS NOT DISTINCT FROM c.assigned_to) AS open
         FROM scoped c GROUP BY c.assigned_to) m WHERE m.count > 0 OR m.open > 0),
-      'cash', (SELECT json_build_object('completed', count(*) FILTER (WHERE status = 'FINALIZADA'), 'pending', count(*) FILTER (WHERE status IN ('PENDIENTE', 'DEVUELTA'))) FROM cash_cohort)
+      'issuances', (SELECT json_build_object('completed', count(*) FILTER (WHERE status = 'FINALIZADA'), 'pending', count(*) FILTER (WHERE status IN ('PENDIENTE', 'DEVUELTA'))) FROM issuance_cohort)
     )
   )`;
 }

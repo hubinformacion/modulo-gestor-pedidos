@@ -1,38 +1,63 @@
 import "server-only";
-import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
-import { ResolveTreasuryObservation, TreasurySupportingUpload } from "@/components/treasury/observations-fe";
-import { previousSaleDocuments } from "@/modules/treasury/domain/document-history";
-import { BillingBadge } from "@/components/treasury/billing-badge";
-import { headers } from "next/headers";
-import { and, desc, eq, sql } from "drizzle-orm";
-import { withDatabase, withReadDatabase } from "@/db";
-import { cajaRequests, saleDocumentBatches, saleDocuments, treasuryObservations, treasurySupportingFiles, orders } from "@/db/schema";
-import { getAuthorizedSession } from "@/modules/access/application/session";
-import { ImprintBadge } from "@/components/catalog/imprint-badge";
-import { cajaLabels } from "@/modules/treasury/domain/documents";
-import { ReturnSaleControls } from "@/components/treasury/return-controls";
 import { ReceiptText } from "lucide-react";
+import { ImprintBadge } from "@/components/catalog/imprint-badge";
+import { ReviseSaleControls, SaleDocumentControls } from "@/components/orders/sale-document-controls";
+import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
+import type { AuthorizedActor } from "@/modules/access/domain/policy";
+import { adminSaleDocuments } from "@/modules/orders/data/sale-documents";
+import { previousSaleDocuments } from "@/modules/orders/domain/sale-document-history";
+import { saleIssuanceLabels } from "@/modules/orders/domain/sale-documents";
+
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
-export async function AdminSaleDocuments({ orderId, canReturn, invoice }: { orderId: string; canReturn: boolean; invoice: boolean }) {
-  const requestHeaders = await headers(); await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
-  const { requests, documents, batches, observations, supporting, order } = await withReadDatabase(async (db) => {
-    const requests = await db.select().from(cajaRequests).where(eq(cajaRequests.orderId, orderId));
-    const documents = await db.select({ document: saleDocuments, requestId: cajaRequests.id }).from(saleDocuments).innerJoin(cajaRequests, eq(saleDocuments.requestId, cajaRequests.id)).where(and(eq(cajaRequests.orderId, orderId), sql`${saleDocuments.uploadedAt} IS NOT NULL`)).orderBy(desc(saleDocuments.createdAt));
-    const batches = await db.select({ ids: saleDocumentBatches.documentIds }).from(saleDocumentBatches).where(eq(saleDocumentBatches.orderId, orderId));
-    const [order] = await db.select().from(orders).where(eq(orders.id, orderId));
-    const observations = requests.length ? await db.select().from(treasuryObservations).where(sql`${treasuryObservations.requestId} IN (SELECT id FROM ${cajaRequests} WHERE order_id = ${orderId})`).orderBy(treasuryObservations.createdAt) : [];
-    const supporting = requests.length ? await db.select().from(treasurySupportingFiles).where(sql`${treasurySupportingFiles.requestId} IN (SELECT id FROM ${cajaRequests} WHERE order_id = ${orderId}) AND ${treasurySupportingFiles.uploadedAt} IS NOT NULL`) : [];
-    return { requests, documents, batches, observations, supporting, order };
-  });
-  return <section className="rounded-xl border border-border p-4 sm:p-5"><DetailCardHeading icon={ReceiptText} title="Boletas y facturas" description="Emisión por Tesorería Recaudación, independiente de la entrega del pedido." aside={<BillingBadge invoice={invoice} />} />{!requests.length ? <p className="mt-4 text-xs text-muted-foreground">Las solicitudes se generan al verificar cada pago.</p> : <div className={`mt-4 grid gap-3 ${requests.length > 1 ? "xl:grid-cols-2" : ""}`}>{requests.map((request) => {
-    const issues = observations.filter((o) => o.requestId === request.id);
-    const correction = issues.filter((o) => o.resolvedAt && o.correction).sort((a, b) => a.resolvedAt!.getTime() - b.resolvedAt!.getTime()).reduce((data, o) => ({ ...data, ...o.correction }), { name: order.customerName, document: order.customerDocument, phone: order.customerPhone, billingRuc: order.billingRuc ?? "", billingBusinessName: order.billingBusinessName ?? "", billingAddress: order.billingAddress ?? "" });
-    const files = documents.filter((row) => row.requestId === request.id).map((row) => row.document);
-    const closed = ["FINALIZADA", "ANULADA"].includes(request.status);
-    const issuedIds = [request.finalizedDocumentId, request.finalizedXmlDocumentId];
-    const activeIds = closed ? issuedIds : [request.draftDocumentId, request.draftXmlDocumentId];
-    const current = files.filter((file) => activeIds.includes(file.id));
-    const history = previousSaleDocuments(files, request.cycle, activeIds, batches.flatMap((batch) => batch.ids), issuedIds);
-    return <div key={request.id} className="rounded-lg border border-border p-4"><div className="flex flex-wrap items-center justify-between gap-2"><ImprintBadge imprint={request.publisherImprint} /><span className="text-xs font-semibold text-muted-foreground">{cajaLabels[request.status]}</span></div>{request.assignedName ? <p className="mt-2 text-xs text-muted-foreground">Responsable de Tesorería Recaudación: {request.assignedName}</p> : !["FINALIZADA", "ANULADA"].includes(request.status) ? <p className="mt-2 text-xs text-muted-foreground">Sin asignar en Tesorería Recaudación</p> : null}{issues.length ? <section className="mt-4 border-t border-border pt-3"><h3 className="text-xs font-semibold">Observaciones de Tesorería Recaudación</h3>{issues.map((issue) => <div key={issue.id} className="mt-3 rounded-lg border border-border p-3 text-xs"><p className="font-semibold">{issue.resolvedAt ? "Resuelta" : "Pendiente"}</p><p className="mt-2 whitespace-pre-wrap leading-6">{issue.content}</p>{issue.resolvedAt ? <p className="mt-2 whitespace-pre-wrap leading-6">Respuesta: {issue.response}</p> : canReturn ? <ResolveTreasuryObservation id={request.id} observationId={issue.id} current={correction} /> : null}</div>)}</section> : null}{supporting.filter((file) => file.requestId === request.id).map((file) => <a key={file.id} href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="mt-2 block text-xs text-primary underline">{file.fileName}</a>)}{canReturn && issues.some((o) => !o.resolvedAt) ? <TreasurySupportingUpload id={request.id} /> : null}{current.length ? current.map((file) => <a key={file.id} href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="mt-3 block break-words text-xs font-medium text-primary underline">{file.fileName}{!closed ? " · Borrador" : ""}</a>) : <p className="mt-3 text-xs text-muted-foreground">Pendiente de documento.</p>}{request.status === "FINALIZADA" && request.finalizedAt ? <p className="mt-2 text-xs text-muted-foreground">{request.finalizedBy} · {dates.format(request.finalizedAt)}</p> : null}{request.status === "DEVUELTA" ? <p className="mt-3 rounded-md bg-amber-50 p-3 text-xs leading-6 text-amber-900">{request.returnReason}</p> : null}{request.status === "FINALIZADA" && canReturn ? <ReturnSaleControls id={request.id} version={request.updatedAt.toISOString()} /> : null}{history.length > 0 ? <details open className="mt-3"><summary className="cursor-pointer text-xs font-medium text-muted-foreground">Archivos anteriores</summary><ul className="mt-2 space-y-2">{history.map((file) => <li key={file.id}><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-words text-xs text-primary underline">{file.fileName}</a><p className="text-xs text-muted-foreground">Documento anterior · {dates.format(file.uploadedAt!)}</p></li>)}</ul></details> : null}</div>;
-  })}</div>}</section>;
+
+export async function AdminSaleDocuments({ orderId, actor, invoice }: { orderId: string; actor: AuthorizedActor; invoice: boolean }) {
+  const { issuances, documents, confirmedIds, canEdit } = await adminSaleDocuments(orderId, actor);
+  return <section className="rounded-xl border border-border p-4 sm:p-5">
+    <DetailCardHeading icon={ReceiptText} title="Boletas y facturas" aside={<span className="rounded-md bg-secondary px-3 py-1.5 text-xs font-semibold text-primary">{invoice ? "Factura" : "Boleta"}</span>} />
+    {!issuances.length ? <p className="text-xs text-muted-foreground">La carga de documentos se habilita al verificar el pago del sello.</p> : <div className="divide-y divide-border">
+      {issuances.map((issuance) => {
+        const files = documents.filter((file) => file.issuanceId === issuance.id);
+        const issuedIds = [issuance.finalizedDocumentId, issuance.finalizedXmlDocumentId];
+        const draftIds = [issuance.draftDocumentId, issuance.draftXmlDocumentId];
+        const issued = files.filter((file) => issuedIds.includes(file.id));
+        const closed = issuance.status === "FINALIZADA" || issuance.status === "ANULADA";
+        const version = issuance.updatedAt.toISOString();
+        const initialFile = (id: string | null) => {
+          const file = files.find((candidate) => candidate.id === id);
+          return file?.driveViewUrl ? { id: file.id, name: file.fileName, size: file.size, url: file.driveViewUrl } : null;
+        };
+        const history = previousSaleDocuments(files, issuance.cycle, [...issuedIds, ...draftIds], confirmedIds, issuedIds);
+        return <div key={issuance.id} className="py-4 first:pt-0 last:pb-0">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ImprintBadge imprint={issuance.publisherImprint} />
+            <span className="text-xs font-semibold text-muted-foreground">{saleIssuanceLabels[issuance.status]}</span>
+          </div>
+          {issued.length ? <>
+            <ul className="mt-3 space-y-2">
+              {issued.map((file) => <li key={file.id}>
+                <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-primary underline underline-offset-4">{file.fileName}</a>
+              </li>)}
+            </ul>
+            {issuance.finalizedAt ? <p className="mt-2 text-xs text-muted-foreground">Publicado {dates.format(issuance.finalizedAt)} · {issuance.finalizedBy}</p> : null}
+          </> : null}
+          {issuance.status === "DEVUELTA" && issuance.returnReason ? <p className="mt-3 whitespace-pre-wrap break-words rounded-md bg-amber-50 p-3 text-xs leading-6 text-amber-900">{issuance.returnReason}</p> : null}
+          {canEdit && !closed ? <SaleDocumentControls key={version} id={issuance.id} cycle={issuance.cycle} initialVersion={version} initialDocument={initialFile(issuance.draftDocumentId)} initialXml={initialFile(issuance.draftXmlDocumentId)} /> : null}
+          {!canEdit && !closed ? <div className="mt-3 space-y-2">
+            {files.filter((file) => draftIds.includes(file.id)).map((file) => <p key={file.id} className="break-words text-xs"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="text-primary underline underline-offset-4">{file.fileName}</a> · Borrador</p>)}
+            <p className="text-xs text-muted-foreground">La carga está a cargo del gestor responsable.</p>
+          </div> : null}
+          {canEdit && issuance.status === "FINALIZADA" ? <ReviseSaleControls id={issuance.id} version={version} /> : null}
+          {history.length ? <details className="mt-4">
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">Archivos anteriores</summary>
+            <ul className="mt-2 space-y-2">
+              {history.map((file) => <li key={file.id}>
+                <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-words text-xs text-primary underline underline-offset-4">{file.fileName}</a>
+                <p className="text-xs text-muted-foreground">{dates.format(file.uploadedAt!)}</p>
+              </li>)}
+            </ul>
+          </details> : null}
+        </div>;
+      })}
+    </div>}
+  </section>;
 }

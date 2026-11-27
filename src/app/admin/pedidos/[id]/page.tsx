@@ -21,6 +21,8 @@ import { StatusBadge } from "@/components/orders/management/status-badge";
 import { AssignmentControls, DispatchControls, PaymentReview } from "@/components/orders/management/order-controls";
 import { InternalNoteComposer } from "@/components/orders/management/internal-note-composer";
 import { AttentionTabs } from "@/components/orders/management/attention-tabs";
+import { TreasuryPaymentNoticeStatus } from "@/components/orders/management/treasury-payment-notice-status";
+import { listTreasuryPaymentNoticeStatuses } from "@/modules/orders/data/treasury-payment-notices";
 import { OrderLiveRefresh } from "@/components/orders/live-refresh";
 
 export const metadata: Metadata = { title: "Atención del pedido", referrer: "no-referrer", robots: { index: false, follow: false } };
@@ -33,10 +35,13 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const detail = await orderDetail(parsed.data);
   if (!detail) notFound();
   const { order, items, receipts, activity, notes, evidence } = detail;
-  const [supportContacts, supportNotices] = await withReadDatabase((db) => Promise.all([
-    db.select({ id: pickupContacts.id, name: pickupContacts.name }).from(pickupContacts).where(eq(pickupContacts.status, "ACTIVO")).orderBy(asc(pickupContacts.name)),
-    db.select({ status: pickupNotifications.status, createdAt: pickupNotifications.createdAt }).from(pickupNotifications).where(eq(pickupNotifications.orderId, order.id)),
-  ]));
+  const [[supportContacts, supportNotices], treasuryNotices] = await Promise.all([
+    withReadDatabase((db) => Promise.all([
+      db.select({ id: pickupContacts.id, name: pickupContacts.name }).from(pickupContacts).where(eq(pickupContacts.status, "ACTIVO")).orderBy(asc(pickupContacts.name)),
+      db.select({ status: pickupNotifications.status, createdAt: pickupNotifications.createdAt }).from(pickupNotifications).where(eq(pickupNotifications.orderId, order.id)),
+    ])),
+    listTreasuryPaymentNoticeStatuses(order.id),
+  ]);
   const version = order.updatedAt.toISOString();
   const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
   const canAttend = canAttendOrders(actor);
@@ -84,8 +89,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           {files[0] ? <><ul>{receiptLink(files[0], true)}</ul>{files.length > 1 ? <details className="mt-2"><summary className="cursor-pointer text-xs font-medium text-muted-foreground">Otros comprobantes ({files.length - 1})</summary><ul className="mt-2 space-y-2">{files.slice(1).map((file) => receiptLink(file, false))}</ul></details> : null}</> : <p className="rounded-md bg-muted/20 p-3 text-xs leading-6 text-muted-foreground">Sin comprobante adjunto.</p>}
           {reason ? <p className="mt-3 rounded-md bg-red-50 p-3 text-xs leading-6 text-red-700">Motivo: {reason}</p> : null}
           {mine && status === "EN_REVISION" && files[0] && order.orderStatus === "PENDIENTE_PAGO" ? <PaymentReview id={order.id} imprint={imprint} receiptId={files[0].id} /> : null}
+          <TreasuryPaymentNoticeStatus notice={treasuryNotices.find((notice) => notice.publisherImprint === imprint)} cancelled={order.orderStatus === "CANCELADO"} />
         </section>;
-      })}</div>{!mine && !closed ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Las decisiones de pago las registra el gestor asignado.</p> : null}<div className="mt-5"><AdminSaleDocuments orderId={order.id} invoice={Boolean(order.billingRuc)} canReturn={mine && order.orderStatus !== "CANCELADO"} /></div>
+      })}</div>{!mine && !closed ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Las decisiones de pago las registra el gestor asignado.</p> : null}<div className="mt-5"><AdminSaleDocuments orderId={order.id} actor={actor} invoice={Boolean(order.billingRuc)} /></div>
     </div>,
     <div key="preparation"><h2 className="text-base font-semibold">Distribución y despacho</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">Comprueba cantidades y destino antes de registrar la salida.</p><div className="mt-5 grid items-start gap-5 xl:grid-cols-2">{packingList}{deliveryDetails}</div>
       {mine && order.orderStatus === "EN_PREPARACION" ? <section className="mt-4 rounded-lg border border-primary/15 bg-secondary/10 p-4"><DetailCardHeading level={3} icon={Send} title="Registrar salida" /><DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} /></section> : <p className="mt-3 text-xs leading-6 text-muted-foreground">{order.orderStatus === "PENDIENTE_PAGO" ? "La salida se habilita al verificar todos los pagos." : "Consulta la entrega en la última etapa."}</p>}

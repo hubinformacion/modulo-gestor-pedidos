@@ -30,7 +30,7 @@ export async function sendEndpointMail(input: { to: string[]; cc?: string[]; bcc
       !filename.length || filename.length > 255 || /[\x00-\x1f\x7f/\\]/.test(filename);
     const valid = file.mimeType === "application/xml"
       ? filename.toLowerCase().endsWith(".xml") && isWellFormedXml(content)
-      : content.subarray(0, 5).toString("ascii") === "%PDF-";
+      : (file.mimeType === undefined || file.mimeType === "application/pdf") && content.subarray(0, 5).toString("ascii") === "%PDF-";
     if (invalid || !valid) {
       throw new MailDeliveryError({ success: false, message: "El adjunto debe ser un PDF o XML válido de hasta 3 MiB con un nombre seguro." });
     }

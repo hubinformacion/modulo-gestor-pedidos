@@ -79,6 +79,5 @@ export async function synchronizeDriveReaders(): Promise<void> {
       if (!await allowed(email)) await revoke(email, created.data.id);
     }
   }));
-  const { synchronizeCajaFileReaders } = await import("@/integrations/google/treasury-readers");
-  await synchronizeCajaFileReaders();
+
 }

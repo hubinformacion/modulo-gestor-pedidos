@@ -6,7 +6,7 @@ import { authorizedEmailSchema } from "@/modules/access/domain/policy";
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { APIError } from "better-auth/api";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { AsyncLocalStorage } from "node:async_hooks";
 import "server-only";
 
@@ -29,7 +29,7 @@ export function createAuth(db: Database, env: AuthEnvironment = getAuthEnvironme
     }
     const [allowed] = await (transactionScope.getStore() ?? db).select({ email: schema.authorizedEmails.email })
       .from(schema.authorizedEmails)
-      .where(eq(schema.authorizedEmails.email, parsed.data)).limit(1);
+      .where(and(eq(schema.authorizedEmails.email, parsed.data), eq(schema.authorizedEmails.role, "gestor"))).limit(1);
     if (!allowed) throw new APIError("FORBIDDEN", { code: "access_denied", message: "ACCESS_DENIED" });
     return parsed.data;
   }

@@ -229,17 +229,11 @@ export const paymentReceipts = pgTable("payment_receipts", {
 
 export const authorizedEmails = pgTable("authorized_emails", {
   email: text("email").primaryKey(),
-  role: text("role").$type<"gestor" | "caja">().default("gestor").notNull(),
-  publisherImprints: jsonb("publisher_imprints").$type<("universidad" | "instituto")[]>().default([]).notNull(),
-  treasuryService: boolean("treasury_service").default(false).notNull(),
-  publisherImprint: publisherImprint("publisher_imprint"),
+  role: text("role").$type<"gestor">().default("gestor").notNull(),
   addedBy: text("added_by").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  index("authorized_emails_caja_imprint_idx").on(table.publisherImprint).where(sql`${table.role} = 'caja'`),
-  check("authorized_emails_role", sql`(${table.role} = 'gestor' AND ${table.publisherImprint} IS NULL) OR (${table.role} = 'caja' AND ${table.publisherImprint} IS NOT NULL)`),
-  check("authorized_emails_scope", sql`jsonb_typeof(${table.publisherImprints}) = 'array' AND ${table.publisherImprints} <@ '["universidad","instituto"]'::jsonb AND (${table.role} = 'caja' OR (${table.publisherImprints} = '[]'::jsonb AND ${table.treasuryService} = false))`),
-  check("authorized_emails_master_role", sql`${table.email} <> 'distribucionfe@continental.edu.pe' OR ${table.role} = 'gestor'`),
+  check("authorized_emails_role", sql`${table.role} = 'gestor'`),
   check("authorized_emails_normalized", sql`${table.email} = lower(btrim(${table.email}))`),
 ]);
 
@@ -357,10 +351,8 @@ export const pickupEvidence = pgTable("pickup_evidence", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [index("pickup_evidence_order_idx").on(table.orderId), check("pickup_evidence_size", sql`${table.size} > 0 AND ${table.size} <= 3145728`), check("pickup_evidence_image_type", sql`${table.mimeType} IN ('image/jpeg','image/png')`)]);
 
-// Caja is independent of delivery. One request per applicable imprint, with
-// immutable upload revisions and separate internal Gmail conversations.
-export const cajaRequests = pgTable("caja_requests", {
-  requestNumber: integer("request_number").generatedAlwaysAsIdentity().notNull().unique(),
+// One editorial issuance per paid imprint, independent of delivery.
+export const orderSaleIssuances = pgTable("order_sale_issuances", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
   publisherImprint: publisherImprint("publisher_imprint").notNull(),
@@ -371,30 +363,17 @@ export const cajaRequests = pgTable("caja_requests", {
   draftXmlDocumentId: uuid("draft_xml_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   finalizedXmlDocumentId: uuid("finalized_xml_document_id").references((): AnyPgColumn => saleDocuments.id, { onDelete: "restrict" }),
   returnReason: text("return_reason"),
-  assignedTo: text("assigned_to").references(() => authUser.id, { onDelete: "restrict" }),
-  assignedName: text("assigned_name"),
-  assignedAt: timestamp("assigned_at", { withTimezone: true }),
-  assignmentToken: uuid("assignment_token"),
   finalizedBy: text("finalized_by"),
   finalizedAt: timestamp("finalized_at", { withTimezone: true }),
-  gmailThreadId: text("gmail_thread_id"),
-  subjectHeader: text("subject_header"),
-  lastRfcMessageId: text("last_rfc_message_id"),
-  rfcReferences: jsonb("rfc_references").$type<string[]>().default([]).notNull(),
-  leaseId: uuid("lease_id"),
-  leaseUntil: timestamp("lease_until", { withTimezone: true }),
   ...timestamps(),
 }, (table) => [
-  uniqueIndex("caja_requests_order_imprint_unique").on(table.orderId, table.publisherImprint),
-  check("caja_requests_assignment", sql`(${table.assignedTo} IS NULL AND ${table.assignedName} IS NULL AND ${table.assignedAt} IS NULL AND ${table.assignmentToken} IS NULL) OR (${table.assignedTo} IS NOT NULL AND ${table.assignedName} IS NOT NULL AND ${table.assignedAt} IS NOT NULL AND ${table.assignmentToken} IS NOT NULL)`),
-  index("caja_requests_assigned_idx").on(table.assignedTo, table.status),
-  index("caja_requests_inbox_idx").on(table.publisherImprint, table.status, table.createdAt),
-  check("caja_requests_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA','ANULADA') AND ${table.cycle} > 0`),
-  check("caja_requests_finalized", sql`${table.status} <> 'FINALIZADA' OR (${table.finalizedDocumentId} IS NOT NULL AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL)`),
+  uniqueIndex("order_sale_issuances_order_imprint_unique").on(table.orderId, table.publisherImprint),
+  check("order_sale_issuances_state", sql`${table.status} IN ('PENDIENTE','FINALIZADA','DEVUELTA','ANULADA') AND ${table.cycle} > 0`),
+  check("order_sale_issuances_finalized", sql`${table.status} <> 'FINALIZADA' OR (${table.finalizedDocumentId} IS NOT NULL AND ${table.finalizedAt} IS NOT NULL AND ${table.finalizedBy} IS NOT NULL)`),
 ]);
 export const saleDocuments = pgTable("sale_documents", {
   id: uuid("id").primaryKey(),
-  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
+  issuanceId: uuid("issuance_id").notNull().references(() => orderSaleIssuances.id, { onDelete: "restrict" }),
   cycle: integer("cycle").notNull(),
   actorEmail: text("actor_email").notNull(),
   driveFileId: text("drive_file_id").notNull().unique(),
@@ -405,29 +384,7 @@ export const saleDocuments = pgTable("sale_documents", {
   size: integer("size").notNull(),
   uploadedAt: timestamp("uploaded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("sale_documents_request_idx").on(table.requestId), check("sale_documents_size", sql`${table.size} BETWEEN 1 AND 3145728 AND ${table.cycle} > 0`), check("sale_documents_mime_type", sql`${table.mimeType} IN ('application/pdf', 'application/xml')`)]);
-export const cajaNotifications = pgTable("caja_notifications", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  cycle: integer("cycle").notNull(),
-  eventType: text("event_type").$type<"SOLICITUD" | "FINALIZADA" | "DEVUELTA" | "ANULADA" | "ASIGNACION">().notNull(),
-  assignmentKey: uuid("assignment_key"),
-  reason: text("reason"),
-  status: text("status").default("NO_ENVIADO").notNull(),
-  attempts: integer("attempts").default(0).notNull(),
-  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }),
-  provider: text("provider"),
-  providerMessageId: text("provider_message_id"),
-  gmailMessageId: text("gmail_message_id"),
-  rfcMessageId: text("rfc_message_id"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [
-  uniqueIndex("caja_notifications_event_unique").on(table.requestId, table.cycle, table.eventType).where(sql`${table.eventType} <> 'ASIGNACION'`),
-  uniqueIndex("caja_notifications_assignment_unique").on(table.requestId, table.assignmentKey).where(sql`${table.eventType} = 'ASIGNACION'`),
-  check("caja_notifications_assignment_key", sql`(${table.eventType} = 'ASIGNACION' AND ${table.assignmentKey} IS NOT NULL) OR (${table.eventType} <> 'ASIGNACION' AND ${table.assignmentKey} IS NULL)`),
-  check("caja_notifications_event", sql`${table.eventType} IN ('SOLICITUD','FINALIZADA','DEVUELTA','ANULADA','ASIGNACION')`),
-  check("caja_notifications_state", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','OMITIDO')`),
-]);
+}, (table) => [index("sale_documents_issuance_idx").on(table.issuanceId), check("sale_documents_size", sql`${table.size} BETWEEN 1 AND 3145728 AND ${table.cycle} > 0`), check("sale_documents_mime_type", sql`${table.mimeType} IN ('application/pdf', 'application/xml')`)]);
 export const saleDocumentBatches = pgTable("sale_document_batches", {
   id: uuid("id").defaultRandom().primaryKey(),
   orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
@@ -436,16 +393,6 @@ export const saleDocumentBatches = pgTable("sale_document_batches", {
   correction: boolean("correction").default(false).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
-
-// Individual caja permissions, including unresolved provider acknowledgements.
-export const driveFileReaderGrants = pgTable("drive_file_reader_grants", {
-  driveFileId: text("drive_file_id").notNull(),
-  email: text("email").notNull(),
-  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  permissionId: text("permission_id"),
-  managed: boolean("managed").default(true).notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [primaryKey({ columns: [table.driveFileId, table.email] })]);
 
 export const promotions = pgTable("promotions", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -501,32 +448,21 @@ export const treasuryMailboxes = pgTable("treasury_mailboxes", {
   email: text("email").notNull(),
   ...timestamps(),
 }, (table) => [check("treasury_mailboxes_email", sql`${table.email} = lower(btrim(${table.email}))`)]);
-export const treasuryNotes = pgTable("treasury_notes", {
+// One immediate email attempt per verified payment, with no delivery queue.
+export const treasuryPaymentNotices = pgTable("treasury_payment_notices", {
   id: uuid("id").defaultRandom().primaryKey(),
-  requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }),
-  actorName: text("actor_name").notNull(), content: text("content").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("treasury_notes_request_idx").on(table.requestId, table.createdAt)]);
-export const treasuryActivity = pgTable("treasury_activity", {
-  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  actorId: text("actor_id").references(() => authUser.id, { onDelete: "set null" }), actorName: text("actor_name").notNull(),
-  event: text("event").notNull(), detail: text("detail").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("treasury_activity_request_idx").on(table.requestId, table.createdAt)]);
-export const treasuryObservations = pgTable("treasury_observations", {
-  id: uuid("id").defaultRandom().primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  content: text("content").notNull(), actorName: text("actor_name").notNull(), correction: jsonb("correction").$type<Record<string, string>>(),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-  resolvedAt: timestamp("resolved_at", { withTimezone: true }), resolvedBy: text("resolved_by"), response: text("response"),
-}, (table) => [index("treasury_observations_request_idx").on(table.requestId, table.resolvedAt)]);
-export const treasurySupportingFiles = pgTable("treasury_supporting_files", {
-  id: uuid("id").primaryKey(), requestId: uuid("request_id").notNull().references(() => cajaRequests.id, { onDelete: "restrict" }),
-  driveFileId: text("drive_file_id").notNull().unique(), driveViewUrl: text("drive_view_url"),
-  fileName: text("file_name").notNull(), mimeType: text("mime_type").notNull(), contentHash: text("content_hash").notNull(), size: integer("size").notNull(),
-  actorId: text("actor_id").notNull().references(() => authUser.id, { onDelete: "restrict" }),
-  uploadedAt: timestamp("uploaded_at", { withTimezone: true }), createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-}, (table) => [index("treasury_supporting_request_idx").on(table.requestId), check("treasury_supporting_size", sql`${table.size} BETWEEN 1 AND 3145728`)]);
+  orderId: uuid("order_id").notNull().references(() => orders.id, { onDelete: "restrict" }),
+  publisherImprint: publisherImprint("publisher_imprint").notNull(),
+  receiptId: uuid("receipt_id").notNull().references(() => paymentReceipts.id, { onDelete: "restrict" }),
+  recipient: text("recipient"),
+  status: text("status").$type<"NO_ENVIADO" | "ENVIANDO" | "ENVIADO" | "ERROR" | "INCIERTO" | "OMITIDO">().default("NO_ENVIADO").notNull(),
+  gmailMessageId: text("gmail_message_id"),
+  gmailThreadId: text("gmail_thread_id"),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("treasury_payment_notices_order_imprint_unique").on(table.orderId, table.publisherImprint),
+  check("treasury_payment_notices_status", sql`${table.status} IN ('NO_ENVIADO','ENVIANDO','ENVIADO','ERROR','INCIERTO','OMITIDO')`),
+]);
 
 // Operational admission policy, independent of business pricing and stock.
 export const orderAdmissionPolicy = pgTable("order_admission_policy", {

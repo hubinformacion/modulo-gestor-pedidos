@@ -1,12 +1,12 @@
 # Gestor de pedidos · Fondo Editorial Continental
 
-**Versión 1.0.0.** Aplicación para comprar publicaciones, validar depósitos, coordinar distribución y gestionar boletas/facturas con Tesorería Recaudación. Compra y seguimiento se integran en WordPress; los equipos internos usan la aplicación directamente.
+**Versión 1.0.0.** Aplicación para comprar publicaciones, validar depósitos, coordinar distribución y entregar boletas y facturas. Compra y seguimiento se integran en WordPress. Fondo Editorial atiende en el Gestor y coordina la emisión con Tesorería por correo.
 
-**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Fondo Editorial](https://gestoreditorial.continental.edu.pe/admin/pedidos)** · **[Tesorería Recaudación](https://gestoreditorial.continental.edu.pe/tesoreria-recaudacion)**
+**[Solicitar publicaciones](https://fondoeditorial.continental.edu.pe/pedido/)** · **[Fondo Editorial](https://gestoreditorial.continental.edu.pe/admin/pedidos)**
 
 ## Documentación
 
-Este README reúne instalación, despliegue y operación. Las guías de trabajo se consultan desde las áreas de Fondo Editorial y Tesorería. [AGENTS.md](AGENTS.md) conserva las convenciones técnicas.
+Este README reúne instalación, despliegue y operación. Las guías de trabajo se consultan desde la Guía de uso de Fondo Editorial. [AGENTS.md](AGENTS.md) conserva las convenciones técnicas.
 
 ## Funciones principales
 
@@ -14,7 +14,7 @@ Este README reúne instalación, despliegue y operación. Las guías de trabajo 
 - Stock y numeración anual transaccionales; creación idempotente y snapshots de compra.
 - Pagos por unidad; mixtos con dos depósitos, carga automática y revisión independiente.
 - Atención asignada, distribución, despacho/entrega, evidencia opcional y cancelación permitida según estado.
-- Tesorería por una/ambas unidades: observaciones, subsanación, notas privadas, PDF como borrador y finalización; en mixtos un correo al comprador con ambos PDF.
+- Aviso a Tesorería por sello al verificar el pago. Fondo Editorial registra el PDF y el XML recibidos por correo. Los documentos de un pedido mixto se envían juntos al comprador.
 - Inventario en tabla, configuración de campus/horarios/cuentas/accesos, tarifas de delivery, personal de apoyo para recojo, reportes e historial. Integraciones con comprobación manual de Google.
 - Correos inmediatos en hilos separados por audiencia, sin cola ni reenvío posterior de fallos.
 
@@ -76,13 +76,13 @@ Correos operativos: `MAIL_PROVIDER=gmail` (predeterminado si se omite) conserva 
 
 Endpoint: configurar `MAIL_ENDPOINT_URL`, `MAIL_ENDPOINT_TOKEN`, `MAIL_ENDPOINT_FROM`, `MAIL_ENDPOINT_FROM_NAME`, `MAIL_ENDPOINT_SYSTEM` y `MAIL_ENDPOINT_BUSINESS_UNIT` con los valores autorizados por TI. El ejemplo apunta a `apis-dev`: confirmar la URL de producción antes de activarlo. `MAIL_ENDPOINT_TOKEN` contiene solo el valor de `Ocp-Apim-Subscription-Key`, sin `Bearer`. En `.env.local` pueden envolverse valores con espacios en comillas; en el panel de Vercel se ingresan sin comillas envolventes. Para el proveedor endpoint, el logo usa la URL HTTPS pública `/isotipo-blanco.png` del `APP_URL`; Gmail conserva CID. El remitente debe recibir respuestas, en particular del apoyo de recojo, porque el contrato no expone `Reply-To`.
 
-Avisos: comprobantes recibidos se dirigen exclusivamente a gestores FE vigentes al envío y habilitados antes del evento (excluye al comprador aunque su correo sea gestor), con enlace administrativo. Mixtos conservan un aviso conjunto por ciclo y una aprobación al validar ambos pagos. Los demás correos conservan sus copias vigentes. La asignación/sustitución en Tesorería solo deja historial, sin correo. Documentos de venta mixtos siguen adjuntándose juntos; no se envían correos por cada PDF.
+Avisos: comprobantes recibidos se dirigen exclusivamente a gestores FE vigentes al envío y habilitados antes del evento (excluye al comprador aunque su correo sea gestor), con enlace administrativo. Mixtos conservan un aviso conjunto por ciclo y una aprobación al validar ambos pagos. Los demás correos conservan sus copias vigentes. En Pagos se muestra el resultado de cada aviso a Tesorería. Distribución empieza al verificar todos los pagos, incluso si falta el buzón o falla un aviso. En ese caso revisa el buzón institucional y gestiona el envío manual.
 
-**Configuración → Correos** (solo maestro) permite previsualizar y enviar individualmente las 15 plantillas/variantes con información ficticia autorizada, sello, modalidad de entrega y boleta/factura, sin crear pedidos ni consultar archivos de Drive. Reutiliza los renderizadores operativos; las guías y PDF de venta del ejemplo son documentos ficticios sin valor. Los enlaces del ejemplo están desactivados. El envío requiere destinatario explícito, marca `[PRUEBA]` y no añade CC/CCO. Puede elegirse Gmail o el endpoint por prueba sin cambiar el proveedor operativo. No hay envío masivo ni envío al abrir la pestaña.
+**Configuración → Correos** (solo maestro) permite previsualizar y enviar individualmente las plantillas/variantes disponibles con información ficticia autorizada, sello, modalidad de entrega y boleta/factura, sin crear pedidos ni consultar archivos de Drive. Reutiliza los renderizadores operativos; las guías y PDF de venta del ejemplo son documentos ficticios sin valor. Los enlaces del ejemplo están desactivados. El envío requiere destinatario explícito, marca `[PRUEBA]` y no añade CC/CCO. Puede elegirse Gmail o el endpoint por prueba sin cambiar el proveedor operativo. No hay envío masivo ni envío al abrir la pestaña.
 
 **Configuración → Integraciones** conserva la prueba libre del endpoint con HTML, CC/CCO separados por `;` y un PDF opcional de hasta 3 MiB, validado en cliente y servidor. Ambas pruebas hacen un solo intento, sin guardar adjuntos en BD/Drive. El endpoint recibe `retry: 1`, sin reintentos de la aplicación ni redirecciones. HTTP satisfactorio e `isSuccess: true` significan aceptación incluso con `data: false`; ID ausente no convierte una aceptación en fallo. No se muestran respuestas crudas ni secretos. Ante timeout o resultado ambiguo, revisar el buzón con TI antes de repetir. Los avisos operativos siguen siendo inmediatos tras commit, solo para el evento recién creado: sin cola, recuperación de históricos ni reenvíos.
 
-`CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos privados de Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
+`CRON_SECRET` mínimo 32 protege el cron diario de las 12:00 UTC, dedicado **solo a permisos de gestores en Drive**. No envía mensajes pendientes ni consulta Gmail para actualizar pantallas. No hay polling periódico del navegador.
 
 Speed Insights está integrado con `@vercel/speed-insights` en el layout principal. Tras desplegar, revisar la pestaña **Speed Insights** del proyecto en Vercel y habilitar la opción incluida en el plan si aún no está activa; no contratar Plus automáticamente. Las métricas omiten parámetros, fragmentos y valores de tokens/IDs de las rutas. No consultan Neon ni añaden tareas programadas. Web Analytics (`@vercel/analytics`) registra visitas con el mismo filtro de privacidad; habilitarlo en **Analytics → Enable** del proyecto tras desplegar. No se envían eventos personalizados ni datos de formularios.
 
@@ -105,9 +105,7 @@ Administración se abre en una pestaña propia, con sesión Google y autorizaci�
 | `/admin/reporte`, `/admin/inventario` | Indicadores y catálogo |
 | `/admin/promociones`, `/admin/cupones` | Descuentos |
 | `/admin/configuracion` | Accesos, campus, cuentas e integraciones |
-| `/tesoreria-recaudacion`, `/tesoreria-recaudacion/[id]` | Solicitudes y emisión |
-| `/tesoreria-recaudacion/reporte` | Indicadores del área |
-| `/admin/guia`, `/tesoreria-recaudacion/guia` | Guías interactivas |
+| `/admin/guia` | Guía de atención de Fondo Editorial |
 
 ## Mantenimiento y seguridad
 
@@ -130,10 +128,12 @@ Los límites de creación se administran en **Configuración → Seguridad** des
 
 ## Lanzamiento a producción
 
-La versión 1.0.0 cierra el módulo de pedidos, seguimiento, inventario y Tesorería. Para publicar cambios posteriores, confirmar el despliegue de `main` en Vercel y comprobar las rutas públicas sin crear pedidos ni enviar mensajes de prueba en producción. Aplicar por separado cualquier actualización SQL requerida.
+Para actualizar una instalación con el antiguo portal de Tesorería, verifica previamente que incorpora [la actualización de PDF/XML](src/db/updates/20261125-treasury-xml.sql). El corte se ejecuta fuera del build y requiere un respaldo de la base.
 
-Para desplegar la emisión con PDF y XML en una base operativa, respaldar la base y aplicar una vez [la actualización SQL de Tesorería](src/db/updates/20261125-treasury-xml.sql) antes de desplegar. Las emisiones históricas conservan sus PDF. Para finalizar una emisión nueva o corregida, Tesorería adjunta un PDF y el XML original, de hasta 3 MiB cada uno. El seguimiento ofrece ambos como descargas y el aviso al comprador incluye los archivos vigentes de los sellos requeridos. El proveedor endpoint recibe el contenido de cada adjunto en Base64, con su nombre original y tipo MIME.
+1. Con el despliegue anterior todavía activo, aplicar [la revocación de accesos](src/db/updates/20261127-revoke-treasury-access.sql). Retira las autorizaciones y sesiones del rol anterior e impide reactivarlas durante el corte. OAuth e identidades de gestores se conservan.
+2. Dejar que el cron anterior concilie los permisos de archivos, en lotes de hasta 25 por ejecución. Comprobar que `drive_file_reader_grants` esté vacío. Si quedan intentos sin identificador, revisar su resolución con el propietario de Drive y TI antes de cerrar el corte. Conservar las referencias ante fallos o resultados ambiguos. Una lista vacía por archivo no prueba que un alta pendiente haya fallado. Retirar solo lectores directos gestionados.
+3. Durante la ventana de corte, pausar las escrituras y ejecuciones del despliegue anterior. Aplicar una vez [la actualización de emisión editorial](src/db/updates/20261127-editorial-issuance.sql). La transacción se detiene si quedan accesos o permisos por conciliar. Conserva pedidos, archivos y lotes de emisión, y retira las tablas de atención de Tesorería. Otorgar al rol de ejecución permisos de lectura, inserción y actualización en `treasury_payment_notices`.
+4. Desplegar la versión nueva y comprobar que el antiguo portal devuelve 404 y que las cuentas revocadas quedan fuera de administración. Revisar en **Configuración → Tesorería** los destinatarios de Universidad e Instituto. Confirmar que Fondo Editorial atiende las respuestas en el Gmail institucional configurado mediante `GOOGLE_OWNER_EMAIL`. El aviso de validación usa Gmail incluso cuando el proveedor general es el endpoint.
+5. Al recibir la boleta o factura, cargar el PDF y el XML originales en **Pedidos → Pagos** y confirmar los archivos del sello. Los borradores son privados. El PDF y el XML confirmados son descargables desde Seguimiento, y el aviso al comprador reúne los sellos requeridos. La confirmación documental puede realizarse después de entregar el pedido.
 
-Antes de atender los primeros pedidos, habilitar al personal de Fondo Editorial y Tesorería con sus roles y unidades, registrar el apoyo de recojo y configurar los buzones de servicio que deban recibir avisos de Tesorería. Sin un buzón, la solicitud permanece en bandeja. El despacho para recojo requiere un contacto de apoyo activo.
-
-Gmail es el proveedor predeterminado. La activación del correo institucional queda sujeta a la habilitación del remitente y a la confirmación de la URL de producción por TI. La ampliación editorial y la migración a Azure quedan fuera del lanzamiento actual.
+Las instalaciones nuevas usan `schema.sql` desde `db:setup` y omiten estos SQL incrementales. Validar el flujo de correo con los buzones autorizados fuera de producción.

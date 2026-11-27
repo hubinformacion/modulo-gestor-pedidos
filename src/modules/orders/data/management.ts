@@ -5,7 +5,8 @@ import type { AuthorizedActor } from "@/modules/access/domain/policy";
 import { resolveOrderLocation } from "@/modules/orders/data/location";
 import { assignmentSchema, dispatchSchema, internalNoteSchema, reviewSchema } from "@/modules/orders/domain/management";
 import { OperationError, checkVersion } from "@/modules/orders/domain/operation-error";
-import { createCajaRequest } from "@/modules/treasury/data/requests";
+import { createSaleIssuance } from "@/modules/orders/data/sale-documents";
+import { createTreasuryPaymentNotice } from "@/modules/orders/data/treasury-payment-notices";
 import { desc, eq } from "drizzle-orm";
 import "server-only";
 import { z } from "zod";
@@ -27,11 +28,15 @@ export async function reviewPaymentRecord(tx: Transaction, actor: AuthorizedActo
   const instituto = data.imprint === "instituto" ? data.decision : order.paymentStatusInstituto;
   const complete = [universidad, instituto].every((value) => value === "NO_APLICA" || value === "VERIFICADO");
   await tx.update(orders).set({ paymentStatusUniversidad: universidad, paymentStatusInstituto: instituto, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(data.imprint === "universidad" ? { rejectionUniversidad: data.decision === "RECHAZADO" ? data.reason : null } : { rejectionInstituto: data.decision === "RECHAZADO" ? data.reason : null }) }).where(eq(orders.id, order.id));
-  const cajaEvent = data.decision === "VERIFICADO" ? await createCajaRequest(tx, order.id, data.imprint) : null;
+  let treasuryNoticeId: string | null = null;
+  if (data.decision === "VERIFICADO") {
+    await createSaleIssuance(tx, order.id, data.imprint);
+    treasuryNoticeId = await createTreasuryPaymentNotice(tx, order.id, data.imprint, data.receiptId, order.customerEmail);
+  }
   const notify = data.decision === "RECHAZADO" || complete;
   const [notification] = notify ? await tx.insert(orderNotifications).values({ orderId: order.id, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", publisherImprint: data.imprint, receiptId: data.receiptId, payload: { reason: data.reason, orderStatus: complete ? "EN_PREPARACION" : "PENDIENTE_PAGO", ...(complete && order.orderType === "mixto" ? { scope: "pedido" } : {}) } }).returning({ id: orderNotifications.id }) : [];
   await tx.insert(orderActivity).values({ orderId: order.id, actorUserId: actor.userId, actorName: actor.name, eventType: data.decision === "VERIFICADO" ? "PAGO_VERIFICADO" : "PAGO_RECHAZADO", detail: data.decision === "VERIFICADO" ? `Pago de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} verificado.${complete ? " Iniciamos la distribución." : ""}` : `Comprobante de ${data.imprint === "universidad" ? "Universidad" : "Instituto"} rechazado: ${data.reason}` });
-  return { token: order.trackingToken, notificationId: notification?.id ?? null, cajaEvent };
+  return { token: order.trackingToken, notificationId: notification?.id ?? null, treasuryNoticeId };
 
 }
 

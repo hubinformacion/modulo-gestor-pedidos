@@ -28,7 +28,7 @@ import { addInternalNote, assignOrder, dispatchOrder, reviewPayment } from "@/mo
 import { deliverPickupSupportEmail } from "@/modules/orders/application/pickup-email";
 import { assignmentSchema, dispatchSchema, internalNoteSchema, pickupImageSchema, pickupUploadSchema, reviewSchema, type ActionResult } from "@/modules/orders/domain/management";
 import { OperationError } from "@/modules/orders/domain/operation-error";
-import { deliverCajaEmail } from "@/modules/treasury/application/email";
+import { deliverTreasuryPaymentNotice } from "@/modules/orders/application/treasury-payment-email";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
@@ -51,10 +51,17 @@ export async function reviewPaymentAction(input: unknown): Promise<ActionResult>
       const actor = await getAuthorizedSession(db, requestHeaders);
       return reviewPayment(db, actor, parsed.data);
     });
-    const mailResults = await Promise.all([outcome.cajaEvent ? deliverCajaEmail(outcome.cajaEvent.requestId, outcome.cajaEvent.notificationId) : true, outcome.notificationId ? deliverOrderEmail(outcome.token, outcome.notificationId) : true]);
+    const [treasuryMailed, customerMailed] = await Promise.all([
+      outcome.treasuryNoticeId ? deliverTreasuryPaymentNotice(outcome.treasuryNoticeId) : true,
+      outcome.notificationId ? deliverOrderEmail(outcome.token, outcome.notificationId) : true,
+    ]);
+    const mailWarning = [
+      !treasuryMailed && "Revisa el estado del aviso a Tesorería en Pagos para gestionarlo desde el buzón de Fondo Editorial.",
+      !customerMailed && "No se pudo enviar el aviso al comprador.",
+    ].filter(Boolean).join(" ");
     revalidatePath("/admin/pedidos", "layout");
     revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true, ...(!mailResults.every(Boolean) ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
+    return { success: true, ...(mailWarning ? { mailWarning } : {}), message: parsed.data.decision === "VERIFICADO" ? "Pago verificado." : "Pago rechazado. El comprador puede enviar un comprobante nuevo para este sello." };
   } catch (error) { return failure(error); }
 }
 
@@ -167,9 +174,9 @@ export async function annulOrderAction(input: unknown): Promise<ActionResult> {
     const requestHeaders = await headers();
     const actor = await withDatabase((db) => getAuthorizedSession(db, requestHeaders));
     const outcome = await cancelPurchase(parsed.data, actor);
-    const mailResults = await Promise.all([outcome.notificationId ? deliverOrderEmail(outcome.token, outcome.notificationId) : true, ...outcome.cajaEvents.map((event) => deliverCajaEmail(event.requestId, event.notificationId))]);
-    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath("/tesoreria-recaudacion", "layout"); revalidatePath(`/seguimiento/${outcome.token}`);
-    return { success: true, ...(!mailResults.every(Boolean) ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Pedido anulado y stock restituido." };
+    const mailed = !outcome.notificationId || await deliverOrderEmail(outcome.token, outcome.notificationId);
+    revalidatePath("/admin/pedidos", "layout"); revalidatePath("/admin/inventario"); revalidatePath(`/seguimiento/${outcome.token}`);
+    return { success: true, ...(!mailed ? { mailWarning: "El cambio quedó guardado, pero no se pudo enviar el aviso por correo. No se reintentará automáticamente; consulta el detalle en la plataforma." } : {}), message: "Pedido anulado y stock restituido." };
   } catch (error) {
     if (!(error instanceof CancellationError || error instanceof AccessError)) reportServerError("order.annul.failed", error);
     return { success: false, message: error instanceof CancellationError || error instanceof AccessError ? error.message : "No pudimos anular el pedido. Reintenta." };

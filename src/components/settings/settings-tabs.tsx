@@ -10,12 +10,12 @@ const sections = [
   { value: "apoyo", label: "Apoyo para recojo", detail: "Personal y contactos", Icon: UsersRound },
   { value: "cuentas", label: "Cuentas bancarias", detail: "Datos para depósitos", Icon: Landmark },
   { value: "delivery", label: "Delivery", detail: "Tarifas de envío", Icon: Truck },
-  { value: "caja", label: "Tesorería Recaudación", detail: "Buzones y personas", Icon: ReceiptText },
+  { value: "tesoreria", label: "Tesorería", detail: "Destinos de correo", Icon: ReceiptText },
   { value: "seguridad", label: "Seguridad", detail: "Límites de pedidos", Icon: ShieldCheck },
   { value: "integraciones", label: "Integraciones", detail: "Registro y pagos", Icon: Plug },
 ] as const;
-export function SettingsTabs({ emails, mailTemplates, campuses, banks, integrations, caja, security, support, delivery }: { emails: ReactNode; mailTemplates?: ReactNode; campuses: ReactNode; banks: ReactNode; integrations: ReactNode; caja: ReactNode; security: ReactNode; support: ReactNode; delivery: ReactNode }) {
-  const content = { correos: emails, plantillas: mailTemplates, campus: campuses, cuentas: banks, integraciones: integrations, caja, seguridad: security, apoyo: support, delivery };
+export function SettingsTabs({ emails, mailTemplates, campuses, banks, integrations, treasury, security, support, delivery }: { emails: ReactNode; mailTemplates?: ReactNode; campuses: ReactNode; banks: ReactNode; integrations: ReactNode; treasury: ReactNode; security: ReactNode; support: ReactNode; delivery: ReactNode }) {
+  const content = { correos: emails, plantillas: mailTemplates, campus: campuses, cuentas: banks, integraciones: integrations, tesoreria: treasury, seguridad: security, apoyo: support, delivery };
   const visibleSections = sections.filter(({ value }) => value !== "plantillas" || mailTemplates);
   return <Tabs.Root defaultValue="correos" className="mt-7">
     <Tabs.List aria-label="Secciones de configuración" className="workspace-settings-tabs">{visibleSections.map(({ value, label, detail, Icon }) => <Tabs.Tab key={value} value={value} className="workspace-settings-tab"><Icon className="size-5 shrink-0" aria-hidden="true" /><span className="min-w-0 text-left"><span className="block text-xs font-semibold">{label}</span><span className="mt-1 hidden text-xs text-muted-foreground sm:block">{detail}</span></span></Tabs.Tab>)}</Tabs.List>

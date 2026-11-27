@@ -2,7 +2,7 @@ export const managementAuditLabels = {
   PICKUP_SUPPORT_SAVED: "Personal de apoyo guardado", PICKUP_SUPPORT_DELETED: "Personal de apoyo eliminado",
   DELIVERY_RATE_SAVED: "Tarifa de delivery guardada", DELIVERY_RATE_DELETED: "Tarifa de delivery eliminada",
   ACCESS_CREATED: "Acceso autorizado", ACCESS_CHANGED: "Permisos actualizados", ACCESS_REVOKED: "Acceso revocado",
-  MAILBOX_CHANGED: "Buzón de servicio actualizado",
+  MAILBOX_CHANGED: "Buzón de Tesorería actualizado",
   BANK_CREATED: "Cuenta bancaria creada", BANK_CHANGED: "Cuenta bancaria actualizada", BANK_DELETED: "Cuenta bancaria eliminada",
   CAMPUS_CREATED: "Campus creado", CAMPUS_CHANGED: "Campus actualizado", CAMPUS_DELETED: "Campus eliminado",
   BOOK_CREATED: "Publicación creada", BOOK_CHANGED: "Inventario actualizado", BOOK_DELETED: "Publicación eliminada",
