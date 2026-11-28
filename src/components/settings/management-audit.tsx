@@ -1,7 +1,45 @@
-import { History } from "lucide-react";
+import { ChevronDown, History } from "lucide-react";
 import { managementAuditLabels, type ManagementAuditEvent } from "@/modules/access/domain/audit-labels";
+
 type Row = { id: string; actorEmail: string; event: string; resource: string; target: string; createdAt: Date };
 const dates = new Intl.DateTimeFormat("es-PE", { dateStyle: "short", timeStyle: "short", timeZone: "America/Lima" });
+
 export function ManagementAuditPanel({ rows }: { rows: Row[] }) {
-  return <details className="mt-8 max-w-4xl rounded-xl border border-border bg-white"><summary className="flex cursor-pointer items-center gap-2 p-5 text-sm font-semibold"><History className="size-4 text-primary" aria-hidden="true" />Registro de administración<span className="ml-auto text-xs font-normal text-muted-foreground">Últimos 30 cambios</span></summary><div className="border-t border-border p-5"><p className="text-xs leading-6 text-muted-foreground">Registro exclusivo del maestro. Guarda autor, fecha y operación; los cambios de permisos conservan los accesos anteriores y nuevos. El historial completo permanece en la base de datos.</p>{rows.length ? <div className="mt-4 overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr className="border-b border-border text-muted-foreground"><th className="p-2 font-medium">Fecha</th><th className="p-2 font-medium">Autor</th><th className="p-2 font-medium">Operación</th><th className="p-2 font-medium">Referencia</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-b border-border last:border-0"><td className="whitespace-nowrap p-2">{dates.format(row.createdAt)}</td><td className="p-2 break-all">{row.actorEmail}</td><td className="p-2">{managementAuditLabels[row.event as ManagementAuditEvent] ?? row.event}</td><td className="max-w-64 break-all p-2 text-muted-foreground">{row.target}</td></tr>)}</tbody></table></div> : <p className="mt-4 text-xs text-muted-foreground">Los cambios realizados desde la incorporación de esta auditoría aparecerán aquí. No se reconstruyen eventos antiguos.</p>}</div></details>;
+  return (
+    <details open className="group min-w-0 rounded-xl border border-border bg-white">
+      <summary className="flex min-h-12 cursor-pointer flex-wrap items-center gap-x-2 gap-y-1 px-5 text-sm font-semibold">
+        <History className="size-4 text-primary" aria-hidden="true" />
+        Registro de administración
+        <span className="ml-auto text-xs font-normal text-muted-foreground">Últimos 30 cambios</span>
+        <ChevronDown className="size-4 text-muted-foreground motion-safe:transition-transform group-open:rotate-180" aria-hidden="true" />
+      </summary>
+      <div className="border-t border-border">
+        <p className="max-w-[65ch] px-5 py-4 text-xs leading-6 text-muted-foreground">Registro exclusivo del maestro. Guarda autor, fecha y operación. Los cambios de permisos conservan los accesos anteriores y nuevos.</p>
+        {rows.length ? (
+          <div className="max-h-[28rem] overflow-auto rounded-b-xl outline-offset-[-2px]" role="region" aria-label="Cambios administrativos" tabIndex={0}>
+            <table className="w-full min-w-[23rem] text-left text-xs">
+              <thead className="sticky top-0">
+                <tr className="border-y border-border text-muted-foreground">
+                  <th scope="col" className="px-3 font-medium">Fecha</th>
+                  <th scope="col" className="px-3 font-medium">Autor</th>
+                  <th scope="col" className="px-3 font-medium">Operación</th>
+                  <th scope="col" className="px-3 font-medium">Referencia</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                {rows.map((row) => (
+                  <tr key={row.id} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2 tabular-nums">{dates.format(row.createdAt)}</td>
+                    <td className="break-all px-3 py-2">{row.actorEmail}</td>
+                    <td className="px-3 py-2">{managementAuditLabels[row.event as ManagementAuditEvent] ?? row.event}</td>
+                    <td className="max-w-64 break-all px-3 py-2 text-muted-foreground">{row.target}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : <p className="border-t border-border px-5 py-4 text-xs text-muted-foreground">Los cambios registrados en la auditoría aparecerán aquí.</p>}
+      </div>
+    </details>
+  );
 }

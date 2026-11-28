@@ -49,7 +49,7 @@ export function AttentionTabs({ current, progress, outcome, panels }: {
               key={title}
               value={index}
               className={cn(
-                "flex min-w-0 flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center outline-none hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-2 xl:flex-row xl:gap-2.5 xl:px-2 xl:text-left",
+                "flex min-w-0 flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center outline-none transition-colors hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-2 xl:flex-row xl:gap-2.5 xl:px-2 xl:text-left",
                 selected === index && "bg-secondary text-primary",
               )}
             >
@@ -70,9 +70,9 @@ export function AttentionTabs({ current, progress, outcome, panels }: {
           );
         })}
       </Tabs.List>
-      <div className="min-w-0">
+      <div className="order-detail-content min-w-0">
         {panels.map((panel, index) => (
-          <Tabs.Panel keepMounted key={steps[index]} value={index} className="min-w-0 outline-none data-[hidden]:hidden">
+          <Tabs.Panel keepMounted key={steps[index]} value={index} className="step-panel min-w-0 outline-none data-[hidden]:hidden">
             {panel}
           </Tabs.Panel>
         ))}

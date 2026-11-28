@@ -3,8 +3,8 @@ import { courierEstimate } from "@/modules/orders/domain/courier";
 import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { imprintNames } from "@/modules/orders/domain/types";
 import { formatMoney, toCents } from "@/modules/orders/domain/money";
-import { emailAction, emailHeading, emailShell, escapeHtml } from "@/integrations/email/template";
-import { emailSubject, renderOrderEmail, renderOrderUpdate, type EmailOrder } from "./email-template";
+import { emailAction, emailDetails, emailNote, emailShell, escapeHtml, type EmailDetail } from "@/integrations/email/template";
+import { emailSubject, formatEmailDate, orderCodeDetail, renderOrderEmail, type EmailOrder } from "./email-template";
 
 export function buildOrderConfirmationContent(tracking: EmailOrder, link: string, logoCid: string) {
   const intro = tracking.order.orderType === "mixto" ? "Hemos recibido tu pedido con publicaciones de ambos sellos. Realiza los dos depósitos según la guía adjunta." : `Hemos recibido tu pedido. Realiza el depósito de ${tracking.order.orderType === "solo_instituto" ? "Instituto" : "Universidad"} Continental según la guía adjunta.`;
@@ -15,26 +15,117 @@ export function buildOrderConfirmationContent(tracking: EmailOrder, link: string
 }
 
 export type OrderNotice = { id: string; eventType: string; publisherImprint: "universidad" | "instituto" | null; payload: Record<string, string>; createdAt: Date };
-export function buildOrderUpdateContent(tracking: EmailOrder, notification: OrderNotice, link: string, logoCid: string) {
-  const imprint = notification.publisherImprint ? imprintNames[notification.publisherImprint] : "";
-  const payload = notification.payload;
+
+type NoticeContent = {
+  title: string;
+  body: string;
+  status: string;
+  action?: string;
+  note?: string;
+  details?: EmailDetail[];
+};
+
+export function buildOrderUpdateContent({ order }: EmailOrder, notification: OrderNotice, link: string, logoCid: string) {
+  const { publisherImprint, payload, eventType } = notification;
+  const date = formatEmailDate(notification.createdAt);
+  const imprint = publisherImprint ? imprintNames[publisherImprint] : "";
   const grouped = payload.scope === "pedido";
-  const notices: Record<string, { title: string; body: string }> = {
-    PAGO_VERIFICADO: { title: grouped ? "Pagos confirmados" : "Pago confirmado", body: payload.orderStatus === "EN_PREPARACION" ? "Todos los pagos están verificados. Tus publicaciones pasan a distribución." : "Este pago está verificado. Continuaremos con la distribución cuando se verifique el otro sello." },
-    PAGO_RECHAZADO: { title: "Necesitamos otro comprobante", body: `${imprint ? `Revisa el comprobante de ${imprint}. ` : ""}${payload.reason || "Adjunta un archivo nuevo desde tu seguimiento."}` },
-    DESPACHADO: { title: payload.deliveryType === "recojo_campus" ? "Tu pedido está listo para recoger" : "Tu pedido está en camino", body: payload.deliveryType === "recojo_campus" ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : `Enviamos tus publicaciones por ${payload.courier || tracking.order.courier || "el transporte indicado"}.${payload.trackingCode ? ` Número de guía: ${payload.trackingCode}.` : ""} ${courierEstimate(payload.deliveryZone || tracking.order.deliveryZone)}` },
-    DOCUMENTOS_VENTA: { title: payload.correction === "true" ? "Documentos de venta actualizados" : "Tus documentos de venta", body: `${payload.correction === "true" ? "Adjuntamos las versiones corregidas" : "Adjuntamos la boleta o factura"}${tracking.order.orderType === "mixto" ? " de ambos sellos editoriales" : " de tu pedido"}. Conserva los PDF adjuntos para tu registro.` },
-    CANCELADO: { title: payload.source === "gestor" ? "Pedido anulado por Fondo Editorial" : "Pedido cancelado", body: `El pedido está cerrado. No realices nuevos depósitos.${payload.reason ? ` Motivo: ${payload.reason}` : ""} Si realizaste un depósito, contacta al Fondo Editorial para coordinar su devolución.` },
-    ENTREGADO: { title: "Pedido entregado", body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido." },
+  const pickup = (payload.deliveryType || order.deliveryType) === "recojo_campus";
+  const courier = payload.courier || order.courier || "";
+  const complete = payload.orderStatus === "EN_PREPARACION";
+  const correction = payload.correction === "true";
+  const validatedAmount = eventType === "PAGO_VERIFICADO" ? formatMoney(grouped || !publisherImprint
+    ? toCents(order.totalUniversidad) + toCents(order.totalInstituto)
+    : toCents(publisherImprint === "universidad" ? order.totalUniversidad : order.totalInstituto)) : "";
+  const notices: Record<string, NoticeContent> = {
+    PAGO_VERIFICADO: {
+      title: grouped ? "Pagos confirmados" : "Pago confirmado",
+      body: complete ? "Hemos confirmado el pago de tu pedido. Tus publicaciones pasan a distribución." : "Este pago está confirmado. Continuaremos con la distribución cuando se verifique el otro sello.",
+      details: [["Monto validado", validatedAmount, "strong"], ["Fecha de validación", date]],
+      status: complete ? "En distribución" : "Pendiente de pago del otro sello",
+      note: complete ? "Te avisaremos por correo cuando tus publicaciones se despachen o estén listas para recoger." : undefined,
+    },
+    PAGO_RECHAZADO: {
+      title: "Necesitamos otro comprobante",
+      body: imprint ? `Revisa el comprobante de ${imprint} y adjunta un archivo nuevo desde el seguimiento.` : "Revisa el comprobante y adjunta un archivo nuevo desde el seguimiento.",
+      details: [["Motivo", payload.reason ?? ""], ["Fecha de revisión", date]],
+      status: "Comprobante observado",
+      action: "Adjuntar otro comprobante",
+    },
+    DESPACHADO: {
+      title: pickup ? "Tu pedido está listo para recoger" : "Tu pedido está en camino",
+      body: pickup ? "Tus publicaciones están listas para recoger en la biblioteca. Lleva tu documento de identidad." : "Hemos entregado tus publicaciones al operador logístico.",
+      details: [
+        ["Modalidad", pickup ? "Recojo en biblioteca" : "Envío a domicilio"],
+        [pickup ? "Biblioteca" : "Dirección de entrega", payload.address || order.deliveryAddress],
+        ...(pickup ? [
+          ["Ubicación", payload.libraryLocation ?? order.deliveryLibraryLocation ?? ""],
+          ["Horario", payload.pickupHours ?? order.deliveryPickupHours ?? ""],
+          ["Pregunta por", payload.pickupContactName ?? order.pickupContactName ?? ""],
+        ] satisfies EmailDetail[] : [
+          ["Operador", courier],
+          ["Código de rastreo", payload.trackingCode ?? "", "code"],
+        ] satisfies EmailDetail[]),
+      ],
+      status: pickup ? "Listo para recoger" : "Despachado",
+      action: pickup ? "Ver detalles del recojo" : "Ver seguimiento del envío",
+      note: pickup ? pickupEntryInstructions : courierEstimate(payload.deliveryZone || order.deliveryZone),
+    },
+    DOCUMENTOS_VENTA: {
+      title: correction ? "Documentos de venta actualizados" : "Tus documentos de venta",
+      body: `${correction ? "Adjuntamos las versiones corregidas" : "Adjuntamos la boleta o factura"}${order.orderType === "mixto" ? " de ambos sellos editoriales" : " de tu pedido"}.`,
+      details: [["Fecha del aviso", date]],
+      status: correction ? "Documentos actualizados" : "Documentos emitidos",
+      note: "Conserva los documentos adjuntos para tu registro.",
+    },
+    CANCELADO: {
+      title: payload.source === "gestor" ? "Pedido anulado por Fondo Editorial" : "Pedido cancelado",
+      body: "El pedido está cerrado. No realices nuevos depósitos.",
+      details: [["Fecha de cierre", date], ["Motivo", payload.reason ?? ""]],
+      status: payload.source === "gestor" ? "Anulado" : "Cancelado",
+      note: "Si realizaste un depósito, contacta al Fondo Editorial para coordinar su devolución.",
+    },
+    ENTREGADO: {
+      title: "Pedido entregado",
+      body: "Registramos la entrega de tus publicaciones. Gracias por tu pedido.",
+      details: [["Fecha de entrega", date]],
+      status: "Entregado",
+      action: "Ver resumen del pedido",
+      note: "En el seguimiento puedes consultar el historial y descargar tus documentos de venta cuando estén disponibles.",
+    },
   };
-  const notice = notices[notification.eventType];
+  const notice = notices[eventType];
   if (!notice) throw new Error("INVALID_NOTIFICATION_EVENT");
-  const deliveryLocation = notification.eventType === "DESPACHADO" ? { address: payload.address || tracking.order.deliveryAddress, libraryLocation: payload.libraryLocation ?? tracking.order.deliveryLibraryLocation ?? "", pickupHours: payload.pickupHours ?? tracking.order.deliveryPickupHours ?? "", pickupContactName: payload.pickupContactName ?? tracking.order.pickupContactName ?? "", pickup: tracking.order.deliveryType === "recojo_campus", mapUrl: payload.mapUrl || tracking.order.deliveryMapUrl } : undefined;
-  return { subject: `Pedido #${formatOrderNumber(tracking.order.orderNumber)} · ${notice.title}`, html: renderOrderUpdate(tracking, { ...notice, link, trackingUrl: payload.trackingUrl, createdAt: notification.createdAt, logoCid, deliveryLocation }), text: `Pedido ${formatOrderNumber(tracking.order.orderNumber)}\n${notice.title}\n${notice.body}\n${payload.trackingUrl || ""}\n${deliveryLocation ? [deliveryLocation.address, deliveryLocation.libraryLocation, deliveryLocation.pickupHours, deliveryLocation.pickupContactName ? `Pregunta por ${deliveryLocation.pickupContactName}.` : "", deliveryLocation.pickup ? pickupEntryInstructions : "", deliveryLocation.mapUrl].filter(Boolean).join("\n") : ""}\nSeguimiento: ${link}` };
+  const details: EmailDetail[] = [orderCodeDetail(order.orderNumber), ...(notice.details ?? []), ["Estado actual", notice.status, "status"]];
+  const mapUrl = eventType === "DESPACHADO" ? payload.mapUrl || order.deliveryMapUrl : "";
+  const references = [[payload.trackingUrl, "Consultar con el courier"], [mapUrl, "Ver ubicación en Google Maps"]]
+    .filter(([url]) => /^https:\/\//.test(url ?? ""));
+  const body = `<p style="margin:0 0 24px;color:#3f3f46">Hola, <strong>${escapeHtml(order.customerName)}</strong>. ${escapeHtml(notice.body)}</p>`;
+  const referenceLinks = references.map(([url, label]) => `<p style="margin:0 0 12px"><a href="${escapeHtml(url)}" style="color:#6802c1;font-size:13px;font-weight:600">${escapeHtml(label)} ↗</a></p>`).join("");
+  const action = notice.action ?? "Ver seguimiento";
+  const html = emailShell({
+    title: notice.title,
+    logoCid,
+    content: `${body}${emailDetails(details)}${emailAction(link, action)}${referenceLinks}${notice.note ? emailNote(notice.note) : ""}`,
+  });
+  const text = [`Pedido ${formatOrderNumber(order.orderNumber)}`, notice.title, notice.body,
+    ...details.slice(1).filter(([, value]) => value).map(([label, value]) => `${label}: ${value}`),
+    ...references.map(([url, label]) => `${label}: ${url}`), notice.note, `${action}: ${link}`].filter(Boolean).join("\n");
+  return { subject: `Pedido #${formatOrderNumber(order.orderNumber)} · ${notice.title}`, html, text };
 }
 
-export function buildReceiptReviewContent(orderNumber: string, grouped: boolean, link: string, logoCid: string) {
+export function buildReceiptReviewContent(orderNumber: string, grouped: boolean, link: string, logoCid: string, registeredAt: Date) {
   const title = "Comprobantes pendientes de validación";
   const body = grouped ? "Se recibieron los comprobantes de ambos sellos. Revisa los archivos y valida los pagos desde el pedido." : "Se recibió un comprobante de pago. Revisa el archivo y valida el pago desde el pedido.";
-  return { subject: `Pedido #${formatOrderNumber(orderNumber)} · Comprobantes por validar`, html: emailShell(`${emailHeading(`Pedido ${formatOrderNumber(orderNumber)}`, title, logoCid)}<p style="font-size:13px;line-height:1.7">${escapeHtml(body)}</p>${emailAction(link, "Revisar pedido")}<p style="font-size:11px;color:#666674">Aviso interno para el equipo del Fondo Editorial. El comprador conserva el acuse en su seguimiento.</p>`), text: `${title}\n${body}\nRevisar pedido: ${link}` };
+  const date = formatEmailDate(registeredAt);
+  const note = "El comprador conserva el acuse en su seguimiento.";
+  const html = emailShell({
+    title,
+    logoCid,
+    content: `<p style="margin:0 0 24px;color:#3f3f46">${escapeHtml(body)}</p>
+    ${emailDetails([orderCodeDetail(orderNumber), ["Fecha de registro", date], ["Estado actual", "Pendiente de revisión", "status"]])}
+    ${emailAction(link, "Revisar pedido")}
+    ${emailNote(note)}`,
+  });
+  return { subject: `Pedido #${formatOrderNumber(orderNumber)} · Comprobantes por validar`, html, text: `${title}\nPedido ${formatOrderNumber(orderNumber)}\n${body}\nFecha de registro: ${date}\nRevisar pedido: ${link}\n${note}` };
 }

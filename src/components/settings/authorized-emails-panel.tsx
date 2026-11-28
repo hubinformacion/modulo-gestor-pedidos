@@ -59,7 +59,7 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
   }
 
   return (
-    <div className="mt-7 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]">
+    <div className="grid items-start gap-6 @min-[42rem]:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)]">
       <section className="min-w-0 overflow-hidden rounded-xl border border-border" aria-labelledby="lista-correos">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
           <h2 id="lista-correos" className="text-sm font-semibold">Personas autorizadas</h2>

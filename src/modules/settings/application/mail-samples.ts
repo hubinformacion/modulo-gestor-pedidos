@@ -38,7 +38,7 @@ export async function buildMailSample(input: MailSampleSelection) {
     content = buildOrderConfirmationContent(tracking, "#", logoCid);
     attachments = [samplePdf(`guia_pago_${input.variant}_EJEMPLO.pdf`)];
   } else if (input.template === "COMPROBANTE_RECIBIDO") {
-    content = buildReceiptReviewContent(tracking.order.orderNumber, mixed, "#", logoCid);
+    content = buildReceiptReviewContent(tracking.order.orderNumber, mixed, "#", logoCid, sampleDate);
   } else if (input.template === "APOYO_RECOJO") {
     content = buildPickupSupportContent({ orderNumber: tracking.order.orderNumber, deliveryRecipient: "Persona de ejemplo (ficticia)", deliveryRecipientDocument: "DOCUMENTO FICTICIO", customerDocument: "DOCUMENTO FICTICIO", deliveryRecipientPhone: "TELÉFONO FICTICIO", customerPhone: "TELÉFONO FICTICIO", deliveryAddress: tracking.order.deliveryAddress, deliveryLibraryLocation: tracking.order.deliveryLibraryLocation, deliveryPickupHours: tracking.order.deliveryPickupHours }, [{ title: "Publicación de ejemplo (ficticia)", quantity: 2 }], "Personal de ejemplo (ficticio)", logoCid);
   } else {
@@ -49,7 +49,11 @@ export async function buildMailSample(input: MailSampleSelection) {
   }
   const banner = '<p style="padding:12px;background:#fff4cc;color:#332900;font-family:Arial,sans-serif">PRUEBA · Información ficticia. Sin pedido real. Enlaces desactivados.</p>';
   // Keep CID for Gmail test sends; the preview action swaps only this known logo.
-  const html = content.html.replace(/<body([^>]*)>/i, `<body$1>${banner}`).replace(/<a\b[^>]*>([\s\S]*?)<\/a>/gi, '<span style="display:inline-block;padding:8px;color:inherit">$1</span>');
+  const html = content.html.replace(/<body([^>]*)>/i, `<body$1>${banner}`)
+    .replace(/<a\b([^>]*)>([\s\S]*?)<\/a>/gi, (_, attributes: string, label: string) => {
+      const style = attributes.match(/\sstyle="([^"]*)"/i)?.[1] ?? "";
+      return `<span style="${style}">${label}</span>`;
+    });
   return { ...content, html, text: `PRUEBA · Información ficticia. Sin pedido real.\n${content.text}`, attachments };
 }
 

@@ -6,14 +6,12 @@ export function SettingsPage({ title, description, children }: {
   children: ReactNode;
 }) {
   return (
-    <div className="grid max-w-6xl gap-8">
+    <div className="@container min-w-0 space-y-7">
       <header className="border-b border-border pb-5">
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         <p className="mt-2 max-w-[65ch] text-sm leading-6 text-muted-foreground">{description}</p>
       </header>
-      <div className="divide-y divide-border [&>section+section]:pt-8 [&>section:not(:last-child)]:pb-8">
-        {children}
-      </div>
+      {children}
     </div>
   );
 }

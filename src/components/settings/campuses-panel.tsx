@@ -72,7 +72,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   }
 
   return (
-    <div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="mt-6 grid items-start gap-6 @min-[48rem]:grid-cols-[minmax(0,1.55fr)_minmax(21rem,1fr)]">
       <div className="overflow-hidden rounded-xl border border-border">
         <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h3 className="text-sm font-semibold">Campus registrados</h3><span className="rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">{rows.length}</span></div>
         {rows.length ? <ul className="divide-y divide-border">
@@ -112,7 +112,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <div className="border-t border-border pt-5">
               <h4 className="text-xs font-semibold">Ubicación precisa (opcional)</h4>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">Usa coordenadas o la URL src del mapa embebido de Google. La URL tiene prioridad.</p>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Field id="campus-latitude" label="Latitud" inputMode="decimal" value={form.latitude} onChange={(event) => set("latitude", event.target.value)} error={errors.latitude} placeholder="Grados decimales" maxLength={20} />
                 <Field id="campus-longitude" label="Longitud" inputMode="decimal" value={form.longitude} onChange={(event) => set("longitude", event.target.value)} error={errors.longitude} placeholder="Grados decimales" maxLength={20} />
               </div>

@@ -53,7 +53,7 @@ export async function sendOrderUpdateEmail(tracking: Tracking, notification: Ord
     const managers = (await managerMailCopies(notification.createdAt, [tracking.order.customerEmail]));
     if (!managers.length) throw new NoMailRecipients();
     const link = new URL(`/admin/pedidos/${tracking.order.id}`, getPublicOrigin()).toString();
-    const content = buildReceiptReviewContent(tracking.order.orderNumber, notification.payload.scope === "pedido", link, logoCid);
+    const content = buildReceiptReviewContent(tracking.order.orderNumber, notification.payload.scope === "pedido", link, logoCid, notification.createdAt);
     // One message: first manager in To, remaining managers in Cc. Never the buyer.
     return sendStandaloneMail({ to: [managers[0]], cc: managers.slice(1), ...content, logoCid });
   }

@@ -1,20 +1,40 @@
-import { pickupEntryInstructions } from "@/modules/orders/domain/pickup";
-import { emailAction, emailHeading, emailShell, escapeHtml } from "@/integrations/email/template";
+import { emailAction, emailDetails, emailNote, emailShell, escapeHtml, type EmailDetail } from "@/integrations/email/template";
 import type { getTrackedOrder } from "@/modules/orders/data/tracking";
 import { formatMoney, toCents } from "@/modules/orders/domain/money";
 import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { imprintNames } from "@/modules/orders/domain/types";
+
 type Tracked = NonNullable<Awaited<ReturnType<typeof getTrackedOrder>>>;
 export type EmailOrder = { order: Pick<Tracked["order"], "orderNumber" | "createdAt" | "customerName" | "orderType" | "paymentStatusUniversidad" | "paymentStatusInstituto" | "totalUniversidad" | "totalInstituto" | "shippingCost" | "deliveryType" | "courier" | "deliveryZone" | "deliveryAddress" | "deliveryLibraryLocation" | "deliveryPickupHours" | "pickupContactName" | "deliveryMapUrl"> };
 export const emailSubject = (number: string) => `Pedido #${formatOrderNumber(number)} · Pedido registrado`;
-const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
+const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "long", timeZone: "America/Lima" });
+
+export function formatEmailDate(date: Date) {
+  return dateFormat.format(date);
+}
+
+export function orderCodeDetail(orderNumber: string): EmailDetail {
+  return ["Código de pedido", formatOrderNumber(orderNumber), "code"];
+}
+
 export function renderOrderEmail(tracking: EmailOrder, { intro, link, logoCid }: { intro: string; link: string; logoCid: string }) {
   const { order } = tracking;
   const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");
-  const amounts = applicable.map((imprint) => `<tr><td style="padding:16px;border-bottom:1px solid #ede9f4;color:${imprint === "instituto" ? "#e4000b" : "#6802c1"};font-size:12px;font-weight:600">${imprintNames[imprint]}</td><td align="right" style="padding:16px;border-bottom:1px solid #ede9f4;font-size:20px;font-weight:700;white-space:nowrap">${escapeHtml(formatMoney(toCents(imprint === "universidad" ? order.totalUniversidad : order.totalInstituto)))}</td></tr>`).join("");
-  return emailShell(`${emailHeading(`Orden ${formatOrderNumber(order.orderNumber)} · ${dateFormat.format(order.createdAt)}`, "Recibimos tu orden", logoCid)}<p style="margin:16px 0 0;font-size:13px;line-height:1.7">Hola, <strong>${escapeHtml(order.customerName)}</strong>. ${escapeHtml(intro)}</p><h2 style="margin:24px 0 10px;font-size:13px">${order.orderType === "mixto" ? "Importes por sello editorial" : "Importe a depositar"}</h2><table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#faf8fd;border:1px solid #ede9f4;border-radius:8px">${amounts}</table>${order.orderType === "mixto" ? `<p style="margin:14px 0 0;padding:14px;border-radius:7px;background:#fff9e9;font-size:12px;line-height:1.8">Realiza <strong>dos depósitos independientes</strong>, uno para cada sello.${toCents(order.shippingCost) > 0 ? ` El costo por envío de ${escapeHtml(formatMoney(toCents(order.shippingCost)))} está incluido en Universidad Continental.` : ""}</p>` : ""}${emailAction(link, "Pagar y seguir mi pedido")}<p style="margin:22px 0 0;font-size:12px;line-height:1.7;color:#666674">Guía de pago adjunta en PDF. Desde el seguimiento puedes consultar las cuentas y adjuntar tus comprobantes.</p>`);
-}
-export function renderOrderUpdate(tracking: EmailOrder, { title, body, link, trackingUrl, createdAt, logoCid, deliveryLocation }: { deliveryLocation?: { address: string; libraryLocation?: string; mapUrl?: string; pickupHours?: string; pickupContactName?: string; pickup?: boolean }; logoCid: string; title: string; body: string; link: string; trackingUrl?: string; createdAt: Date }) {
-  const stamp = dateFormat.format(createdAt);
-  return emailShell(`${emailHeading(`Pedido ${formatOrderNumber(tracking.order.orderNumber)} · ${stamp}`, title, logoCid)}<p style="font-size:13px;line-height:1.7;margin:0">${escapeHtml(body)}</p>${deliveryLocation ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin:20px 0 0;background:#faf8fd;border-radius:8px"><tr><td style="padding:16px;font-size:12px;line-height:1.8"><strong>Ubicación de entrega / recojo</strong><p style="margin:8px 0 0">${escapeHtml(deliveryLocation.address)}</p>${deliveryLocation.libraryLocation ? `<p style="margin:4px 0 0;font-weight:600">${escapeHtml(deliveryLocation.libraryLocation)}</p>` : ""}${deliveryLocation.pickupHours ? `<p style="margin:6px 0 0">Horario: ${escapeHtml(deliveryLocation.pickupHours)}</p>` : ""}${deliveryLocation.pickupContactName ? `<p style="margin:6px 0 0">Pregunta por <strong>${escapeHtml(deliveryLocation.pickupContactName)}</strong>.</p>` : ""}${deliveryLocation.pickup ? `<p style="margin:10px 0 0">${escapeHtml(pickupEntryInstructions)}</p>` : ""}${deliveryLocation.mapUrl ? `<p style="margin:10px 0 0"><a href="${escapeHtml(deliveryLocation.mapUrl)}" style="color:#6802c1;font-weight:600">Ver ubicación en Google Maps ↗</a></p>` : ""}</td></tr></table>` : ""}${emailAction(link, "Ver seguimiento")}${trackingUrl && /^https:\/\//.test(trackingUrl) ? `<p style="margin:20px 0 0"><a href="${escapeHtml(trackingUrl)}" style="color:#6802c1;font-size:12px;font-weight:600">Consultar este envío con el courier ↗</a></p>` : ""}`);
+  const amount = (imprint: (typeof applicable)[number]) => toCents(imprint === "universidad" ? order.totalUniversidad : order.totalInstituto);
+  const mixed = order.orderType === "mixto";
+  const amounts = applicable.map((imprint): EmailDetail => [imprintNames[imprint], formatMoney(amount(imprint)), "strong"]);
+  const totals: EmailDetail[] = [
+    ["Monto total", formatMoney(applicable.reduce((sum, imprint) => sum + amount(imprint), 0)), "strong"],
+    ...(mixed ? amounts : []),
+  ];
+  const shipping = toCents(order.shippingCost);
+  const depositNote = mixed ? ` Realiza dos depósitos independientes, uno por cada sello.${shipping > 0 ? ` El flete de ${formatMoney(shipping)} está incluido en Universidad Continental.` : ""}` : "";
+  return emailShell({
+    title: "Tu pedido ha sido registrado",
+    logoCid,
+    content: `<p style="margin:0 0 24px;color:#3f3f46">Hola, <strong>${escapeHtml(order.customerName)}</strong>. ${escapeHtml(intro)}</p>
+    ${emailDetails([orderCodeDetail(order.orderNumber), ["Fecha de emisión", formatEmailDate(order.createdAt)], ...totals, ["Estado actual", "Pendiente de pago", "status"]])}
+    ${emailAction(link, "Ver pedido y adjuntar comprobante")}
+    ${emailNote(`La guía de pago está adjunta en PDF.${depositNote} En el seguimiento puedes consultar las cuentas y adjuntar tus comprobantes.`)}`,
+  });
 }

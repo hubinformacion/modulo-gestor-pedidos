@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { asc, eq } from "drizzle-orm";
-import { ArrowLeft, ArrowUpRight, ChevronDown, FileText } from "lucide-react";
+import { ArrowLeft, ArrowUpRight, FileText } from "lucide-react";
 import { z } from "zod";
 
 import { withReadDatabase } from "@/db";
@@ -44,8 +44,8 @@ function StepHeading({ title, instruction }: { title: string; instruction: strin
   </header>;
 }
 
-function Facts({ rows }: { rows: [string, ReactNode][] }) {
-  return <dl className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 min-[360px]:grid-cols-2">
+function Facts({ rows, wide = false }: { rows: [string, ReactNode][]; wide?: boolean }) {
+  return <dl className={`grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 min-[360px]:grid-cols-2 ${wide ? "order-detail-facts" : ""}`}>
     {rows.map(([label, value]) => (
       <div key={label} className="min-w-0">
         <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -142,6 +142,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     </li>;
   }
 
+  const showDeliverySummary = deliveryFacts.length > 0 || Boolean(order.shippingTrackingUrl);
+  const deliveryEvidence = canDeliver ? evidence.slice(1) : evidence;
   const panels = [
     <div key="attention" className="space-y-5">
       <StepHeading title="Atención del pedido" instruction={closed
@@ -161,28 +163,25 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           {canCancel ? <CancelOrderControls mode="gestor" reference={order.id} version={version} hasPayment={receipts.length > 0} /> : null}
         </div>
       </section>
-      <section aria-labelledby="order-customer" className="max-w-2xl">
-        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h3 id="order-customer" className="text-base font-semibold">Comprador</h3>
-          <span className="text-xs text-muted-foreground">{order.customerType === "comunidad_continental" ? "Comunidad Continental" : "Público general"}</span>
-        </div>
-        <Facts rows={[
-          ["Nombre", order.customerName], ["Documento", order.customerDocument],
-          ["Correo", order.customerEmail], ["Celular", order.customerPhone],
-        ]} />
-        {order.billingRuc ? <details className="group mt-3 text-sm">
-          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium text-primary">
-            <ChevronDown aria-hidden="true" className="size-4 -rotate-90 group-open:rotate-0" />
-            Datos de facturación
-          </summary>
-          <div className="border-l border-border pl-4">
-            <Facts rows={[
-              ["Razón social", order.billingBusinessName], ["RUC", order.billingRuc],
-              ["Dirección fiscal", order.billingAddress || "Sin dirección registrada"],
-            ]} />
+      <div className={order.billingRuc ? "order-detail-pair grid gap-x-8 gap-y-4" : ""}>
+        <section aria-labelledby="order-customer" className="min-w-0">
+          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <h3 id="order-customer" className="text-base font-semibold">Comprador</h3>
+            <span className="text-xs text-muted-foreground">{order.customerType === "comunidad_continental" ? "Comunidad Continental" : "Público general"}</span>
           </div>
-        </details> : null}
-      </section>
+          <Facts wide={!order.billingRuc} rows={[
+            ["Nombre", order.customerName], ["Documento", order.customerDocument],
+            ["Correo", order.customerEmail], ["Celular", order.customerPhone],
+          ]} />
+        </section>
+        {order.billingRuc ? <section aria-labelledby="order-billing" className="min-w-0">
+          <h3 id="order-billing" className="mb-3 text-base font-semibold">Datos de facturación</h3>
+          <Facts rows={[
+            ["Razón social", order.billingBusinessName], ["RUC", order.billingRuc],
+            ["Dirección fiscal", order.billingAddress || "Sin dirección registrada"],
+          ]} />
+        </section> : null}
+      </div>
       <PurchaseDetail
         items={items}
         subtotal={centsToDecimal(toCents(order.subtotalUniversidad) + toCents(order.subtotalInstituto))}
@@ -196,8 +195,12 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     <div key="payments" className="space-y-5">
       <StepHeading title="Pagos del pedido" instruction={paymentInstruction} />
       <div className="divide-y divide-border border-y border-border">
-        {applicable.map(({ imprint, status, amount, files, reason }) => (
-          <section key={imprint} aria-label={imprintNames[imprint]} className="space-y-3 py-4">
+        {applicable.map(({ imprint, status, amount, files, reason }) => {
+          const notice = treasuryNotices.find((item) => item.publisherImprint === imprint);
+          const latest = files[0];
+          const review = canReview && status === "EN_REVISION" && latest;
+          const hasDecision = Boolean(reason || review || notice);
+          return <section key={imprint} aria-label={imprintNames[imprint]} className="space-y-3 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 <ImprintBadge imprint={imprint} />
@@ -205,24 +208,24 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               </div>
               <p className="text-xs text-muted-foreground">Importe <strong className="ml-1 text-base font-semibold text-foreground tabular-nums">{formatMoney(toCents(amount))}</strong></p>
             </div>
-            <div className="grid gap-4 min-[1480px]:grid-cols-[minmax(0,1fr)_minmax(15rem,.66fr)]">
-              <div className="min-w-0 max-w-xl">
-                {files[0] ? <ul aria-label="Comprobante más reciente">{receiptRow(files[0], true)}</ul> : <p className="text-sm text-muted-foreground">El comprador aún no adjunta un comprobante.</p>}
+            <div className={hasDecision ? "order-detail-pair grid gap-x-8 gap-y-4" : ""}>
+              <div className="min-w-0">
+                {latest ? <ul aria-label="Comprobante más reciente">{receiptRow(latest, true)}</ul> : <p className="text-sm text-muted-foreground">El comprador aún no adjunta un comprobante.</p>}
                 {files.length > 1 ? <details className="mt-1">
                   <summary className="cursor-pointer text-xs font-medium text-primary">Otros comprobantes ({files.length - 1})</summary>
                   <ul className="mt-2 divide-y divide-border">{files.slice(1).map((file) => receiptRow(file))}</ul>
                 </details> : null}
               </div>
-              {(reason || (canReview && status === "EN_REVISION" && files[0]) || treasuryNotices.some((notice) => notice.publisherImprint === imprint)) ? (
-                <div className="min-w-0 max-w-lg space-y-3">
+              {hasDecision ? (
+                <div className="min-w-0 space-y-3">
                   {reason ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm leading-5 text-rose-800"><span className="font-medium">Motivo:</span> {reason}</p> : null}
-                  {canReview && status === "EN_REVISION" && files[0] ? <PaymentReview id={order.id} imprint={imprint} receiptId={files[0].id} /> : null}
-                  <TreasuryPaymentNoticeStatus notice={treasuryNotices.find((notice) => notice.publisherImprint === imprint)} cancelled={cancelled} />
+                  {review ? <PaymentReview id={order.id} imprint={imprint} receiptId={review.id} /> : null}
+                  <TreasuryPaymentNoticeStatus notice={notice} cancelled={cancelled} />
                 </div>
               ) : null}
             </div>
-          </section>
-        ))}
+          </section>;
+        })}
       </div>
       <AdminSaleDocuments orderId={order.id} actor={actor} invoice={Boolean(order.billingRuc)} />
     </div>,
@@ -236,13 +239,13 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         : !allVerified ? "La salida se habilita cuando todos los pagos estén verificados."
         : waitingForManager} />
       {canDispatch ? (
-        <section aria-labelledby="order-dispatch" className="max-w-3xl border-y border-border py-4">
+        <section aria-labelledby="order-dispatch" className="border-y border-border py-4">
           <h3 id="order-dispatch" className="text-base font-semibold">{delivery ? "Registrar envío" : "Registrar disponibilidad para recojo"}</h3>
           <DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={delivery}
             initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} />
         </section>
       ) : null}
-      <div className="grid gap-x-7 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="order-detail-pair grid gap-x-8 gap-y-5">
         <section aria-labelledby="order-destination" className="min-w-0">
           <h3 id="order-destination" className="text-base font-semibold">{delivery ? "Destino del envío" : "Lugar de recojo"}</h3>
           <address className="mt-2 space-y-1 break-words text-sm not-italic leading-5">
@@ -280,32 +283,34 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
     <div key="delivery" className="space-y-5">
       <StepHeading title="Entrega" instruction={deliveryInstruction} />
-      {canDeliver ? <section aria-labelledby="order-confirm-delivery" className="max-w-xl border-y border-border py-4">
-        <h3 id="order-confirm-delivery" className="text-base font-semibold">Confirmar entrega</h3>
-        <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null}
-          delivery={delivery} initialCourier={order.courier ?? ""} />
-      </section> : null}
-      {deliveryFacts.length || order.shippingTrackingUrl ? (
-        <section aria-labelledby="order-delivery-summary" className="max-w-xl">
-          <h3 id="order-delivery-summary" className="mb-3 text-base font-semibold">{delivery ? "Seguimiento del envío" : "Seguimiento del recojo"}</h3>
-          <Facts rows={deliveryFacts} />
-          {order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className={`mt-3 ${linkClass}`}>Consultar envío <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
-        </section>
-      ) : null}
-      {evidence.length > (canDeliver ? 1 : 0) ? (
-        <section aria-labelledby="order-evidence" className="max-w-lg border-t border-border pt-4">
-          <h3 id="order-evidence" className="text-base font-semibold">{canDeliver ? "Evidencias anteriores" : "Evidencia de entrega"}</h3>
-          <ul className="mt-2 divide-y divide-border">
-            {(canDeliver ? evidence.slice(1) : evidence).map((file) => (
-              <li key={file.id} className="min-w-0 py-2">
-                <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className={`break-words ${linkClass}`}>{file.fileName}</a>
-                <p className="mt-0.5 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>
-                <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
+      <div className={showDeliverySummary && (canDeliver || deliveryEvidence.length > 0) ? "order-detail-pair grid gap-x-8 gap-y-5" : "space-y-5"}>
+        {canDeliver ? <section aria-labelledby="order-confirm-delivery" className="min-w-0 border-t border-border pt-4">
+          <h3 id="order-confirm-delivery" className="text-base font-semibold">Confirmar entrega</h3>
+          <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null}
+            delivery={delivery} initialCourier={order.courier ?? ""} />
+        </section> : null}
+        {showDeliverySummary ? (
+          <section aria-labelledby="order-delivery-summary" className="min-w-0 border-t border-border pt-4">
+            <h3 id="order-delivery-summary" className="mb-3 text-base font-semibold">{delivery ? "Seguimiento del envío" : "Seguimiento del recojo"}</h3>
+            <Facts rows={deliveryFacts} />
+            {order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className={`mt-3 ${linkClass}`}>Consultar envío <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
+          </section>
+        ) : null}
+        {deliveryEvidence.length ? (
+          <section aria-labelledby="order-evidence" className={`min-w-0 border-t border-border pt-4 ${canDeliver ? "col-span-full" : ""}`}>
+            <h3 id="order-evidence" className="text-base font-semibold">{canDeliver ? "Evidencias anteriores" : "Evidencia de entrega"}</h3>
+            <ul className="mt-2 divide-y divide-border">
+              {deliveryEvidence.map((file) => (
+                <li key={file.id} className="min-w-0 py-2">
+                  <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className={`break-words ${linkClass}`}>{file.fileName}</a>
+                  <p className="mt-0.5 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>
+                  <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </div>
     </div>,
   ];
 
@@ -329,7 +334,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   </ol> : <p className="text-sm text-muted-foreground">Todavía no hay actividad registrada.</p>;
 
   return (
-    <div className="max-w-[74rem] space-y-5">
+    <div className="min-w-0 space-y-5">
       <header className="space-y-3 border-b border-border pb-4">
         <Link href="/admin/pedidos" className={linkClass}><ArrowLeft aria-hidden="true" className="size-4" /> Pedidos</Link>
         <div className="flex flex-wrap items-end justify-between gap-3">

@@ -64,7 +64,7 @@ export function InventorySkeleton() {
 }
 export function AdminOrderSkeleton() {
   return <LoadingRegion label="Cargando atención del pedido">
-    <div className="max-w-[74rem] space-y-5">
+    <div className="min-w-0 space-y-5">
       <div className="w-20"><Bones kind="back" /></div>
       <div className="border-b border-border pb-3"><WorkspaceHeadingBones /></div>
       <div className="grid min-w-0 gap-5 xl:grid-cols-[11.5rem_minmax(0,1fr)] xl:gap-x-7">
@@ -74,7 +74,7 @@ export function AdminOrderSkeleton() {
         <div className="min-w-0 space-y-4">
           <div className="w-full max-w-lg"><Bones kind="heading" /></div>
           <div className="border-y border-border py-3"><Bones kind="action" /></div>
-          <div className="max-w-xl"><Bones kind="lines" /></div>
+          <div><Bones kind="lines" /></div>
           <div className="border-t border-border pt-4"><Bones kind="summary" /></div>
         </div>
       </div>

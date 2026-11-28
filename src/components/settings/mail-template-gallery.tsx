@@ -52,26 +52,28 @@ export function MailTemplateGallery({ endpointConfigured, activeProvider }: { en
 
   return <section aria-labelledby="mail-gallery-title">
     <h2 id="mail-gallery-title" className="text-base font-semibold">Plantillas y prueba de envío</h2>
-    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Revisa una plantilla o envía un ejemplo con datos ficticios al destinatario que indiques.</p>
+    <p className="mt-1.5 max-w-[65ch] text-sm leading-6 text-muted-foreground">Revisa una plantilla o envía un ejemplo con datos ficticios al destinatario que indiques.</p>
     <form ref={formRef} className="mt-4" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); runOperation("send"); }}>
-      <fieldset disabled={pending} className="space-y-5">
-        <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
-          <SelectField id="mail-sample-template" name="template" label="Plantilla" defaultValue="PEDIDO_RECIBIDO" onValueChange={() => { setPreview(null); setResult(null); }}>
-            {Object.entries(mailSampleOptions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
-          </SelectField>
-          <SelectField id="mail-sample-variant" name="variant" label="Sello" defaultValue="universidad" onValueChange={() => { setPreview(null); setResult(null); }}>
-            <option value="universidad">Universidad</option><option value="instituto">Instituto</option><option value="mixto">Mixto</option>
-          </SelectField>
-          <SelectField id="mail-sample-delivery" name="delivery" label="Entrega" defaultValue="delivery" onValueChange={() => { setPreview(null); setResult(null); }}>
-            <option value="delivery">Delivery</option><option value="recojo_campus">Recojo en campus</option>
-          </SelectField>
-          <SelectField id="mail-sample-billing" name="billing" label="Comprobante de venta" defaultValue="boleta" onValueChange={() => { setPreview(null); setResult(null); }}>
-            <option value="boleta">Boleta</option><option value="factura">Factura</option>
-          </SelectField>
+      <fieldset disabled={pending} className="grid gap-6 @min-[54rem]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] @min-[54rem]:gap-8">
+        <div className="min-w-0">
+          <div className="grid gap-4 @min-[34rem]:grid-cols-2">
+            <SelectField id="mail-sample-template" name="template" label="Plantilla" defaultValue="PEDIDO_RECIBIDO" onValueChange={() => { setPreview(null); setResult(null); }}>
+              {Object.entries(mailSampleOptions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+            </SelectField>
+            <SelectField id="mail-sample-variant" name="variant" label="Sello" defaultValue="universidad" onValueChange={() => { setPreview(null); setResult(null); }}>
+              <option value="universidad">Universidad</option><option value="instituto">Instituto</option><option value="mixto">Mixto</option>
+            </SelectField>
+            <SelectField id="mail-sample-delivery" name="delivery" label="Entrega" defaultValue="delivery" onValueChange={() => { setPreview(null); setResult(null); }}>
+              <option value="delivery">Delivery</option><option value="recojo_campus">Recojo en campus</option>
+            </SelectField>
+            <SelectField id="mail-sample-billing" name="billing" label="Comprobante de venta" defaultValue="boleta" onValueChange={() => { setPreview(null); setResult(null); }}>
+              <option value="boleta">Boleta</option><option value="factura">Factura</option>
+            </SelectField>
+          </div>
+          <Button className="mt-4" type="button" variant="outline" disabled={pending} onClick={() => runOperation("preview")}><Eye aria-hidden="true" />{pending && operation === "preview" ? "Generando vista previa…" : "Ver vista previa"}</Button>
         </div>
-        <Button type="button" variant="outline" disabled={pending} onClick={() => runOperation("preview")}><Eye aria-hidden="true" />{pending && operation === "preview" ? "Generando vista previa…" : "Ver vista previa"}</Button>
-        <div className="border-t border-border pt-5">
-          <div className="grid max-w-3xl gap-5 sm:grid-cols-2">
+        <div className="min-w-0 border-t border-border pt-5 @min-[54rem]:border-l @min-[54rem]:border-t-0 @min-[54rem]:pl-8 @min-[54rem]:pt-0">
+          <div className="grid gap-4 @min-[34rem]:grid-cols-2 @min-[54rem]:grid-cols-1 @min-[68rem]:grid-cols-2">
             <Field id="mail-sample-destination" name="destination" label="Destinatario de prueba" type="email" autoComplete="off" maxLength={254} hint="Solo este correo recibirá la prueba, sin copias automáticas." />
             <SelectField id="mail-sample-provider" label="Servicio de envío de prueba" value={provider} onValueChange={(value) => { setProvider(value); setResult(null); }}>
               <option value="gmail">Gmail</option>

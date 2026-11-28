@@ -8,6 +8,8 @@ import { BookOpen, ChartNoAxesCombined, ChevronDown, ChevronRight, ClipboardList
 import { LogoutButton } from "@/components/access/logout-button";
 import { cn } from "@/shared/utils/cn";
 
+type GroupId = (typeof groups)[number]["id"];
+
 type NavigationItem = { href: string; label: string; icon: LucideIcon };
 const settingsRoot = "/admin/configuracion";
 const settings = [
@@ -98,13 +100,14 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
   const [temporaryCollapsed, setTemporaryCollapsed] = useState<boolean | null>(null);
   const collapsed = temporaryCollapsed ?? savedCollapsed;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [groupChoice, setGroupChoice] = useState<{ route: string; open: (typeof groups)[number]["id"] | null }>();
-  if (groupChoice && groupChoice.route !== pathname) setGroupChoice(undefined);
   const inSettings = pathname === settingsRoot || pathname.startsWith(`${settingsRoot}/`);
   const current = items.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? (inSettings ? settings[0] : items[0]);
   const detail = pathname.startsWith(`${current.href}/`);
   const activeGroup = groups.find((group) => group.items.some((item) => item.href === current.href))?.id;
-  const openGroup = groupChoice?.route === pathname ? groupChoice.open : activeGroup;
+  const [menu, setMenu] = useState<{ activeGroup?: GroupId; open: GroupId[] }>({ activeGroup, open: activeGroup ? [activeGroup] : [] });
+  if (menu.activeGroup !== activeGroup) {
+    setMenu({ activeGroup, open: activeGroup && !menu.open.includes(activeGroup) ? [...menu.open, activeGroup] : menu.open });
+  }
   const closeMobile = () => setMobileOpen(false);
 
   function setRailCollapsed(next: boolean) {
@@ -115,6 +118,16 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
     } catch {
       setTemporaryCollapsed(next);
     }
+  }
+
+  function toggleGroup(id: GroupId, compact: boolean) {
+    setMenu((current) => ({
+      ...current,
+      open: current.open.includes(id)
+        ? compact ? current.open : current.open.filter((item) => item !== id)
+        : [...current.open, id],
+    }));
+    if (compact) setRailCollapsed(false);
   }
 
   function sidebar(mobile = false) {
@@ -132,7 +145,7 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
           <ul className="workspace-nav-groups">
             {groups.map(({ id, label, icon: Icon, items: children }) => {
               const active = id === activeGroup;
-              const open = !compact && id === openGroup;
+              const open = !compact && menu.open.includes(id);
               const panel = `workspace-${mobile ? "movil" : "escritorio"}-${id}`;
               return (
                 <li key={id}>
@@ -144,18 +157,19 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
                     aria-label={compact ? label : undefined}
                     aria-controls={panel}
                     aria-expanded={open}
-                    onClick={() => {
-                      setGroupChoice({ route: pathname, open: open ? null : id });
-                      if (compact) setRailCollapsed(false);
-                    }}
+                    onClick={() => toggleGroup(id, compact)}
                   >
                     <Icon aria-hidden="true" />
                     <span className="workspace-expanded">{label}</span>
                     <ChevronDown aria-hidden="true" className="workspace-expanded workspace-menu-chevron" />
                   </button>
-                  <ul id={panel} hidden={!open} className="workspace-submenu">
-                    {children.map((item) => <li key={item.href}><NavigationLink item={item} current={current.href} onNavigate={closeMobile} /></li>)}
-                  </ul>
+                  <div id={panel} className="workspace-submenu-region" data-open={open} inert={!open}>
+                    <div className="workspace-submenu-clip">
+                      <ul className="workspace-submenu">
+                        {children.map((item) => <li key={item.href}><NavigationLink item={item} current={current.href} onNavigate={closeMobile} /></li>)}
+                      </ul>
+                    </div>
+                  </div>
                 </li>
               );
             })}
@@ -213,7 +227,9 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
             {detail ? <><ChevronRight aria-hidden="true" /><span aria-current="page">Detalle</span></> : null}
           </nav>
         </header>
-        <main id="contenido" tabIndex={-1} className="workspace-content enter-page">{children}</main>
+        <main id="contenido" tabIndex={-1} className="workspace-content">
+          <div key={pathname} className="enter-page">{children}</div>
+        </main>
       </div>
     </div>
   );

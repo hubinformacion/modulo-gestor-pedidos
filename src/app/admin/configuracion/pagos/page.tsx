@@ -24,16 +24,18 @@ export default async function PaymentSettingsPage() {
         ) : null}
         <BankAccountsPanel rows={rows.map((row) => ({ ...row, currency: "PEN" }))} />
       </SettingsSection>
-      <SettingsSection id="payment-guides" title="Guías de pago" description="Verificación de firma y tamaño de los archivos que se adjuntan al pedido.">
-        <ul className="mt-3 max-w-3xl divide-y divide-border border-y border-border">
-          {guides.map(({ label, ready }) => (
-            <li key={label} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
-              <span className="break-all">{label}</span>
-              <span className={ready ? "text-emerald-700" : "text-amber-800"}>{ready ? "Válida" : "Revisar PDF (hasta 3 MiB)"}</span>
-            </li>
-          ))}
-        </ul>
-      </SettingsSection>
+      <div className="border-t border-border pt-6">
+        <SettingsSection id="payment-guides" title="Guías de pago" description="Verificación de firma y tamaño de los archivos que se adjuntan al pedido.">
+          <ul className="mt-4 grid divide-y divide-border border-y border-border @min-[45rem]:grid-cols-3 @min-[45rem]:divide-x @min-[45rem]:divide-y-0">
+            {guides.map(({ label, ready }) => (
+              <li key={label} className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm @min-[45rem]:block @min-[45rem]:px-4">
+                <span className="break-words">{label}</span>
+                <span className={`@min-[45rem]:mt-1 @min-[45rem]:block ${ready ? "text-emerald-700" : "text-amber-800"}`}>{ready ? "Válida" : "Revisar PDF (hasta 3 MiB)"}</span>
+              </li>
+            ))}
+          </ul>
+        </SettingsSection>
+      </div>
     </SettingsPage>
   );
 }
