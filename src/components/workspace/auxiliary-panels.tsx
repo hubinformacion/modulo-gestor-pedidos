@@ -11,15 +11,16 @@ export function AuxiliaryPanels({ notes, history, notesCount, historyCount }: {
   historyCount: number;
 }) {
   const panels = [
-    { title: "Notas internas", count: notesCount, content: notes, Icon: MessageSquareText, description: "Comentarios privados del equipo de Fondo Editorial." },
-    { title: "Historial de atención", count: historyCount, content: history, Icon: History, description: "Registro de cambios y responsables del pedido." },
+    { title: "Notas internas", shortTitle: "Notas", count: notesCount, content: notes, Icon: MessageSquareText, description: "Comentarios privados del equipo de Fondo Editorial." },
+    { title: "Historial de atención", shortTitle: "Historial", count: historyCount, content: history, Icon: History, description: "Registro de cambios y responsables del pedido." },
   ];
 
-  return <>{panels.map(({ title, count, content, Icon, description }) => (
+  return <>{panels.map(({ title, shortTitle, count, content, Icon, description }) => (
     <Dialog.Root key={title}>
-      <Dialog.Trigger className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-white px-3 text-xs font-medium transition-colors hover:bg-secondary">
-        <Icon className="size-3.5" aria-hidden="true" />{title}
-        <span className="rounded bg-secondary px-1.5 py-0.5 text-xs text-primary">{count}</span>
+      <Dialog.Trigger aria-label={count ? `${title} (${count})` : title} className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-white px-2.5 text-xs font-medium transition-colors hover:bg-secondary sm:gap-2 sm:px-3">
+        <Icon className="size-3.5" aria-hidden="true" />
+        <span className="sm:hidden">{shortTitle}</span><span className="hidden sm:inline">{title}</span>
+        {count ? <span aria-hidden="true" className="rounded bg-secondary px-1.5 py-0.5 text-xs text-primary">{count}</span> : null}
       </Dialog.Trigger>
       <Dialog.Portal keepMounted>
         <Dialog.Backdrop className="workspace-dialog-backdrop fixed inset-0 z-40 bg-black/30" />

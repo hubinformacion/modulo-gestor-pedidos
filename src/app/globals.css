@@ -308,11 +308,3 @@ a.workspace-metric-card:hover { border-color: #d4b5eb; background: #fdfbff; }
   opacity: 0;
   scale: .98;
 }
-
-.order-detail-content { container: order-step / inline-size; }
-@container order-step (min-width: 49rem) {
-  .order-detail-pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  .order-detail-review-actions { border-top: 0; padding-top: 0; }
-  .order-detail-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .order-detail-purchase { grid-template-columns: minmax(0, 1fr) minmax(13rem, .35fr); gap: 1.5rem; }
-}

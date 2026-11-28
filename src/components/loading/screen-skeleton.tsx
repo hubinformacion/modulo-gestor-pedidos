@@ -64,20 +64,17 @@ export function InventorySkeleton() {
 }
 export function AdminOrderSkeleton() {
   return <LoadingRegion label="Cargando atención del pedido">
-    <div className="min-w-0 space-y-5">
-      <div className="w-20"><Bones kind="back" /></div>
-      <div className="border-b border-border pb-3"><WorkspaceHeadingBones /></div>
-      <div className="grid min-w-0 gap-5 xl:grid-cols-[11.5rem_minmax(0,1fr)] xl:gap-x-7">
-        <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted/50 p-1 xl:grid-cols-1 xl:self-start xl:p-1.5">
-          {Array.from({ length: 4 }, (_, index) => <div key={index} className="px-1 py-1.5"><Bones kind="action" /></div>)}
-        </div>
-        <div className="min-w-0 space-y-4">
-          <div className="w-full max-w-lg"><Bones kind="heading" /></div>
-          <div className="border-y border-border py-3"><Bones kind="action" /></div>
-          <div><Bones kind="lines" /></div>
-          <div className="border-t border-border pt-4"><Bones kind="summary" /></div>
-        </div>
+    <div className="mx-auto w-full min-w-0 max-w-[92rem] space-y-4">
+      <Card><WorkspaceHeadingBones /></Card>
+      <div className="grid grid-cols-4 divide-x divide-border rounded-xl border border-border">
+        {Array.from({ length: 4 }, (_, index) => <div key={index} className="min-w-0 px-1 py-2 sm:px-4"><Bones kind="action" /></div>)}
       </div>
+      <Card><div className="max-w-lg"><Bones kind="lines" /></div></Card>
+      <div className="grid items-start gap-4 lg:grid-cols-2">
+        <Card><Bones kind="action" /></Card>
+        <Card><Bones kind="lines" /></Card>
+      </div>
+      <Card><Bones kind="summary" /></Card>
     </div>
   </LoadingRegion>;
 }

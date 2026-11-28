@@ -27,22 +27,22 @@ export default async function EmailSettingsPage() {
   ];
   return (
     <SettingsPage title="Correos" description="Revisa el servicio de envío, las plantillas y los destinatarios de Tesorería.">
-      <div className="grid items-start gap-7 @min-[56rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)]">
-        <SettingsSection id="mail-providers" title="Servicios de envío" description="El proveedor activo envía los avisos generales. Los avisos a Tesorería salen por Gmail.">
-          <ul className="mt-5 divide-y divide-border border-y border-border">
+      {canManage ? <MailTemplateGallery endpointConfigured={endpointConfigured} activeProvider={activeProvider} /> : null}
+      <div className="grid items-start gap-5 @min-[51rem]:grid-cols-[minmax(15rem,1fr)_minmax(0,2.2fr)] sm:gap-6">
+        <SettingsSection className="rounded-xl border border-border bg-white p-4 sm:p-5" id="mail-providers" title="Servicios de envío" description="El proveedor activo envía los avisos generales. Tesorería recibe sus avisos por Gmail.">
+          <ul className="mt-4 divide-y divide-border border-t border-border">
             {providers.map(({ name, configured, provider }) => (
-              <li key={provider} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm">
-                <span className="font-medium">{name}{provider === activeProvider ? <span className="ml-2 text-xs text-primary">Activo</span> : null}</span>
-                <span className={configured ? "text-muted-foreground" : "text-amber-800"}>{configured ? "Configurado" : "Configuración pendiente"}</span>
+              <li key={provider} className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 py-3 text-sm last:pb-0">
+                <span className="font-medium">{name}{provider === activeProvider ? <span className="ml-2 inline-block rounded-md bg-secondary px-1.5 py-0.5 text-xs text-primary">Activo</span> : null}</span>
+                <span className={`text-xs ${configured ? "text-muted-foreground" : "text-amber-800"}`}>{configured ? "Configurado" : "Configuración pendiente"}</span>
               </li>
             ))}
           </ul>
         </SettingsSection>
-        <SettingsSection id="treasury-recipients" title="Buzones de Tesorería" description="Reciben el voucher y los datos de emisión al verificar un pago. Estos buzones funcionan como destinatarios de correo.">
+        <SettingsSection className="rounded-xl border border-border bg-white p-4 sm:p-5" id="treasury-recipients" title="Buzones de Tesorería" description="Al verificar un pago se envían el voucher y los datos de emisión al buzón del sello correspondiente.">
           <TreasuryMailboxes canManage={canManage} mailboxes={mailboxes} />
         </SettingsSection>
       </div>
-      {canManage ? <div className="border-t border-border pt-6"><MailTemplateGallery endpointConfigured={endpointConfigured} activeProvider={activeProvider} /></div> : null}
     </SettingsPage>
   );
 }

@@ -12,6 +12,7 @@ import { campusSchema, emptyCampus, type CampusActionResult, type CampusAdminRow
 export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   const [form, setForm] = useState<CampusForm>(emptyCampus);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [mapOpen, setMapOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [message, setMessage] = useState<CampusActionResult | null>(null);
@@ -25,14 +26,18 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
 
   function report(result: CampusActionResult) {
     setMessage(result);
-    if (result.fieldErrors) setErrors(result.fieldErrors);
+    if (result.fieldErrors) {
+      setErrors(result.fieldErrors);
+      if (result.fieldErrors.latitude || result.fieldErrors.longitude || result.fieldErrors.googleMapsEmbedUrl) setMapOpen(true);
+    }
 
   }
 
-  function cancel() { setEditingId(null); setForm(emptyCampus); setErrors({}); setMessage(null); }
+  function cancel() { setEditingId(null); setForm(emptyCampus); setErrors({}); setMessage(null); setMapOpen(false); }
 
   function edit(row: CampusAdminRow) {
     setEditingId(row.id); setForm({ name: row.name, libraryAddress: row.libraryAddress, libraryLocation: row.libraryLocation, pickupHours: row.pickupHours, latitude: row.latitude, longitude: row.longitude, googleMapsEmbedUrl: row.googleMapsEmbedUrl, status: row.status });
+    setMapOpen(Boolean(row.latitude || row.longitude || row.googleMapsEmbedUrl));
     setErrors({}); setMessage(null); setConfirmId(null);
     requestAnimationFrame(() => { formRef.current?.scrollIntoView({ block: "start", behavior: "instant" }); formRef.current?.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true }); });
   }
@@ -44,6 +49,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
       const next: Record<string, string> = {};
       for (const issue of parsed.error.issues) next[String(issue.path[0])] ??= issue.message;
       setErrors(next);
+      if (next.latitude || next.longitude || next.googleMapsEmbedUrl) setMapOpen(true);
       setMessage({ success: false, message: "Revisa los datos del campus." }); sileo.warning({ title: "Revisa el campus", description: "Corrige los campos señalados antes de guardar." });
       return;
     }
@@ -51,7 +57,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
     startTransition(async () => {
       try {
         const result = await notifyAction(() => editingId ? updateCampusAction({ ...parsed.data, id: editingId }) : createCampusAction(parsed.data), { loading: { title: "Guardando campus", description: "Actualizamos los datos y el lugar de recojo." }, success: { title: editingId ? "Campus actualizado" : "Campus añadido", description: "Los datos de biblioteca y ubicación están disponibles en la configuración." }, error: { title: "No se pudo guardar el campus", description: "Conserva los datos del formulario y reintenta." } });
-        if (result.success) { setEditingId(null); setForm(emptyCampus); }
+        if (result.success) { setEditingId(null); setForm(emptyCampus); setMapOpen(false); }
         report(result);
       } catch { report({ success: false, message: "No se pudo guardar. Recarga la página e intenta nuevamente." }); }
     });
@@ -64,7 +70,7 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
         const result = await notifyAction(() => deleteCampusAction(id), { loading: { title: "Eliminando campus", description: "Comprobamos si tiene pedidos asociados." }, success: { title: "Campus eliminado", description: "El campus se retiró de la configuración de recojo." }, error: { title: "No se pudo eliminar el campus", description: "Actualiza los datos y vuelve a intentarlo." } });
         if (result.success) {
           setConfirmId(null);
-          if (editingId === id) { setEditingId(null); setForm(emptyCampus); setErrors({}); }
+          if (editingId === id) { setEditingId(null); setForm(emptyCampus); setErrors({}); setMapOpen(false); }
         }
         report(result);
       } catch { report({ success: false, message: "No se pudo eliminar. Recarga la página e intenta nuevamente." }); }
@@ -72,11 +78,14 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
   }
 
   return (
-    <div className="mt-6 grid items-start gap-6 @min-[48rem]:grid-cols-[minmax(0,1.55fr)_minmax(21rem,1fr)]">
-      <div className="overflow-hidden rounded-xl border border-border">
-        <div className="flex items-center justify-between gap-3 border-b border-border px-5 py-4"><h3 className="text-sm font-semibold">Campus registrados</h3><span className="rounded-md bg-muted px-2.5 py-1 text-xs text-muted-foreground">{rows.length}</span></div>
+    <div className="mt-4 grid items-start gap-5 @min-[43rem]:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)] sm:gap-6">
+      <section className="min-w-0 overflow-hidden rounded-xl border border-border" aria-labelledby="campuses-list">
+        <header className="flex items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-3.5 sm:px-5">
+          <h3 id="campuses-list" className="text-sm font-semibold">Campus registrados</h3>
+          <span className="text-xs text-muted-foreground">{rows.length} en total</span>
+        </header>
         {rows.length ? <ul className="divide-y divide-border">
-          {rows.map((row) => <li key={row.id} className="p-5">
+          {rows.map((row) => <li key={row.id} className="px-4 py-3.5 sm:px-5">
             <div className="flex items-start gap-3">
               <MapPin className="mt-1 hidden size-4 shrink-0 text-muted-foreground sm:block" aria-hidden="true" />
               <div className="min-w-0 flex-1">
@@ -93,13 +102,13 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             </div>
             {confirmId === row.id ? <div className="mt-4 rounded-lg border border-destructive/20 bg-destructive/5 p-4" role="group" aria-label={`Confirmar eliminación de ${row.name}`}>
               <p className="text-sm leading-6">¿Eliminar este campus? Si tiene pedidos asociados, puedes desactivarlo para conservar su historial.</p>
-              <div className="mt-3 flex gap-2"><Button variant="destructive" className="h-10 px-3" disabled={pending} onClick={() => remove(row.id)}>{pending ? "Eliminando…" : "Eliminar campus"}</Button><Button variant="outline" className="h-10 px-3" disabled={pending} onClick={() => setConfirmId(null)}>Cancelar</Button></div>
+              <div className="mt-3 flex flex-wrap gap-2"><Button variant="destructive" className="h-10 px-3" disabled={pending} onClick={() => remove(row.id)}>{pending ? "Eliminando…" : "Eliminar campus"}</Button><Button variant="outline" className="h-10 px-3" disabled={pending} onClick={() => setConfirmId(null)}>Cancelar</Button></div>
             </div> : null}
           </li>)}
         </ul> : <p className="px-5 py-10 text-center text-sm text-muted-foreground">Añade el primer campus y su biblioteca.</p>}
-      </div>
+      </section>
       <div>
-        <form ref={formRef} onSubmit={submit} noValidate className="scroll-mt-24 rounded-xl border border-border p-5">
+        <form ref={formRef} onSubmit={submit} noValidate className="min-w-0 scroll-mt-24 rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
           <h3 className="text-sm font-semibold">{editingId ? "Editar campus" : "Añadir campus"}</h3>
           <p className="mt-2 text-xs leading-5 text-muted-foreground">Los campus activos aparecen en el comprador y en el recojo.</p>
           <fieldset disabled={pending} className="mt-5 space-y-5">
@@ -109,15 +118,15 @@ export function CampusesPanel({ rows }: { rows: CampusAdminRow[] }) {
             <Field id="campus-library-location" label="Ubicación dentro del campus (opcional)" placeholder="Ej. Pabellón F, segundo piso" value={form.libraryLocation} onChange={(event) => set("libraryLocation", event.target.value)} error={errors.libraryLocation} maxLength={200} />
             <Field id="campus-pickup-hours" label="Horario de recojo" placeholder="Ej. Lunes a viernes, de 9:00 a. m. a 7:00 p. m." value={form.pickupHours} onChange={(event) => set("pickupHours", event.target.value)} error={errors.pickupHours} maxLength={300} />
             <SelectField id="campus-status" label="Estado" value={form.status} onValueChange={(value) => set("status", value as CampusForm["status"])} error={errors.status}><option value="ACTIVO">Activo</option><option value="INACTIVO">Inactivo</option></SelectField>
-            <div className="border-t border-border pt-5">
-              <h4 className="text-xs font-semibold">Ubicación precisa (opcional)</h4>
+            <details open={mapOpen} onToggle={(event) => setMapOpen(event.currentTarget.open)} className="border-t border-border pt-3">
+              <summary className="cursor-pointer text-xs font-semibold">Ubicación precisa (opcional)</summary>
               <p className="mt-2 text-xs leading-5 text-muted-foreground">Usa coordenadas o la URL src del mapa embebido de Google. La URL tiene prioridad.</p>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <Field id="campus-latitude" label="Latitud" inputMode="decimal" value={form.latitude} onChange={(event) => set("latitude", event.target.value)} error={errors.latitude} placeholder="Grados decimales" maxLength={20} />
                 <Field id="campus-longitude" label="Longitud" inputMode="decimal" value={form.longitude} onChange={(event) => set("longitude", event.target.value)} error={errors.longitude} placeholder="Grados decimales" maxLength={20} />
               </div>
               <div className="mt-4"><Field id="campus-map-url" label="URL del mapa embebido" type="url" value={form.googleMapsEmbedUrl} onChange={(event) => set("googleMapsEmbedUrl", event.target.value)} error={errors.googleMapsEmbedUrl} hint="Google Maps → Compartir → Insertar un mapa. Copia solo la URL src." maxLength={4000} /></div>
-            </div>
+            </details>
           </fieldset>
           <div className="mt-6 flex flex-wrap gap-2"><Button type="submit" disabled={pending} className="h-11 flex-1 gap-2 px-4"><Plus aria-hidden="true" />{pending ? "Guardando…" : editingId ? "Guardar cambios" : "Crear campus"}</Button>{editingId ? <Button type="button" variant="outline" disabled={pending} className="h-11 px-3" onClick={cancel}>Cancelar</Button> : null}</div>
           {message ? <p role={message.success ? "status" : "alert"} className={`mt-4 text-sm leading-6 ${message.success ? "text-primary" : "text-destructive"}`}>{message.message}</p> : null}

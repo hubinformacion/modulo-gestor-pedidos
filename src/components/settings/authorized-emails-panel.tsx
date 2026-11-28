@@ -59,15 +59,15 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
   }
 
   return (
-    <div className="grid items-start gap-6 @min-[42rem]:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)]">
+    <div className="grid items-start gap-5 @min-[42rem]:grid-cols-[minmax(0,1.7fr)_minmax(17rem,1fr)] sm:gap-6">
       <section className="min-w-0 overflow-hidden rounded-xl border border-border" aria-labelledby="lista-correos">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border bg-muted/60 px-4 py-3.5 sm:px-5">
           <h2 id="lista-correos" className="text-sm font-semibold">Personas autorizadas</h2>
           <span className="rounded-md bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">{rows.length} {rows.length === 1 ? "correo" : "correos"}</span>
         </div>
         <ul className="divide-y divide-border">
           {rows.map((row) => (
-            <li key={row.email} className="px-5 py-5">
+            <li key={row.email} className="px-4 py-3.5 sm:px-5">
               <div className="flex items-start gap-3">
                 <span className="hidden size-9 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground sm:flex" aria-hidden="true"><Mail className="size-4" /></span>
                 <div className="min-w-0 flex-1">
@@ -98,13 +98,13 @@ export function AuthorizedEmailsPanel({ rows, canManage }: { rows: AuthorizedEma
       </section>
       <aside>
         {canManage ? (
-          <form onSubmit={submit} noValidate className="rounded-xl border border-border p-5">
+          <form onSubmit={submit} noValidate className="rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
             <h2 className="text-sm font-semibold">Añadir un correo</h2>
             <p className="mb-5 mt-2 text-xs leading-5 text-muted-foreground">Autoriza a otra persona para ingresar con su cuenta de Google.</p>
             <label htmlFor="authorized-email" className="mb-2 block text-xs font-medium">Correo electrónico</label>
             <Input id="authorized-email" type="email" name="email" autoComplete="email" placeholder="correo@ejemplo.com" value={email} onChange={(event) => { setEmail(event.target.value); setEmailError(null); setMessage(null); }} disabled={pending} maxLength={254} className="h-10 rounded-lg" aria-invalid={emailError !== null} aria-describedby={emailError ? "email-error" : undefined} required />
             {emailError ? <p id="email-error" role="alert" className="mt-2 text-xs text-destructive">{emailError}</p> : null}
-            <Button type="submit" className="mt-4 h-10 w-full gap-2 rounded-lg" disabled={pending}><Plus className="size-4" aria-hidden="true" />{pending ? "Guardando…" : "Autorizar correo"}</Button>
+            <Button type="submit" className="mt-4 h-10 max-w-full gap-2 rounded-lg" disabled={pending}><Plus className="size-4" aria-hidden="true" />{pending ? "Guardando…" : "Autorizar correo"}</Button>
           </form>
         ) : (
           <div className="rounded-xl border border-border p-5">

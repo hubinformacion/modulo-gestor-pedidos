@@ -13,11 +13,13 @@ export function TreasuryMailboxes({ mailboxes, canManage }: {
   canManage: boolean;
 }) {
   return (
-    <div className="mt-5 grid gap-4 md:grid-cols-2">
-      {(["universidad", "instituto"] as const).map((imprint) => {
-        const current = mailboxes.find((mailbox) => mailbox.imprint === imprint)?.email ?? "";
-        return <Mailbox key={`${imprint}:${current}`} imprint={imprint} current={current} canManage={canManage} />;
-      })}
+    <div className="@container mt-4 border-t border-border">
+      <div className="grid divide-y divide-border @min-[32rem]:grid-cols-2 @min-[32rem]:divide-x @min-[32rem]:divide-y-0">
+        {(["universidad", "instituto"] as const).map((imprint) => {
+          const current = mailboxes.find((mailbox) => mailbox.imprint === imprint)?.email ?? "";
+          return <Mailbox key={`${imprint}:${current}`} imprint={imprint} current={current} canManage={canManage} />;
+        })}
+      </div>
     </div>
   );
 }
@@ -47,9 +49,9 @@ function Mailbox({ imprint, current, canManage }: { imprint: Imprint; current: s
   }
 
   return (
-    <form noValidate className="rounded-xl border border-border p-5" onSubmit={(event) => { event.preventDefault(); save(); }}>
+    <form noValidate className="min-w-0 py-4 last:pb-0 @min-[32rem]:first:pr-4 @min-[32rem]:last:pl-4" onSubmit={(event) => { event.preventDefault(); save(); }}>
       <ImprintBadge imprint={imprint} />
-      <label htmlFor={inputId} className="mt-4 block text-xs font-medium">Correo destinatario</label>
+      <label htmlFor={inputId} className="mt-3 block text-xs font-medium">Correo destinatario</label>
       <input
         id={inputId}
         type="email"

@@ -37,15 +37,19 @@ const supportNoticeLabels: Record<string, string> = {
 };
 const linkClass = "inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline";
 
+const cardClass = "min-w-0 rounded-xl border border-border bg-white p-4 sm:p-5";
+const actionClass = "min-w-0 rounded-xl border border-primary/20 bg-secondary/40 p-4 sm:p-5";
+const taskColumns = "grid items-start gap-4 @min-[45rem]/order:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]";
+
 function StepHeading({ title, instruction }: { title: string; instruction: string }) {
-  return <header className="space-y-1.5">
-    <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
-    <p className="max-w-prose text-sm leading-6 text-muted-foreground">{instruction}</p>
+  return <header className="rounded-xl border border-border bg-muted/60 px-4 py-3.5 sm:px-5">
+    <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <p className="mt-1 max-w-prose text-sm leading-5 text-muted-foreground">{instruction}</p>
   </header>;
 }
 
 function Facts({ rows, wide = false }: { rows: [string, ReactNode][]; wide?: boolean }) {
-  return <dl className={`grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 min-[360px]:grid-cols-2 ${wide ? "order-detail-facts" : ""}`}>
+  return <dl className={`grid min-w-0 gap-x-5 gap-y-3 min-[400px]:grid-cols-2 ${wide ? "@min-[45rem]/order:grid-cols-4" : ""}`}>
     {rows.map(([label, value]) => (
       <div key={label} className="min-w-0">
         <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -129,13 +133,13 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
     ], ["Aviso al apoyo", supportNoticeLabels[supportNotice?.status ?? ""] ?? "Registrado"]);
   }
 
-  function receiptRow(file: (typeof receipts)[number], latest = false) {
+  function receiptRow(file: (typeof receipts)[number]) {
     return <li key={file.id} className="min-w-0 py-2 first:pt-0">
       <div className="mb-2 flex items-start gap-2">
         <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <div className="min-w-0">
           <a href={file.driveViewUrl} target="_blank" rel="noopener noreferrer" className="break-words text-sm font-medium text-primary underline-offset-4 hover:underline">{file.fileName}</a>
-          <p className="mt-0.5 text-xs text-muted-foreground">{dateFormat.format(file.uploadedAt)}{latest ? " · Más reciente" : ""}</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">{dateFormat.format(file.uploadedAt)}</p>
         </div>
       </div>
       <AttachmentPreview kind="comprobante" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
@@ -144,28 +148,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
 
   const showDeliverySummary = deliveryFacts.length > 0 || Boolean(order.shippingTrackingUrl);
   const deliveryEvidence = canDeliver ? evidence.slice(1) : evidence;
+  const takingAttention = canAttend && !closed && !order.assignedTo;
   const panels = [
-    <div key="attention" className="space-y-5">
+    <div key="attention" className="grid gap-4">
       <StepHeading title="Atención del pedido" instruction={closed
         ? "Consulta quién atendió el pedido y la información registrada."
         : !canAttend ? waitingForManager
-        : mine ? "Revisa los datos de compra antes de validar los pagos."
-        : order.assignedTo ? "Consulta los datos de la compra y su responsable."
-        : "Toma la atención para gestionar el pedido."} />
-      <section aria-labelledby="order-assignee" className="flex flex-col justify-between gap-3 border-y border-border py-3 sm:flex-row sm:items-center">
+        : mine ? "Revisa los datos de compra y, cuando llegue el comprobante, continúa en Pagos."
+        : order.assignedTo ? "Consulta los datos de compra y el responsable."
+        : "Asigna la atención antes de revisar el pago o registrar la salida."} />
+      <section aria-labelledby="order-assignee" className={`${takingAttention ? actionClass : cardClass} flex flex-wrap items-center justify-between gap-x-5 gap-y-3`}>
         <div className="min-w-0">
-          <h3 id="order-assignee" className="text-xs text-muted-foreground">Responsable</h3>
-          <p className="mt-1 break-words text-sm font-semibold">{assignedLabel}</p>
-          {order.assignedAt ? <p className="mt-1 text-xs text-muted-foreground">Desde {dateFormat.format(order.assignedAt)}</p> : null}
+          <h3 id="order-assignee" className="text-xs font-medium text-muted-foreground">Responsable del pedido</h3>
+          <p className="mt-0.5 break-words text-sm font-semibold">{assignedLabel}</p>
+          {order.assignedAt ? <p className="mt-0.5 text-xs text-muted-foreground">Desde {dateFormat.format(order.assignedAt)}</p> : null}
         </div>
-        <div className="flex flex-wrap items-start gap-2">
-          {canAttend && !closed && (!order.assignedTo || mine) ? <AssignmentControls id={order.id} version={version} assigned={Boolean(order.assignedTo)} mine={mine} closed={closed} /> : null}
+        {canAttend && !closed && (!order.assignedTo || mine) ? <div className="flex flex-wrap items-start gap-2">
+          <AssignmentControls id={order.id} version={version} assigned={Boolean(order.assignedTo)} mine={mine} closed={closed} />
           {canCancel ? <CancelOrderControls mode="gestor" reference={order.id} version={version} hasPayment={receipts.length > 0} /> : null}
-        </div>
+        </div> : null}
       </section>
-      <div className={order.billingRuc ? "order-detail-pair grid gap-x-8 gap-y-4" : ""}>
-        <section aria-labelledby="order-customer" className="min-w-0">
-          <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+      <div className={order.billingRuc ? "grid items-stretch gap-4 @min-[45rem]/order:grid-cols-2" : ""}>
+        <section aria-labelledby="order-customer" className={cardClass}>
+          <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <h3 id="order-customer" className="text-base font-semibold">Comprador</h3>
             <span className="text-xs text-muted-foreground">{order.customerType === "comunidad_continental" ? "Comunidad Continental" : "Público general"}</span>
           </div>
@@ -174,7 +179,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             ["Correo", order.customerEmail], ["Celular", order.customerPhone],
           ]} />
         </section>
-        {order.billingRuc ? <section aria-labelledby="order-billing" className="min-w-0">
+        {order.billingRuc ? <section aria-labelledby="order-billing" className={cardClass}>
           <h3 id="order-billing" className="mb-3 text-base font-semibold">Datos de facturación</h3>
           <Facts rows={[
             ["Razón social", order.billingBusinessName], ["RUC", order.billingRuc],
@@ -192,45 +197,45 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
       />
     </div>,
 
-    <div key="payments" className="space-y-5">
+    <div key="payments" className="grid gap-4">
       <StepHeading title="Pagos del pedido" instruction={paymentInstruction} />
-      <div className="divide-y divide-border border-y border-border">
-        {applicable.map(({ imprint, status, amount, files, reason }) => {
-          const notice = treasuryNotices.find((item) => item.publisherImprint === imprint);
-          const latest = files[0];
-          const review = canReview && status === "EN_REVISION" && latest;
-          const hasDecision = Boolean(reason || review || notice);
-          return <section key={imprint} aria-label={imprintNames[imprint]} className="space-y-3 py-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <ImprintBadge imprint={imprint} />
-                <StatusBadge status={status} />
-              </div>
-              <p className="text-xs text-muted-foreground">Importe <strong className="ml-1 text-base font-semibold text-foreground tabular-nums">{formatMoney(toCents(amount))}</strong></p>
+      {applicable.map(({ imprint, status, amount, files, reason }) => {
+        const notice = treasuryNotices.find((item) => item.publisherImprint === imprint);
+        const latest = files[0];
+        const review = canReview && status === "EN_REVISION" && latest;
+        const hasDecision = Boolean(reason || review || notice);
+        return <section key={imprint} aria-label={`Pago de ${imprintNames[imprint]}`} className="min-w-0 rounded-xl border border-border bg-white">
+          <header className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-xl border-b border-border bg-muted/50 px-4 py-3 sm:px-5">
+            <h3 className="flex flex-wrap items-center gap-2">
+              <ImprintBadge imprint={imprint} />
+              <StatusBadge status={status} />
+            </h3>
+            <p className="text-xs text-muted-foreground">Importe <strong className="ml-1 text-base font-semibold text-foreground tabular-nums">{formatMoney(toCents(amount))}</strong></p>
+          </header>
+          <div className={hasDecision ? "grid @min-[41rem]/order:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]" : ""}>
+            <div className="min-w-0 px-4 py-4 sm:px-5">
+              <h4 className="mb-3 text-sm font-semibold">{latest ? "Comprobante más reciente" : "Comprobantes"}</h4>
+              {latest ? <ul>{receiptRow(latest)}</ul> : <p className="text-sm text-muted-foreground">El comprador aún no adjunta un comprobante.</p>}
+              {files.length > 1 ? <details className="mt-2 border-t border-border pt-2">
+                <summary className="cursor-pointer text-xs font-medium text-primary">Otros comprobantes ({files.length - 1})</summary>
+                <ul className="mt-2 divide-y divide-border">{files.slice(1).map((file) => receiptRow(file))}</ul>
+              </details> : null}
             </div>
-            <div className={hasDecision ? "order-detail-pair grid gap-x-8 gap-y-4" : ""}>
-              <div className="min-w-0">
-                {latest ? <ul aria-label="Comprobante más reciente">{receiptRow(latest, true)}</ul> : <p className="text-sm text-muted-foreground">El comprador aún no adjunta un comprobante.</p>}
-                {files.length > 1 ? <details className="mt-1">
-                  <summary className="cursor-pointer text-xs font-medium text-primary">Otros comprobantes ({files.length - 1})</summary>
-                  <ul className="mt-2 divide-y divide-border">{files.slice(1).map((file) => receiptRow(file))}</ul>
-                </details> : null}
-              </div>
-              {hasDecision ? (
-                <div className="min-w-0 space-y-3">
-                  {reason ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm leading-5 text-rose-800"><span className="font-medium">Motivo:</span> {reason}</p> : null}
-                  {review ? <PaymentReview id={order.id} imprint={imprint} receiptId={review.id} /> : null}
-                  <TreasuryPaymentNoticeStatus notice={notice} cancelled={cancelled} />
-                </div>
-              ) : null}
-            </div>
-          </section>;
-        })}
-      </div>
+            {hasDecision ? <div className="min-w-0 space-y-3 border-t border-border px-4 py-4 sm:px-5 @min-[41rem]/order:border-l @min-[41rem]/order:border-t-0">
+              {review ? <>
+                <h4 className="text-sm font-semibold">Revisar pago</h4>
+                <PaymentReview id={order.id} imprint={imprint} receiptId={review.id} />
+              </> : null}
+              {reason ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm leading-5 text-rose-800"><span className="font-medium">Motivo de rechazo:</span> {reason}</p> : null}
+              <TreasuryPaymentNoticeStatus notice={notice} cancelled={cancelled} />
+            </div> : null}
+          </div>
+        </section>;
+      })}
       <AdminSaleDocuments orderId={order.id} actor={actor} invoice={Boolean(order.billingRuc)} />
     </div>,
 
-    <div key="distribution" className="space-y-5">
+    <div key="distribution" className="grid gap-4">
       <StepHeading title="Distribución" instruction={canDispatch ? (delivery
         ? "Prepara las publicaciones y registra el courier cuando las despaches."
         : "Prepara las publicaciones y avisa cuando estén disponibles en la biblioteca.")
@@ -238,15 +243,29 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
         : order.dispatchedAt ? `Salida registrada el ${dateFormat.format(order.dispatchedAt)}.`
         : !allVerified ? "La salida se habilita cuando todos los pagos estén verificados."
         : waitingForManager} />
-      {canDispatch ? (
-        <section aria-labelledby="order-dispatch" className="border-y border-border py-4">
-          <h3 id="order-dispatch" className="text-base font-semibold">{delivery ? "Registrar envío" : "Registrar disponibilidad para recojo"}</h3>
-          <DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={delivery}
-            initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} />
-        </section>
-      ) : null}
-      <div className="order-detail-pair grid gap-x-8 gap-y-5">
-        <section aria-labelledby="order-destination" className="min-w-0">
+      <div className={taskColumns}>
+        <div className="grid min-w-0 gap-4">
+          {canDispatch ? <section aria-labelledby="order-dispatch" className={actionClass}>
+            <h3 id="order-dispatch" className="text-base font-semibold">{delivery ? "Registrar envío" : "Registrar disponibilidad para recojo"}</h3>
+            <DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={delivery}
+              initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} />
+          </section> : null}
+          <section aria-labelledby="order-packing" className={cardClass}>
+            <h3 id="order-packing" className="text-base font-semibold">Publicaciones a preparar</h3>
+            <ul className="mt-3 divide-y divide-border">
+              {items.map((item) => (
+                <li key={item.id} className="flex min-w-0 items-start gap-2.5 py-2 first:pt-0 last:pb-0">
+                  <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums" aria-label={`${item.quantity} ejemplares`}>{item.quantity}</span>
+                  <div className="min-w-0 space-y-1">
+                    <p className="break-words text-sm font-medium leading-5">{item.title}</p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{item.code ? <span>{item.code}</span> : null}<ImprintBadge imprint={item.imprint} /></div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+        <section aria-labelledby="order-destination" className={cardClass}>
           <h3 id="order-destination" className="text-base font-semibold">{delivery ? "Destino del envío" : "Lugar de recojo"}</h3>
           <address className="mt-2 space-y-1 break-words text-sm not-italic leading-5">
             <p className="font-medium">{order.deliveryAddress}</p>
@@ -256,52 +275,37 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             {order.deliveryReference ? <p className="text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
             {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>Abrir mapa <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
           </address>
-          <h4 className="mb-2 mt-4 text-sm font-semibold">{delivery ? "Quién recibe" : "Quién recoge"}</h4>
+          <h4 className="mb-2 mt-4 border-t border-border pt-3 text-sm font-semibold">{delivery ? "Quién recibe" : "Quién recoge"}</h4>
           <Facts rows={[
             ["Nombre", order.deliveryRecipient],
             ["Documento", order.deliveryRecipientDocument ?? order.customerDocument],
             ["Celular", order.deliveryRecipientPhone ?? order.customerPhone],
           ]} />
         </section>
-
-        <section aria-labelledby="order-packing" className="min-w-0">
-          <h3 id="order-packing" className="text-base font-semibold">Publicaciones a preparar</h3>
-          <ul className="mt-2 divide-y divide-border">
-            {items.map((item) => (
-              <li key={item.id} className="flex min-w-0 items-start gap-2.5 py-2 first:pt-0">
-                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums" aria-label={`${item.quantity} ejemplares`}>{item.quantity}</span>
-                <div className="min-w-0 space-y-1">
-                  <p className="break-words text-sm font-medium leading-5">{item.title}</p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{item.code ? <span>{item.code}</span> : null}<ImprintBadge imprint={item.imprint} /></div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
       </div>
     </div>,
 
-    <div key="delivery" className="space-y-5">
+    <div key="delivery" className="grid gap-4">
       <StepHeading title="Entrega" instruction={deliveryInstruction} />
-      <div className={showDeliverySummary && (canDeliver || deliveryEvidence.length > 0) ? "order-detail-pair grid gap-x-8 gap-y-5" : "space-y-5"}>
-        {canDeliver ? <section aria-labelledby="order-confirm-delivery" className="min-w-0 border-t border-border pt-4">
+      {showDeliverySummary || canDeliver || deliveryEvidence.length ? <div className={showDeliverySummary && (canDeliver || deliveryEvidence.length > 0) ? taskColumns : "grid gap-4"}>
+        {canDeliver ? <section aria-labelledby="order-confirm-delivery" className={actionClass}>
           <h3 id="order-confirm-delivery" className="text-base font-semibold">Confirmar entrega</h3>
           <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null}
             delivery={delivery} initialCourier={order.courier ?? ""} />
         </section> : null}
         {showDeliverySummary ? (
-          <section aria-labelledby="order-delivery-summary" className="min-w-0 border-t border-border pt-4">
+          <section aria-labelledby="order-delivery-summary" className={cardClass}>
             <h3 id="order-delivery-summary" className="mb-3 text-base font-semibold">{delivery ? "Seguimiento del envío" : "Seguimiento del recojo"}</h3>
             <Facts rows={deliveryFacts} />
             {order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className={`mt-3 ${linkClass}`}>Consultar envío <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
           </section>
         ) : null}
         {deliveryEvidence.length ? (
-          <section aria-labelledby="order-evidence" className={`min-w-0 border-t border-border pt-4 ${canDeliver ? "col-span-full" : ""}`}>
+          <section aria-labelledby="order-evidence" className={`${cardClass} ${canDeliver ? "col-span-full" : ""}`}>
             <h3 id="order-evidence" className="text-base font-semibold">{canDeliver ? "Evidencias anteriores" : "Evidencia de entrega"}</h3>
             <ul className="mt-2 divide-y divide-border">
               {deliveryEvidence.map((file) => (
-                <li key={file.id} className="min-w-0 py-2">
+                <li key={file.id} className="min-w-0 py-2 last:pb-0">
                   <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className={`break-words ${linkClass}`}>{file.fileName}</a>
                   <p className="mt-0.5 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>
                   <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
@@ -310,7 +314,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             </ul>
           </section>
         ) : null}
-      </div>
+      </div> : null}
     </div>,
   ];
 
@@ -334,9 +338,9 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   </ol> : <p className="text-sm text-muted-foreground">Todavía no hay actividad registrada.</p>;
 
   return (
-    <div className="min-w-0 space-y-5">
-      <header className="space-y-3 border-b border-border pb-4">
-        <Link href="/admin/pedidos" className={linkClass}><ArrowLeft aria-hidden="true" className="size-4" /> Pedidos</Link>
+    <div className="mx-auto w-full min-w-0 max-w-[92rem] space-y-4">
+      <header className="rounded-xl border border-border bg-white p-4 sm:px-5 sm:py-4">
+        <Link href="/admin/pedidos" className={`mb-3 ${linkClass}`}><ArrowLeft aria-hidden="true" className="size-4" /> Pedidos</Link>
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2.5">
@@ -353,7 +357,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <OrderLiveRefresh finished={closed} />
           </div>
         </div>
-        {cancelled && order.cancellationReason ? <p className="max-w-prose break-words text-sm leading-5 text-muted-foreground">Motivo de la cancelación: {order.cancellationReason}</p> : null}
+        {cancelled && order.cancellationReason ? <p className="mt-3 break-words rounded-md bg-rose-50 px-3 py-2 text-sm leading-5 text-rose-800">Motivo de la cancelación: {order.cancellationReason}</p> : null}
       </header>
       <AttentionTabs current={current} progress={progress} outcome={cancelled ? "cancelled" : delivered ? "completed" : "active"} panels={panels} />
     </div>

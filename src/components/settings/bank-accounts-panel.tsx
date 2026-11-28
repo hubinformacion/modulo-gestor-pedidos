@@ -33,21 +33,32 @@ export function BankAccountsPanel({ rows }: { rows: BankAdminRow[] }) {
       catch { report({ success: false, message: "No se pudo guardar. Reintenta." }); }
     });
   }
-  return <div className="mt-6 grid items-start gap-6 @min-[48rem]:grid-cols-[minmax(0,1.55fr)_minmax(21rem,1fr)]">
-    <div className="divide-y divide-border rounded-xl border border-border">
+  return <div className="mt-4 grid items-start gap-5 @min-[43rem]:grid-cols-[minmax(0,1.6fr)_minmax(18rem,1fr)] sm:gap-6">
+    <section aria-labelledby="bank-account-list" className="min-w-0 divide-y divide-border overflow-hidden rounded-xl border border-border">
+      <header className="flex flex-wrap items-center justify-between gap-2 bg-muted/60 px-4 py-3.5 sm:px-5">
+        <h3 id="bank-account-list" className="text-sm font-semibold">Cuentas registradas</h3>
+        <span className="text-xs text-muted-foreground">{rows.filter((row) => row.status === "ACTIVO").length} activas de {rows.length}</span>
+      </header>
       {rows.length ? rows.map((row) => <div key={row.id} className="p-5">
-        <div className="flex items-center justify-between gap-3"><ImprintBadge imprint={row.publisherImprint} /><span className="text-xs text-muted-foreground">{row.status === "ACTIVO" ? "Activa" : "Inactiva"}</span></div>
-        <p className="mt-3 text-sm font-semibold">{row.bank} · soles</p>
-        <p className="mt-2 text-xs leading-6">Titular: {row.holder || "Pendiente de completar"}<br />Cuenta: {row.account}<br />CCI: {formatCci(row.cci) || "Pendiente de completar"}</p>
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+          <h4 className="text-sm font-semibold">{row.bank} · soles</h4>
+          <span className={`rounded-md px-2 py-0.5 text-xs font-medium ${row.status === "ACTIVO" ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{row.status === "ACTIVO" ? "Activa" : "Inactiva"}</span>
+        </div>
+        <div className="mt-2"><ImprintBadge imprint={row.publisherImprint} /></div>
+        <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-xs leading-5">
+          <dt className="text-muted-foreground">Titular</dt><dd className="break-words">{row.holder || "Pendiente de completar"}</dd>
+          <dt className="text-muted-foreground">Cuenta</dt><dd className="break-all tabular-nums">{row.account}</dd>
+          <dt className="text-muted-foreground">CCI</dt><dd className="break-all tabular-nums">{formatCci(row.cci) || "Pendiente de completar"}</dd>
+        </dl>
         {row.cci.length !== 20 || !row.holder ? <p className="mt-2 text-xs text-destructive">Completa titular y CCI válido antes de activar.</p> : null}
-        <div className="mt-3 flex gap-2"><Button variant="outline" disabled={pending} onClick={() => { setEditing(row.id); setForm({ publisherImprint: row.publisherImprint, bank: row.bank, holder: row.holder, account: row.account, cci: formatCci(row.cci), currency: row.currency, status: row.status }); setErrors({}); setMessage(null); document.getElementById("bank-form")?.scrollIntoView({ block: "start", behavior: "instant" }); }}>Editar</Button><Button variant="ghost" disabled={pending} onClick={() => setConfirmDelete(row.id)}>Eliminar</Button></div>
+        <div className="mt-3 flex gap-2"><Button variant="outline" disabled={pending} onClick={() => { setEditing(row.id); setForm({ publisherImprint: row.publisherImprint, bank: row.bank, holder: row.holder, account: row.account, cci: formatCci(row.cci), currency: row.currency, status: row.status }); setErrors({}); setMessage(null); requestAnimationFrame(() => { document.getElementById("bank-form")?.scrollIntoView({ block: "nearest", behavior: "instant" }); document.getElementById("bank-name")?.focus({ preventScroll: true }); }); }}>Editar</Button><Button variant="ghost" disabled={pending} onClick={() => setConfirmDelete(row.id)}>Eliminar</Button></div>
         {confirmDelete === row.id ? <div className="mt-3 rounded-lg border border-destructive/20 p-3"><p className="text-xs leading-6">¿Eliminar esta cuenta? Los pedidos anteriores conservan sus datos.</p><div className="mt-2 flex gap-2"><Button variant="destructive" disabled={pending} onClick={() => startTransition(async () => {
           try { const result = await notifyAction(() => deleteBankAction(row.id), { loading: { title: "Eliminando cuenta", description: "Retiramos la cuenta de las opciones de pago futuras." }, success: { title: "Cuenta eliminada", description: "Los pedidos anteriores conservan los datos de pago que recibieron." }, error: { title: "No se pudo eliminar la cuenta", description: "Actualiza la configuración e inténtalo nuevamente." } }); if (result.success) { setConfirmDelete(null); if (editing === row.id) cancel(); } report(result); }
           catch { report({ success: false, message: "No se pudo eliminar la cuenta." }); }
         })}>Confirmar</Button><Button variant="outline" disabled={pending} onClick={() => setConfirmDelete(null)}>Cancelar</Button></div></div> : null}
       </div>) : <p className="p-5 text-sm text-muted-foreground">Añade las cuentas de ambos sellos.</p>}
-    </div>
-    <form id="bank-form" noValidate onSubmit={submit} className="scroll-mt-24 rounded-xl border border-border p-5">
+    </section>
+    <form id="bank-form" noValidate onSubmit={submit} className="min-w-0 scroll-mt-24 rounded-xl border border-border bg-muted/40 p-4 sm:p-5">
       <h3 className="text-sm font-semibold">{editing ? "Editar cuenta" : "Añadir cuenta"}</h3>
       <p className="mt-2 text-xs leading-6 text-muted-foreground">Todas las cuentas están en soles. Solo se ofrecen las activas; puedes guardar datos pendientes como inactivos.</p>
       <fieldset disabled={pending} className="mt-5 space-y-4">

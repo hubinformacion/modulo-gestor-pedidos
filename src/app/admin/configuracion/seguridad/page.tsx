@@ -29,7 +29,7 @@ export default async function SecuritySettingsPage() {
   const version = policy.updatedAt.toISOString();
   return (
     <SettingsPage title="Seguridad" description={canManage ? "Consulta los límites de registro y el historial de cambios administrativos." : "Consulta los límites de registro de pedidos."}>
-      <div className={canManage ? "grid items-start gap-7 @min-[58rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]" : undefined}>
+      <div className={canManage ? "grid items-start gap-5 @min-[55rem]:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] sm:gap-6" : undefined}>
         <SecuritySettings key={version} policy={values} version={version} updatedBy={policy.updatedBy} canManage={canManage} />
         {canManage ? <ManagementAuditPanel rows={auditRows} /> : null}
       </div>

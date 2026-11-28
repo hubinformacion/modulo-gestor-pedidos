@@ -1,18 +1,10 @@
 "use client";
 
-import { useState, useSyncExternalStore, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Tabs } from "@base-ui/react/tabs";
-import { Check } from "lucide-react";
 import { cn } from "@/shared/utils/cn";
 
 const steps = ["Atención", "Pagos", "Distribución", "Entrega"] as const;
-const desktop = "(min-width: 1280px)";
-const subscribe = (update: () => void) => {
-  const query = window.matchMedia(desktop);
-  query.addEventListener("change", update);
-  return () => query.removeEventListener("change", update);
-};
-const isDesktop = () => window.matchMedia(desktop).matches;
 
 export function AttentionTabs({ current, progress, outcome, panels }: {
   current: number;
@@ -23,24 +15,23 @@ export function AttentionTabs({ current, progress, outcome, panels }: {
   const [inspected, setInspected] = useState<number | null>(null);
   if (inspected !== null && inspected === current) setInspected(null);
   const selected = inspected ?? current;
-  const vertical = useSyncExternalStore(subscribe, isDesktop, () => false);
+
   return (
     <Tabs.Root
       value={selected}
-      orientation={vertical ? "vertical" : "horizontal"}
       onValueChange={(value) => {
         if (typeof value === "number" && !document.querySelector('[data-sale-upload-busy="true"], [data-evidence-upload-busy="true"]')) {
           setInspected(value === current ? null : value);
         }
       }}
-      className="grid min-w-0 gap-y-5 xl:grid-cols-[11.5rem_minmax(0,1fr)] xl:gap-x-7 2xl:gap-x-9"
+      className="@container/order min-w-0 space-y-4"
     >
       <Tabs.List
         aria-label="Pasos del pedido"
-        className="grid min-w-0 grid-cols-4 gap-1 rounded-lg bg-muted/50 p-1 xl:sticky xl:top-20 xl:grid-cols-1 xl:self-start xl:p-1.5"
+        className="grid min-w-0 grid-cols-4 divide-x divide-border rounded-xl border border-border bg-white"
       >
         {steps.map((title, index) => {
-          const complete = (index !== current && index < progress) || outcome === "completed";
+          const complete = outcome === "completed" || (index < progress && index !== current);
           const active = index === current && outcome === "active";
           const interrupted = index === current && outcome === "cancelled";
           const state = active ? "En curso" : complete ? "Completado" : interrupted ? "Cancelado" : "Pendiente";
@@ -48,35 +39,36 @@ export function AttentionTabs({ current, progress, outcome, panels }: {
             <Tabs.Tab
               key={title}
               value={index}
+              aria-current={active || interrupted ? "step" : undefined}
               className={cn(
-                "flex min-w-0 flex-col items-center gap-1 rounded-md px-0.5 py-2 text-center outline-none transition-colors hover:bg-secondary/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring sm:px-2 xl:flex-row xl:gap-2.5 xl:px-2 xl:text-left",
-                selected === index && "bg-secondary text-primary",
+                "relative flex min-w-0 flex-col items-center gap-1.5 overflow-hidden px-px py-2.5 text-center outline-none transition-colors first:rounded-l-xl last:rounded-r-xl hover:bg-muted focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring @min-[35rem]/order:flex-row @min-[35rem]/order:gap-3 @min-[35rem]/order:px-4 @min-[35rem]/order:py-3 @min-[35rem]/order:text-left",
+                selected === index && "bg-secondary text-primary after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-primary hover:bg-secondary",
               )}
             >
               <span aria-hidden="true" className={cn(
-                "relative grid size-6 shrink-0 place-items-center rounded-full border border-border bg-white text-xs font-semibold text-muted-foreground tabular-nums",
+                "grid size-6 shrink-0 place-items-center rounded-full border border-border bg-white text-xs font-semibold text-muted-foreground tabular-nums @min-[35rem]/order:size-8",
                 active && "border-primary bg-primary text-primary-foreground",
                 complete && "border-emerald-200 bg-emerald-50 text-emerald-800",
                 interrupted && "border-rose-200 bg-rose-50 text-rose-800",
-              )}>
-                {index + 1}
-                {complete ? <Check className="absolute -bottom-1 -right-1 size-3 rounded-full bg-emerald-100 text-emerald-900" /> : null}
-              </span>
+              )}>{index + 1}</span>
               <span className="min-w-0 leading-tight">
-                <span className="block text-[0.6875rem] font-semibold sm:text-xs xl:text-sm"><span className="sr-only">Paso {index + 1}. </span>{title}</span>
-                <span className="sr-only xl:not-sr-only xl:mt-1 xl:block xl:text-xs xl:text-muted-foreground">{state}</span>
+                <span className="block text-[0.6875rem] font-semibold @min-[35rem]/order:text-sm"><span className="sr-only">Paso {index + 1}. </span>{title}</span>
+                <span className={cn(
+                  "mt-0.5 block text-[0.625rem] text-muted-foreground @min-[35rem]/order:text-xs",
+                  active && "font-medium text-primary",
+                  complete && "text-emerald-800",
+                  interrupted && "text-rose-800",
+                )}>{state}</span>
               </span>
             </Tabs.Tab>
           );
         })}
       </Tabs.List>
-      <div className="order-detail-content min-w-0">
-        {panels.map((panel, index) => (
-          <Tabs.Panel keepMounted key={steps[index]} value={index} className="step-panel min-w-0 outline-none data-[hidden]:hidden">
-            {panel}
-          </Tabs.Panel>
-        ))}
-      </div>
+      {panels.map((panel, index) => (
+        <Tabs.Panel keepMounted key={steps[index]} value={index} className="step-panel min-w-0 rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring data-[hidden]:hidden">
+          {panel}
+        </Tabs.Panel>
+      ))}
     </Tabs.Root>
   );
 }

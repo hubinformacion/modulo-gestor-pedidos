@@ -20,22 +20,20 @@ export default async function PaymentSettingsPage() {
     <SettingsPage title="Pagos" description="Configura las cuentas de depósito por sello y revisa las guías que recibe el comprador.">
       <SettingsSection id="bank-accounts" title="Cuentas bancarias" description="Los pedidos existentes conservan las cuentas que recibieron al registrarse.">
         {!bankAccountsFromRows(rows.filter((row) => row.status === "ACTIVO")) ? (
-          <p className="mt-3 text-sm text-amber-800">Activa una cuenta con titular y CCI válidos por cada sello para recibir depósitos.</p>
+          <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">Activa una cuenta con titular y CCI válidos por cada sello para recibir depósitos.</p>
         ) : null}
         <BankAccountsPanel rows={rows.map((row) => ({ ...row, currency: "PEN" }))} />
       </SettingsSection>
-      <div className="border-t border-border pt-6">
-        <SettingsSection id="payment-guides" title="Guías de pago" description="Verificación de firma y tamaño de los archivos que se adjuntan al pedido.">
-          <ul className="mt-4 grid divide-y divide-border border-y border-border @min-[45rem]:grid-cols-3 @min-[45rem]:divide-x @min-[45rem]:divide-y-0">
-            {guides.map(({ label, ready }) => (
-              <li key={label} className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm @min-[45rem]:block @min-[45rem]:px-4">
-                <span className="break-words">{label}</span>
-                <span className={`@min-[45rem]:mt-1 @min-[45rem]:block ${ready ? "text-emerald-700" : "text-amber-800"}`}>{ready ? "Válida" : "Revisar PDF (hasta 3 MiB)"}</span>
-              </li>
-            ))}
-          </ul>
-        </SettingsSection>
-      </div>
+      <SettingsSection className="rounded-xl border border-border bg-white p-4 sm:p-5" id="payment-guides" title="Guías de pago" description="PDF que reciben los compradores según el sello de su pedido.">
+        <ul className="mt-4 grid divide-y divide-border border-t border-border @min-[38rem]:grid-cols-3 @min-[38rem]:divide-x @min-[38rem]:divide-y-0">
+          {guides.map(({ label, ready }) => (
+            <li key={label} className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 py-3 text-sm last:pb-0 @min-[38rem]:block @min-[38rem]:not-first:pl-4 @min-[38rem]:not-last:pr-4 @min-[38rem]:pb-0">
+              <span className="break-words">{label}</span>
+              <span className={`text-xs @min-[38rem]:mt-1 @min-[38rem]:block ${ready ? "text-emerald-700" : "text-amber-800"}`}>{ready ? "Válida" : "Revisar PDF (hasta 3 MiB)"}</span>
+            </li>
+          ))}
+        </ul>
+      </SettingsSection>
     </SettingsPage>
   );
 }

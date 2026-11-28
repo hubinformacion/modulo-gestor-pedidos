@@ -3,6 +3,7 @@ import type { MailSampleSelection } from "@/modules/settings/domain/mail-samples
 import type { EmailOrder } from "@/modules/orders/application/email-template";
 import { buildOrderConfirmationContent, buildOrderUpdateContent, buildReceiptReviewContent } from "@/modules/orders/application/order-mail-content";
 import { buildPickupSupportContent } from "@/modules/orders/application/pickup-mail-content";
+import { buildTreasuryPaymentMail } from "@/modules/orders/application/treasury-payment-mail-content";
 import { getMailLogoUrl } from "@/shared/config/mail";
 import type { MailAttachment } from "@/integrations/email/types";
 
@@ -18,7 +19,7 @@ function samplePdf(filename: string): MailAttachment {
   for (const [index, object] of objects.entries()) { offsets.push(Buffer.byteLength(pdf)); pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; }
   const xref = Buffer.byteLength(pdf);
   pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets.slice(1).map((offset) => `${String(offset).padStart(10, "0")} 00000 n \n`).join("")}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
-  return { filename, content: Buffer.from(pdf) };
+  return { filename, mimeType: "application/pdf", content: Buffer.from(pdf) };
 }
 
 export async function buildMailSample(input: MailSampleSelection) {
@@ -39,13 +40,44 @@ export async function buildMailSample(input: MailSampleSelection) {
     attachments = [samplePdf(`guia_pago_${input.variant}_EJEMPLO.pdf`)];
   } else if (input.template === "COMPROBANTE_RECIBIDO") {
     content = buildReceiptReviewContent(tracking.order.orderNumber, mixed, "#", logoCid, sampleDate);
+  } else if (input.template === "TESORERIA_EMISION") {
+    const imprint = instituto ? "instituto" : "universidad";
+    const invoice = input.billing === "factura";
+    const hasFreight = input.delivery === "delivery" && !instituto;
+    content = buildTreasuryPaymentMail({
+      orderNumber: tracking.order.orderNumber,
+      imprint,
+      customerName: tracking.order.customerName,
+      customerDocument: "DOCUMENTO FICTICIO",
+      billingRuc: invoice ? "RUC FICTICIO" : null,
+      billingBusinessName: invoice ? "Razón social de ejemplo (ficticia)" : null,
+      billingAddress: invoice ? "Dirección fiscal de ejemplo (ficticia)" : null,
+      items: [{ title: "Publicación de ejemplo (ficticia)", quantity: 2, unitPrice: "25.00", subtotal: "50.00" }],
+      subtotal: "50.00",
+      shipping: hasFreight ? "15.00" : "0.00",
+      total: hasFreight ? "65.00" : "50.00",
+      logoCid,
+    });
+    attachments = [samplePdf(`voucher_${imprint}_EJEMPLO.pdf`)];
   } else if (input.template === "APOYO_RECOJO") {
     content = buildPickupSupportContent({ orderNumber: tracking.order.orderNumber, deliveryRecipient: "Persona de ejemplo (ficticia)", deliveryRecipientDocument: "DOCUMENTO FICTICIO", customerDocument: "DOCUMENTO FICTICIO", deliveryRecipientPhone: "TELÉFONO FICTICIO", customerPhone: "TELÉFONO FICTICIO", deliveryAddress: tracking.order.deliveryAddress, deliveryLibraryLocation: tracking.order.deliveryLibraryLocation, deliveryPickupHours: tracking.order.deliveryPickupHours }, [{ title: "Publicación de ejemplo (ficticia)", quantity: 2 }], "Personal de ejemplo (ficticio)", logoCid);
   } else {
     const eventType = input.template === "ANULADO" ? "CANCELADO" : input.template === "DOCUMENTOS_CORREGIDOS" ? "DOCUMENTOS_VENTA" : input.template;
     content = buildOrderUpdateContent(tracking, { id: "ejemplo", eventType, publisherImprint: instituto ? "instituto" : "universidad", createdAt: sampleDate,
       payload: { scope: mixed ? "pedido" : "", orderStatus: "EN_PREPARACION", deliveryType: input.delivery, deliveryZone: "lima_callao", courier: "Courier de ejemplo (ficticio)", trackingCode: "GUÍA FICTICIA", reason: "Motivo de ejemplo para revisar la comunicación.", source: input.template === "ANULADO" ? "gestor" : "comprador", correction: String(input.template === "DOCUMENTOS_CORREGIDOS") } }, "#", logoCid);
-    if (eventType === "DOCUMENTOS_VENTA") attachments = (mixed ? ["universidad", "instituto"] : [input.variant]).map((imprint) => samplePdf(`${input.billing}_${imprint}_EJEMPLO.pdf`));
+    if (eventType === "DOCUMENTOS_VENTA") {
+      attachments = (mixed ? ["universidad", "instituto"] : [input.variant]).flatMap((imprint) => {
+        const filename = `${input.billing}_${imprint}_EJEMPLO`;
+        return [
+          samplePdf(`${filename}.pdf`),
+          {
+            filename: `${filename}.xml`,
+            mimeType: "application/xml",
+            content: Buffer.from('<?xml version="1.0" encoding="UTF-8"?>\n<ejemplo>Documento ficticio de prueba sin valor fiscal</ejemplo>'),
+          },
+        ];
+      });
+    }
   }
   const banner = '<p style="padding:12px;background:#fff4cc;color:#332900;font-family:Arial,sans-serif">PRUEBA · Información ficticia. Sin pedido real. Enlaces desactivados.</p>';
   // Keep CID for Gmail test sends; the preview action swaps only this known logo.
