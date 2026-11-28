@@ -4,11 +4,20 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useSyncExternalStore, type ReactNode } from "react";
 import { Dialog } from "@base-ui/react/dialog";
-import { BookOpen, ChartNoAxesCombined, ChevronDown, ChevronRight, ClipboardList, LayoutGrid, Menu, Package, PanelLeftClose, PanelLeftOpen, Settings2, Tags, TicketPercent, X, type LucideIcon } from "lucide-react";
+import { BookOpen, ChartNoAxesCombined, ChevronDown, ChevronRight, ClipboardList, Landmark, LayoutGrid, Mail, Menu, Package, PanelLeftClose, PanelLeftOpen, Plug, Settings2, ShieldCheck, Tags, TicketPercent, Truck, UsersRound, X, type LucideIcon } from "lucide-react";
 import { LogoutButton } from "@/components/access/logout-button";
 import { cn } from "@/shared/utils/cn";
 
 type NavigationItem = { href: string; label: string; icon: LucideIcon };
+const settingsRoot = "/admin/configuracion";
+const settings = [
+  { href: `${settingsRoot}/accesos`, label: "Accesos", icon: UsersRound },
+  { href: `${settingsRoot}/seguridad`, label: "Seguridad", icon: ShieldCheck },
+  { href: `${settingsRoot}/pagos`, label: "Pagos", icon: Landmark },
+  { href: `${settingsRoot}/entregas`, label: "Entregas", icon: Truck },
+  { href: `${settingsRoot}/correos`, label: "Correos", icon: Mail },
+  { href: `${settingsRoot}/integraciones`, label: "Integraciones", icon: Plug },
+];
 
 const groups = [
   {
@@ -26,9 +35,9 @@ const groups = [
       { href: "/admin/cupones", label: "Cupones", icon: TicketPercent },
     ],
   },
-];
+  { id: "configuracion", label: "Configuración", icon: Settings2, items: settings },
+] as const;
 const utilityLinks = [
-  { href: "/admin/configuracion", label: "Configuración", icon: Settings2 },
   { href: "/admin/guia", label: "Guía de uso", icon: BookOpen },
 ];
 const items = [...groups.flatMap((group) => group.items), ...utilityLinks];
@@ -89,10 +98,13 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
   const [temporaryCollapsed, setTemporaryCollapsed] = useState<boolean | null>(null);
   const collapsed = temporaryCollapsed ?? savedCollapsed;
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [groupChoices, setGroupChoices] = useState<{ route: string; open: Record<string, boolean> }>();
-  const current = items.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? items[0];
+  const [groupChoice, setGroupChoice] = useState<{ route: string; open: (typeof groups)[number]["id"] | null }>();
+  if (groupChoice && groupChoice.route !== pathname) setGroupChoice(undefined);
+  const inSettings = pathname === settingsRoot || pathname.startsWith(`${settingsRoot}/`);
+  const current = items.find((item) => pathname === item.href || pathname.startsWith(`${item.href}/`)) ?? (inSettings ? settings[0] : items[0]);
   const detail = pathname.startsWith(`${current.href}/`);
-  const openGroups = groupChoices?.route === current.href ? groupChoices.open : undefined;
+  const activeGroup = groups.find((group) => group.items.some((item) => item.href === current.href))?.id;
+  const openGroup = groupChoice?.route === pathname ? groupChoice.open : activeGroup;
   const closeMobile = () => setMobileOpen(false);
 
   function setRailCollapsed(next: boolean) {
@@ -119,8 +131,8 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
         <nav aria-label="Menú principal" className="workspace-nav">
           <ul className="workspace-nav-groups">
             {groups.map(({ id, label, icon: Icon, items: children }) => {
-              const active = children.some((item) => item.href === current.href);
-              const open = !compact && (openGroups?.[id] ?? (active || id === "operacion"));
+              const active = id === activeGroup;
+              const open = !compact && id === openGroup;
               const panel = `workspace-${mobile ? "movil" : "escritorio"}-${id}`;
               return (
                 <li key={id}>
@@ -133,7 +145,7 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
                     aria-controls={panel}
                     aria-expanded={open}
                     onClick={() => {
-                      setGroupChoices({ route: current.href, open: { ...openGroups, [id]: !open } });
+                      setGroupChoice({ route: pathname, open: open ? null : id });
                       if (compact) setRailCollapsed(false);
                     }}
                   >
@@ -196,7 +208,8 @@ export function WorkspaceShell({ profile, children }: { profile: Profile; childr
           <nav aria-label="Ruta actual" className="workspace-breadcrumb">
             <span className="workspace-breadcrumb-root"><LayoutGrid aria-hidden="true" />Administración</span>
             <ChevronRight aria-hidden="true" />
-            <Link href={current.href} aria-current={!detail ? "page" : undefined}>{current.label}</Link>
+            {inSettings ? <><span>Configuración</span><ChevronRight aria-hidden="true" /></> : null}
+            {detail ? <Link href={current.href}>{current.label}</Link> : <span aria-current="page">{current.label}</span>}
             {detail ? <><ChevronRight aria-hidden="true" /><span aria-current="page">Detalle</span></> : null}
           </nav>
         </header>

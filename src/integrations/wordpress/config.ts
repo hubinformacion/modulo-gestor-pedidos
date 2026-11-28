@@ -14,6 +14,6 @@ export function getWordPressOrigins(value = process.env.WORDPRESS_ORIGINS ?? "")
   return [...new Set(parsed.data)];
 }
 
-export function getEmbedCsp(origins: string[], allowLocalPdfPreview = false) {
-  return `frame-ancestors 'self'${origins.length ? ` ${origins.join(" ")}` : ""}; frame-src 'self'${allowLocalPdfPreview ? " blob:" : ""} https://www.google.com https://maps.google.com; object-src 'none'; base-uri 'self'`;
+export function getEmbedCsp(origins: string[]) {
+  return `frame-ancestors 'self'${origins.length ? ` ${origins.join(" ")}` : ""}; frame-src 'self' https://www.google.com https://maps.google.com; object-src 'none'; base-uri 'self'`;
 }

@@ -1,124 +1,356 @@
-import { asc, eq } from "drizzle-orm";
-import { withReadDatabase } from "@/db";
-import { pickupContacts, pickupNotifications } from "@/db/schema";
-import { canAttendOrders } from "@/modules/access/domain/policy";
-import { PurchaseDetail } from "@/components/orders/purchase-detail";
-import { DetailCardHeading } from "@/components/workspace/detail-card-heading";
-import { formatOrderNumber } from "@/modules/orders/domain/number";
-import { AuxiliaryPanels } from "@/components/workspace/auxiliary-panels";
-import { CancelOrderControls } from "@/components/orders/cancel-order-controls";
-import { AdminSaleDocuments } from "@/components/orders/sale-documents";
-import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { ReactNode } from "react";
+import { asc, eq } from "drizzle-orm";
+import { ArrowLeft, ArrowUpRight, ChevronDown, FileText } from "lucide-react";
 import { z } from "zod";
-import { UserRound, FileText, Truck, CheckCircle2, Circle, LockKeyhole, BookOpen, UserRoundCheck, ClipboardCheck, PackageCheck, Send, CreditCard, ChevronDown, ArrowUpRight } from "lucide-react";
-import { orderDetail } from "@/modules/orders/application/queries";
-import { requirePageAccess } from "@/modules/access/application/session";
-import { formatMoney, toCents, centsToDecimal } from "@/modules/orders/domain/money";
+
+import { withReadDatabase } from "@/db";
+import { pickupContacts, pickupNotifications } from "@/db/schema";
 import { ImprintBadge } from "@/components/catalog/imprint-badge";
-import { StatusBadge } from "@/components/orders/management/status-badge";
-import { AssignmentControls, DispatchControls, PaymentReview } from "@/components/orders/management/order-controls";
-import { InternalNoteComposer } from "@/components/orders/management/internal-note-composer";
-import { AttentionTabs } from "@/components/orders/management/attention-tabs";
-import { TreasuryPaymentNoticeStatus } from "@/components/orders/management/treasury-payment-notice-status";
-import { listTreasuryPaymentNoticeStatuses } from "@/modules/orders/data/treasury-payment-notices";
+import { CancelOrderControls } from "@/components/orders/cancel-order-controls";
 import { OrderLiveRefresh } from "@/components/orders/live-refresh";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
+import { AttentionTabs } from "@/components/orders/management/attention-tabs";
+import { InternalNoteComposer } from "@/components/orders/management/internal-note-composer";
+import { AssignmentControls, DispatchControls, PaymentReview } from "@/components/orders/management/order-controls";
+import { StatusBadge } from "@/components/orders/management/status-badge";
+import { TreasuryPaymentNoticeStatus } from "@/components/orders/management/treasury-payment-notice-status";
+import { PurchaseDetail } from "@/components/orders/purchase-detail";
+import { AdminSaleDocuments } from "@/components/orders/sale-documents";
+import { AuxiliaryPanels } from "@/components/workspace/auxiliary-panels";
+import { requirePageAccess } from "@/modules/access/application/session";
+import { canAttendOrders } from "@/modules/access/domain/policy";
+import { orderDetail } from "@/modules/orders/application/queries";
+import { listTreasuryPaymentNoticeStatuses } from "@/modules/orders/data/treasury-payment-notices";
+import { centsToDecimal, formatMoney, toCents } from "@/modules/orders/domain/money";
+import { formatOrderNumber } from "@/modules/orders/domain/number";
+import { imprintNames } from "@/modules/orders/domain/types";
 
 export const metadata: Metadata = { title: "Atención del pedido", referrer: "no-referrer", robots: { index: false, follow: false } };
 export const maxDuration = 180;
+
 const dateFormat = new Intl.DateTimeFormat("es-PE", { dateStyle: "medium", timeStyle: "short", timeZone: "America/Lima" });
+const supportNoticeLabels: Record<string, string> = {
+  ENVIADO: "Enviado", ERROR: "No se pudo enviar", OMITIDO: "Omitido",
+};
+const linkClass = "inline-flex items-center gap-1.5 text-sm font-medium text-primary underline-offset-4 hover:underline";
+
+function StepHeading({ title, instruction }: { title: string; instruction: string }) {
+  return <header className="space-y-1.5">
+    <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
+    <p className="max-w-prose text-sm leading-6 text-muted-foreground">{instruction}</p>
+  </header>;
+}
+
+function Facts({ rows }: { rows: [string, ReactNode][] }) {
+  return <dl className="grid min-w-0 grid-cols-1 gap-x-5 gap-y-3 min-[360px]:grid-cols-2">
+    {rows.map(([label, value]) => (
+      <div key={label} className="min-w-0">
+        <dt className="text-xs text-muted-foreground">{label}</dt>
+        <dd className="mt-0.5 break-words text-sm font-medium leading-5">{value}</dd>
+      </div>
+    ))}
+  </dl>;
+}
+
 export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
   const actor = await requirePageAccess();
   const parsed = z.uuid().safeParse((await params).id);
   if (!parsed.success) notFound();
   const detail = await orderDetail(parsed.data);
   if (!detail) notFound();
+
   const { order, items, receipts, activity, notes, evidence } = detail;
-  const [[supportContacts, supportNotices], treasuryNotices] = await Promise.all([
-    withReadDatabase((db) => Promise.all([
-      db.select({ id: pickupContacts.id, name: pickupContacts.name }).from(pickupContacts).where(eq(pickupContacts.status, "ACTIVO")).orderBy(asc(pickupContacts.name)),
-      db.select({ status: pickupNotifications.status, createdAt: pickupNotifications.createdAt }).from(pickupNotifications).where(eq(pickupNotifications.orderId, order.id)),
-    ])),
-    listTreasuryPaymentNoticeStatuses(order.id),
-  ]);
-  const version = order.updatedAt.toISOString();
-  const closed = ["ENTREGADO", "CANCELADO"].includes(order.orderStatus);
+  const delivery = order.deliveryType === "delivery";
+  const cancelled = order.orderStatus === "CANCELADO";
+  const delivered = order.orderStatus === "ENTREGADO";
+  const closed = delivered || cancelled;
   const canAttend = canAttendOrders(actor);
   const mine = canAttend && order.assignedTo === actor.userId;
-  const applicable = (["universidad", "instituto"] as const).filter((imprint) => (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) !== "NO_APLICA");
-  const current = !order.assignedTo && !closed ? 0 : order.orderStatus === "PENDIENTE_PAGO" ? 1 : order.orderStatus === "EN_PREPARACION" ? 2 : 3;
-  const deliveryDetails = <div className="rounded-lg border border-border p-4">
-    <DetailCardHeading level={3} icon={Truck} title={order.deliveryType === "delivery" ? "Entrega a domicilio" : "Recojo en biblioteca"} />
-    <div className="grid gap-5 sm:grid-cols-2">
-      <div className="min-w-0"><h4 className="text-xs font-semibold text-primary">{order.deliveryType === "delivery" ? "Destino de entrega" : "Lugar de recojo"}</h4><p className="mt-2 break-words text-xs leading-6">{order.deliveryAddress}</p>
-        {order.deliveryType === "recojo_campus" && order.deliveryPickupHours ? <p className="mt-1 text-xs leading-6">{order.deliveryPickupHours}</p> : null}{order.pickupContactName ? <p className="mt-2 text-xs leading-6"><strong>Apoyo:</strong> {order.pickupContactName}{order.pickupContactEmail ? ` · ${order.pickupContactEmail}` : ""}<span className="block text-muted-foreground">Aviso al apoyo: {supportNotices[0]?.status === "ENVIADO" ? "Enviado" : supportNotices[0]?.status === "ERROR" ? "No se pudo enviar" : supportNotices[0]?.status === "OMITIDO" ? "Omitido" : "Registrado"}</span></p> : null}{order.deliveryType === "recojo_campus" && order.deliveryLibraryLocation ? <p className="mt-1 text-xs font-medium text-primary">{order.deliveryLibraryLocation}</p> : null}
-        {order.deliveryDistrict ? <p className="mt-2 text-xs leading-5 text-muted-foreground">{order.deliveryDistrict}, {order.deliveryProvince}, {order.deliveryDepartment}</p> : null}
-        {order.deliveryReference ? <p className="mt-2 text-xs leading-5 text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
-        {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-medium text-primary underline">Ver ubicación en Google Maps ↗</a> : null}
-      </div>
-      <div className="min-w-0 border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0"><h4 className="text-xs font-semibold text-primary">{order.deliveryType === "delivery" ? "Persona que recibe" : "Persona que recoge"}</h4><dl className="mt-3 space-y-3 text-xs">{[["Nombre completo", order.deliveryRecipient], ["Documento", order.deliveryRecipientDocument ?? order.customerDocument], ["Celular", order.deliveryRecipientPhone ?? order.customerPhone]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 break-words font-medium leading-5">{value}</dd></div>)}</dl></div>
-    </div>
-  </div>;
-  const packingList = <div className="rounded-lg border border-border p-4"><DetailCardHeading level={3} icon={BookOpen} title="Publicaciones a preparar" /><ul className="mt-3 divide-y divide-border">{items.map((item) => <li key={item.id} className="flex items-start gap-3 py-2 text-xs"><span className="rounded bg-secondary px-2 py-1 font-semibold tabular-nums text-primary">{item.quantity}</span><div><p className="font-medium leading-5">{item.title}</p><div className="mt-2 flex flex-wrap items-center gap-2"><span className="text-xs text-muted-foreground">{item.code || "Sin código"}</span><ImprintBadge imprint={item.imprint} /></div></div></li>)}</ul></div>;
-  const buyerCard = <section className="rounded-xl border border-border p-6"><DetailCardHeading icon={UserRound} title="Datos del comprador" aside={<span className="rounded-md bg-secondary px-2 py-1 text-xs font-semibold text-primary">{order.customerType === "comunidad_continental" ? "Comunidad Continental" : "Público general"}</span>} /><dl className="grid gap-5 text-xs sm:grid-cols-2">{[["Nombre completo", order.customerName], ["Documento", order.customerDocument], ["Correo electrónico", order.customerEmail], ["Celular", order.customerPhone]].map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-2 break-words font-medium leading-6">{value}</dd></div>)}</dl>{order.billingRuc ? <details className="group mt-5 rounded-lg border border-border bg-muted/20 text-xs leading-6"><summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-semibold"><span>Facturación registrada en la compra</span><ChevronDown className="size-4 shrink-0 text-muted-foreground group-open:rotate-180" aria-hidden="true" /></summary><div className="border-t border-border px-4 pb-4 pt-3"><p className="font-medium">{order.billingBusinessName}</p><p>RUC {order.billingRuc}</p><p className="mt-1">{order.billingAddress || "Sin dirección fiscal registrada"}</p></div></details> : null}</section>;
-  const purchaseCard = <PurchaseDetail items={items} subtotal={centsToDecimal(toCents(order.subtotalUniversidad) + toCents(order.subtotalInstituto))} shipping={order.shippingCost} total={order.total} discountTotal={order.discountTotal} couponCode={order.couponCode} />;
-  const panels = [
-    <div key="attention" className="space-y-4">
-      <div><h2 className="text-base font-semibold">Revisión inicial</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">Comprueba los datos y toma la atención del pedido.</p></div>
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">
-        <section className="rounded-lg border border-border p-4">
-          <DetailCardHeading level={3} icon={UserRoundCheck} title="Responsable" aside={<Link href={`/seguimiento/${order.trackingToken}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-7 items-center gap-1.5 rounded-md border border-primary/15 bg-secondary px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">Ver seguimiento del comprador<ArrowUpRight className="size-3 shrink-0" aria-hidden="true" /></Link>} />
-          <p className="mt-3 text-sm font-medium">{order.assignedName || "Pedido disponible"}</p>
-          {order.assignedAt ? <p className="mt-1 text-xs text-muted-foreground">Asignado {dateFormat.format(order.assignedAt)}</p> : null}
-          <div className="mt-4 flex flex-wrap items-start gap-2">{canAttend ? <AssignmentControls id={order.id} version={version} assigned={Boolean(order.assignedTo)} mine={mine} closed={closed} /> : <p className="text-xs leading-6 text-muted-foreground">Cuenta maestra · Solo consulta de pedidos. La atención requiere una cuenta personal autorizada.</p>}{mine && ["PENDIENTE_PAGO", "EN_PREPARACION"].includes(order.orderStatus) ? <CancelOrderControls mode="gestor" reference={order.id} version={version} hasPayment={receipts.length > 0} /> : null}</div>
+  const canDispatch = mine && order.orderStatus === "EN_PREPARACION";
+  const canDeliver = mine && order.orderStatus === "DESPACHADO";
+  const version = order.updatedAt.toISOString();
 
-        </section>
-        <section className="rounded-lg border border-border bg-muted/10 p-4"><DetailCardHeading level={3} icon={ClipboardCheck} title="Estado de la revisión" /><ul className="mt-3 space-y-3 text-xs">{applicable.map((imprint) => { const verified = (imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto) === "VERIFICADO"; const Icon = verified ? CheckCircle2 : Circle; return <li key={imprint} className="flex items-center justify-between gap-2"><span className="flex items-center gap-2"><Icon className={`size-4 ${verified ? "text-emerald-600" : "text-muted-foreground"}`} />{imprint === "universidad" ? "Universidad" : "Instituto"}</span><StatusBadge status={imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto} /></li>; })}<li className="flex items-center justify-between gap-2 border-t border-border pt-3"><span>Modalidad</span><strong className="font-medium">{order.deliveryType === "delivery" ? "Domicilio" : "Recojo"}</strong></li></ul></section>
+  const applicable = (["universidad", "instituto"] as const).flatMap((imprint) => {
+    const status = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
+    if (status === "NO_APLICA") return [];
+    return [{
+      imprint, status,
+      amount: imprint === "universidad" ? order.totalUniversidad : order.totalInstituto,
+      reason: imprint === "universidad" ? order.rejectionUniversidad : order.rejectionInstituto,
+      files: receipts.filter((file) => file.publisherImprint === imprint),
+    }];
+  });
+  const allVerified = applicable.length > 0 && applicable.every(({ status }) => status === "VERIFICADO");
+  const progress = delivered || order.orderStatus === "DESPACHADO" || order.dispatchedAt ? 3
+    : allVerified || order.orderStatus === "EN_PREPARACION" ? 2
+    : order.assignedTo ? 1 : 0;
+  const current = !closed && !order.assignedTo ? 0 : progress;
+
+  const [supportContacts, supportNotice, treasuryNotices] = await Promise.all([
+    canDispatch && !delivery ? withReadDatabase((db) => db.select({ id: pickupContacts.id, name: pickupContacts.name })
+      .from(pickupContacts).where(eq(pickupContacts.status, "ACTIVO")).orderBy(asc(pickupContacts.name))) : [],
+    order.pickupContactName ? withReadDatabase(async (db) => {
+      const [notice] = await db.select({ status: pickupNotifications.status }).from(pickupNotifications)
+        .where(eq(pickupNotifications.orderId, order.id)).limit(1);
+      return notice;
+    }) : undefined,
+    listTreasuryPaymentNoticeStatuses(order.id),
+  ]);
+
+  const assignedLabel = order.assignedName || (order.assignedTo ? "Gestor asignado" : "Por asignar");
+  const waitingForManager = !canAttend ? "Tu cuenta permite consultar este pedido." : order.assignedTo
+    ? "El gestor asignado registra este paso." : "Toma la atención del pedido en el paso 1 para continuar.";
+  const canCancel = mine && (order.orderStatus === "PENDIENTE_PAGO" || order.orderStatus === "EN_PREPARACION");
+  const deliveryAddressParts = [order.deliveryDistrict, order.deliveryProvince, order.deliveryDepartment].filter(Boolean);
+  const canReview = mine && order.orderStatus === "PENDIENTE_PAGO";
+  const paymentInstruction = closed ? "Consulta los comprobantes y documentos de venta registrados."
+    : !mine ? waitingForManager
+    : allVerified ? "Los pagos están verificados. Los documentos de venta se pueden confirmar en esta sección."
+    : applicable.some(({ status }) => status === "EN_REVISION") ? "Abre el comprobante reciente y verifica el importe del sello correspondiente."
+    : "Espera los comprobantes del comprador para verificar los depósitos.";
+  const deliveryInstruction = delivered ? "La entrega quedó confirmada."
+    : cancelled ? "La entrega quedó cancelada."
+    : canDeliver ? delivery ? "Confirma la entrega cuando el comprador reciba las publicaciones." : "Confirma la entrega cuando el comprador recoja las publicaciones."
+    : order.orderStatus === "DESPACHADO" ? waitingForManager
+    : "Registra la salida en Distribución para habilitar la confirmación de entrega.";
+
+  const deliveryFacts: [string, ReactNode][] = [];
+  if (order.dispatchedAt) deliveryFacts.push([delivery ? "Salida" : "Disponible desde", dateFormat.format(order.dispatchedAt)]);
+  if (order.deliveredAt) deliveryFacts.push(["Entregado el", dateFormat.format(order.deliveredAt)]);
+  if (order.courier) deliveryFacts.push(["Courier", order.courier]);
+  if (order.shippingTrackingCode) deliveryFacts.push(["Guía", order.shippingTrackingCode]);
+  if (order.pickupContactName) {
+    deliveryFacts.push([
+      "Apoyo para el recojo",
+      <>{order.pickupContactName}{order.pickupContactEmail ? <span className="block font-normal text-muted-foreground">{order.pickupContactEmail}</span> : null}</>,
+    ], ["Aviso al apoyo", supportNoticeLabels[supportNotice?.status ?? ""] ?? "Registrado"]);
+  }
+
+  function receiptRow(file: (typeof receipts)[number], latest = false) {
+    return <li key={file.id} className="min-w-0 py-2 first:pt-0">
+      <div className="mb-2 flex items-start gap-2">
+        <FileText aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0">
+          <a href={file.driveViewUrl} target="_blank" rel="noopener noreferrer" className="break-words text-sm font-medium text-primary underline-offset-4 hover:underline">{file.fileName}</a>
+          <p className="mt-0.5 text-xs text-muted-foreground">{dateFormat.format(file.uploadedAt)}{latest ? " · Más reciente" : ""}</p>
+        </div>
       </div>
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]">{buyerCard}{purchaseCard}</div>
-    </div>,
-    <div key="payments"><h2 className="text-base font-semibold">Revisión de comprobantes</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">Verifica cada depósito antes de preparar las publicaciones.</p>
-      <div className={`mt-4 grid items-start gap-3 ${applicable.length > 1 ? "xl:grid-cols-2" : ""}`}>{applicable.map((imprint) => {
-        const status = imprint === "universidad" ? order.paymentStatusUniversidad : order.paymentStatusInstituto;
-        const amount = imprint === "universidad" ? order.totalUniversidad : order.totalInstituto;
-        const files = receipts.filter((file) => file.publisherImprint === imprint);
-        const reason = imprint === "universidad" ? order.rejectionUniversidad : order.rejectionInstituto;
-        const receiptLink = (file: (typeof files)[number], latest: boolean) => <li key={file.id} className="min-w-0 rounded-md bg-muted/30 p-2.5">
-          <div className="flex items-start gap-2">
-            <FileText aria-hidden="true" className="mt-1 size-4 shrink-0 text-primary" />
-            <div className="min-w-0">
-              <a href={file.driveViewUrl} target="_blank" rel="noopener noreferrer" className="break-words text-xs font-medium text-primary underline underline-offset-4">{file.fileName}</a>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">{dateFormat.format(file.uploadedAt)}{latest ? " · Más reciente" : ""}</p>
-            </div>
+      <AttachmentPreview kind="comprobante" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
+    </li>;
+  }
+
+  const panels = [
+    <div key="attention" className="space-y-5">
+      <StepHeading title="Atención del pedido" instruction={closed
+        ? "Consulta quién atendió el pedido y la información registrada."
+        : !canAttend ? waitingForManager
+        : mine ? "Revisa los datos de compra antes de validar los pagos."
+        : order.assignedTo ? "Consulta los datos de la compra y su responsable."
+        : "Toma la atención para gestionar el pedido."} />
+      <section aria-labelledby="order-assignee" className="flex flex-col justify-between gap-3 border-y border-border py-3 sm:flex-row sm:items-center">
+        <div className="min-w-0">
+          <h3 id="order-assignee" className="text-xs text-muted-foreground">Responsable</h3>
+          <p className="mt-1 break-words text-sm font-semibold">{assignedLabel}</p>
+          {order.assignedAt ? <p className="mt-1 text-xs text-muted-foreground">Desde {dateFormat.format(order.assignedAt)}</p> : null}
+        </div>
+        <div className="flex flex-wrap items-start gap-2">
+          {canAttend && !closed && (!order.assignedTo || mine) ? <AssignmentControls id={order.id} version={version} assigned={Boolean(order.assignedTo)} mine={mine} closed={closed} /> : null}
+          {canCancel ? <CancelOrderControls mode="gestor" reference={order.id} version={version} hasPayment={receipts.length > 0} /> : null}
+        </div>
+      </section>
+      <section aria-labelledby="order-customer" className="max-w-2xl">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h3 id="order-customer" className="text-base font-semibold">Comprador</h3>
+          <span className="text-xs text-muted-foreground">{order.customerType === "comunidad_continental" ? "Comunidad Continental" : "Público general"}</span>
+        </div>
+        <Facts rows={[
+          ["Nombre", order.customerName], ["Documento", order.customerDocument],
+          ["Correo", order.customerEmail], ["Celular", order.customerPhone],
+        ]} />
+        {order.billingRuc ? <details className="group mt-3 text-sm">
+          <summary className="flex w-fit cursor-pointer list-none items-center gap-1.5 font-medium text-primary">
+            <ChevronDown aria-hidden="true" className="size-4 -rotate-90 group-open:rotate-0" />
+            Datos de facturación
+          </summary>
+          <div className="border-l border-border pl-4">
+            <Facts rows={[
+              ["Razón social", order.billingBusinessName], ["RUC", order.billingRuc],
+              ["Dirección fiscal", order.billingAddress || "Sin dirección registrada"],
+            ]} />
           </div>
-          <AttachmentPreview kind="comprobante" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
-        </li>;
-        return <section key={imprint} className="rounded-lg border border-border p-4"><DetailCardHeading icon={CreditCard} title="Comprobante de pago" aside={<StatusBadge status={status} />} /><ImprintBadge imprint={imprint} /><div className="my-3 flex items-baseline justify-between border-b border-border pb-3"><span className="text-xs text-muted-foreground">Importe a verificar</span><strong className="text-xl font-semibold tabular-nums">{formatMoney(toCents(amount))}</strong></div>
-          {files[0] ? <><ul>{receiptLink(files[0], true)}</ul>{files.length > 1 ? <details className="mt-2"><summary className="cursor-pointer text-xs font-medium text-muted-foreground">Otros comprobantes ({files.length - 1})</summary><ul className="mt-2 space-y-2">{files.slice(1).map((file) => receiptLink(file, false))}</ul></details> : null}</> : <p className="rounded-md bg-muted/20 p-3 text-xs leading-6 text-muted-foreground">Sin comprobante adjunto.</p>}
-          {reason ? <p className="mt-3 rounded-md bg-red-50 p-3 text-xs leading-6 text-red-700">Motivo: {reason}</p> : null}
-          {mine && status === "EN_REVISION" && files[0] && order.orderStatus === "PENDIENTE_PAGO" ? <PaymentReview id={order.id} imprint={imprint} receiptId={files[0].id} /> : null}
-          <TreasuryPaymentNoticeStatus notice={treasuryNotices.find((notice) => notice.publisherImprint === imprint)} cancelled={order.orderStatus === "CANCELADO"} />
-        </section>;
-      })}</div>{!mine && !closed ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Las decisiones de pago las registra el gestor asignado.</p> : null}<div className="mt-5"><AdminSaleDocuments orderId={order.id} actor={actor} invoice={Boolean(order.billingRuc)} /></div>
+        </details> : null}
+      </section>
+      <PurchaseDetail
+        items={items}
+        subtotal={centsToDecimal(toCents(order.subtotalUniversidad) + toCents(order.subtotalInstituto))}
+        shipping={order.shippingCost}
+        total={order.total}
+        discountTotal={order.discountTotal}
+        couponCode={order.couponCode}
+      />
     </div>,
-    <div key="preparation"><h2 className="text-base font-semibold">Distribución y despacho</h2><p className="mt-1 text-xs leading-6 text-muted-foreground">Comprueba cantidades y destino antes de registrar la salida.</p><div className="mt-5 grid items-start gap-5 xl:grid-cols-2">{packingList}{deliveryDetails}</div>
-      {mine && order.orderStatus === "EN_PREPARACION" ? <section className="mt-4 rounded-lg border border-primary/15 bg-secondary/10 p-4"><DetailCardHeading level={3} icon={Send} title="Registrar salida" /><DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} /></section> : <p className="mt-3 text-xs leading-6 text-muted-foreground">{order.orderStatus === "PENDIENTE_PAGO" ? "La salida se habilita al verificar todos los pagos." : "Consulta la entrega en la última etapa."}</p>}
+
+    <div key="payments" className="space-y-5">
+      <StepHeading title="Pagos del pedido" instruction={paymentInstruction} />
+      <div className="divide-y divide-border border-y border-border">
+        {applicable.map(({ imprint, status, amount, files, reason }) => (
+          <section key={imprint} aria-label={imprintNames[imprint]} className="space-y-3 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <ImprintBadge imprint={imprint} />
+                <StatusBadge status={status} />
+              </div>
+              <p className="text-xs text-muted-foreground">Importe <strong className="ml-1 text-base font-semibold text-foreground tabular-nums">{formatMoney(toCents(amount))}</strong></p>
+            </div>
+            <div className="grid gap-4 min-[1480px]:grid-cols-[minmax(0,1fr)_minmax(15rem,.66fr)]">
+              <div className="min-w-0 max-w-xl">
+                {files[0] ? <ul aria-label="Comprobante más reciente">{receiptRow(files[0], true)}</ul> : <p className="text-sm text-muted-foreground">El comprador aún no adjunta un comprobante.</p>}
+                {files.length > 1 ? <details className="mt-1">
+                  <summary className="cursor-pointer text-xs font-medium text-primary">Otros comprobantes ({files.length - 1})</summary>
+                  <ul className="mt-2 divide-y divide-border">{files.slice(1).map((file) => receiptRow(file))}</ul>
+                </details> : null}
+              </div>
+              {(reason || (canReview && status === "EN_REVISION" && files[0]) || treasuryNotices.some((notice) => notice.publisherImprint === imprint)) ? (
+                <div className="min-w-0 max-w-lg space-y-3">
+                  {reason ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm leading-5 text-rose-800"><span className="font-medium">Motivo:</span> {reason}</p> : null}
+                  {canReview && status === "EN_REVISION" && files[0] ? <PaymentReview id={order.id} imprint={imprint} receiptId={files[0].id} /> : null}
+                  <TreasuryPaymentNoticeStatus notice={treasuryNotices.find((notice) => notice.publisherImprint === imprint)} cancelled={cancelled} />
+                </div>
+              ) : null}
+            </div>
+          </section>
+        ))}
+      </div>
+      <AdminSaleDocuments orderId={order.id} actor={actor} invoice={Boolean(order.billingRuc)} />
     </div>,
-    <div key="delivery"><h2 className="text-base font-semibold">{closed ? "Cierre de atención" : "Entrega y seguimiento"}</h2><div className="mt-5 grid items-start gap-5 xl:grid-cols-2">{deliveryDetails}<section className="rounded-lg border border-border p-4"><DetailCardHeading level={3} icon={PackageCheck} title="Registro de entrega" /><dl className="mt-3 space-y-3 text-xs">
-      {order.courier ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Courier</dt><dd className="font-medium">{order.courier}</dd></div> : null}
-      {order.shippingTrackingCode ? <div className="flex justify-between gap-3"><dt className="text-muted-foreground">Guía</dt><dd className="break-all font-medium">{order.shippingTrackingCode}</dd></div> : null}
-      {order.dispatchedAt ? <div><dt className="text-muted-foreground">Salida / disponibilidad</dt><dd className="mt-1 font-medium">{dateFormat.format(order.dispatchedAt)}</dd></div> : null}
-      {order.deliveredAt ? <div className="rounded-md bg-emerald-50 p-3 text-emerald-800"><dt>Entrega confirmada</dt><dd className="mt-1 font-medium">{dateFormat.format(order.deliveredAt)}</dd></div> : null}
-      </dl>{order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className="mt-3 inline-block text-xs font-semibold text-primary underline">Consultar envío ↗</a> : null}
-      {mine && order.orderStatus === "DESPACHADO" ? <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null} delivery={order.deliveryType === "delivery"} initialCourier={order.courier ?? ""} /> : !closed && order.orderStatus !== "DESPACHADO" ? <p className="mt-3 text-xs leading-6 text-muted-foreground">Pendiente de registrar salida o disponibilidad.</p> : null}
-      {evidence.length ? <div className="mt-3 border-t border-border pt-3"><h4 className="text-xs font-semibold">{order.deliveryType === "delivery" ? "Evidencia de entrega del courier" : "Evidencia del recojo"}</h4>{evidence.map((file) => <div key={file.id} className="mt-2"><a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className="break-all text-xs font-medium text-primary underline">{file.fileName}</a><p className="mt-1 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>{!(mine && order.orderStatus === "DESPACHADO" && file.id === evidence[0]?.id) ? <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} /> : null}</div>)}</div> : null}
-      {order.orderStatus === "CANCELADO" ? <p className="mt-3 text-xs text-muted-foreground">Este pedido está cancelado.{order.cancellationReason ? ` Motivo: ${order.cancellationReason}` : ""}</p> : null}
-      </section></div>
+
+    <div key="distribution" className="space-y-5">
+      <StepHeading title="Distribución" instruction={canDispatch ? (delivery
+        ? "Prepara las publicaciones y registra el courier cuando las despaches."
+        : "Prepara las publicaciones y avisa cuando estén disponibles en la biblioteca.")
+        : cancelled ? "El pedido fue cancelado antes de completar la distribución."
+        : order.dispatchedAt ? `Salida registrada el ${dateFormat.format(order.dispatchedAt)}.`
+        : !allVerified ? "La salida se habilita cuando todos los pagos estén verificados."
+        : waitingForManager} />
+      {canDispatch ? (
+        <section aria-labelledby="order-dispatch" className="max-w-3xl border-y border-border py-4">
+          <h3 id="order-dispatch" className="text-base font-semibold">{delivery ? "Registrar envío" : "Registrar disponibilidad para recojo"}</h3>
+          <DispatchControls id={order.id} version={version} status="EN_PREPARACION" supportContacts={supportContacts} delivery={delivery}
+            initialCourier={order.courier ?? ""} initialCode={order.shippingTrackingCode ?? ""} initialUrl={order.shippingTrackingUrl ?? ""} />
+        </section>
+      ) : null}
+      <div className="grid gap-x-7 gap-y-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+        <section aria-labelledby="order-destination" className="min-w-0">
+          <h3 id="order-destination" className="text-base font-semibold">{delivery ? "Destino del envío" : "Lugar de recojo"}</h3>
+          <address className="mt-2 space-y-1 break-words text-sm not-italic leading-5">
+            <p className="font-medium">{order.deliveryAddress}</p>
+            {!delivery && order.deliveryLibraryLocation ? <p>{order.deliveryLibraryLocation}</p> : null}
+            {!delivery && order.deliveryPickupHours ? <p>{order.deliveryPickupHours}</p> : null}
+            {deliveryAddressParts.length ? <p className="text-muted-foreground">{deliveryAddressParts.join(", ")}</p> : null}
+            {order.deliveryReference ? <p className="text-muted-foreground">Referencia: {order.deliveryReference}</p> : null}
+            {order.deliveryMapUrl ? <a href={order.deliveryMapUrl} target="_blank" rel="noopener noreferrer" className={linkClass}>Abrir mapa <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
+          </address>
+          <h4 className="mb-2 mt-4 text-sm font-semibold">{delivery ? "Quién recibe" : "Quién recoge"}</h4>
+          <Facts rows={[
+            ["Nombre", order.deliveryRecipient],
+            ["Documento", order.deliveryRecipientDocument ?? order.customerDocument],
+            ["Celular", order.deliveryRecipientPhone ?? order.customerPhone],
+          ]} />
+        </section>
+
+        <section aria-labelledby="order-packing" className="min-w-0">
+          <h3 id="order-packing" className="text-base font-semibold">Publicaciones a preparar</h3>
+          <ul className="mt-2 divide-y divide-border">
+            {items.map((item) => (
+              <li key={item.id} className="flex min-w-0 items-start gap-2.5 py-2 first:pt-0">
+                <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-semibold tabular-nums" aria-label={`${item.quantity} ejemplares`}>{item.quantity}</span>
+                <div className="min-w-0 space-y-1">
+                  <p className="break-words text-sm font-medium leading-5">{item.title}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">{item.code ? <span>{item.code}</span> : null}<ImprintBadge imprint={item.imprint} /></div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </div>,
+
+    <div key="delivery" className="space-y-5">
+      <StepHeading title="Entrega" instruction={deliveryInstruction} />
+      {canDeliver ? <section aria-labelledby="order-confirm-delivery" className="max-w-xl border-y border-border py-4">
+        <h3 id="order-confirm-delivery" className="text-base font-semibold">Confirmar entrega</h3>
+        <DispatchControls id={order.id} version={version} status="DESPACHADO" existingEvidenceId={evidence[0]?.id ?? null}
+          delivery={delivery} initialCourier={order.courier ?? ""} />
+      </section> : null}
+      {deliveryFacts.length || order.shippingTrackingUrl ? (
+        <section aria-labelledby="order-delivery-summary" className="max-w-xl">
+          <h3 id="order-delivery-summary" className="mb-3 text-base font-semibold">{delivery ? "Seguimiento del envío" : "Seguimiento del recojo"}</h3>
+          <Facts rows={deliveryFacts} />
+          {order.shippingTrackingUrl ? <a href={order.shippingTrackingUrl} target="_blank" rel="noopener noreferrer" className={`mt-3 ${linkClass}`}>Consultar envío <ArrowUpRight aria-hidden="true" className="size-3.5" /></a> : null}
+        </section>
+      ) : null}
+      {evidence.length > (canDeliver ? 1 : 0) ? (
+        <section aria-labelledby="order-evidence" className="max-w-lg border-t border-border pt-4">
+          <h3 id="order-evidence" className="text-base font-semibold">{canDeliver ? "Evidencias anteriores" : "Evidencia de entrega"}</h3>
+          <ul className="mt-2 divide-y divide-border">
+            {(canDeliver ? evidence.slice(1) : evidence).map((file) => (
+              <li key={file.id} className="min-w-0 py-2">
+                <a href={file.driveViewUrl!} target="_blank" rel="noopener noreferrer" className={`break-words ${linkClass}`}>{file.fileName}</a>
+                <p className="mt-0.5 text-xs text-muted-foreground">{file.actorName} · {dateFormat.format(file.confirmedAt ?? file.uploadedAt!)}</p>
+                <AttachmentPreview kind="evidencia" orderId={order.id} fileId={file.id} name={file.fileName} mimeType={file.mimeType} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
     </div>,
   ];
-  const notesPanel = <section className="min-w-0"><div className="flex flex-wrap items-center justify-between gap-2"><span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><LockKeyhole className="size-3" />Solo para el equipo</span></div>{canAttend ? <InternalNoteComposer id={order.id} /> : null}{notes.length ? <ol className="mt-4 max-h-80 space-y-3 overflow-y-auto border-t border-border pt-4">{notes.map((note) => <li key={note.id} className="rounded-lg bg-muted/30 p-3"><p className="whitespace-pre-wrap break-words text-xs leading-6">{note.content}</p><p className="mt-2 text-xs text-muted-foreground">{note.author || "Gestor"} · {dateFormat.format(note.createdAt)}</p></li>)}</ol> : null}</section>;
-  const historyPanel = <section className="min-w-0"><ol tabIndex={0} aria-label="Historial de atención" className="mt-4 max-h-80 space-y-4 overflow-y-auto overscroll-contain pr-2 outline-none focus-visible:ring-2 focus-visible:ring-primary">{activity.map((event) => <li key={event.id} className="border-l-2 border-primary/20 pl-4"><p className="text-xs leading-6">{event.detail.replace(/\s*\(revisión \d+\)\./gi, ".")}</p><p className="mt-1 text-xs text-muted-foreground">{dateFormat.format(event.createdAt)} · {event.actorName || "Sistema"}</p></li>)}</ol>{!activity.length ? <p className="mt-3 text-xs text-muted-foreground">Los avances de atención quedarán registrados aquí.</p> : null}</section>;
-  return <><Link href="/admin/pedidos" className="text-xs font-medium text-primary hover:underline">← Volver a la bandeja</Link><div className="mt-5 flex flex-wrap items-start justify-between gap-4"><div><h1 className="page-heading">Pedido {formatOrderNumber(order.orderNumber)}</h1><p className="mt-3 text-xs text-muted-foreground">Registrado {dateFormat.format(order.createdAt)}</p><p className="mt-3 flex items-center gap-2 text-xs"><UserRound className="size-4 text-primary" />{order.assignedName ? `Gestor: ${order.assignedName}` : "Sin gestor asignado"}</p></div><div className="flex max-w-full flex-wrap items-center justify-end gap-2"><StatusBadge status={order.orderStatus} /><AuxiliaryPanels notes={notesPanel} history={historyPanel} notesCount={notes.length} historyCount={activity.length} /><OrderLiveRefresh finished={closed} /></div></div><div className="mt-6 space-y-6"><AttentionTabs current={current} panels={panels} /></div></>;
+
+  const notesPanel = <div className="space-y-3">
+    {canAttend ? <InternalNoteComposer id={order.id} /> : null}
+    {notes.length ? <ol className="max-h-80 space-y-3 overflow-auto">
+      {notes.map((note) => <li key={note.id} className="rounded-md bg-muted/40 p-3">
+        <p className="whitespace-pre-wrap break-words text-sm leading-5">{note.content}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{note.author || "Gestor"} · {dateFormat.format(note.createdAt)}</p>
+      </li>)}
+    </ol> : <p className="text-sm text-muted-foreground">Todavía no hay notas internas.</p>}
+  </div>;
+
+  const historyPanel = activity.length ? <ol tabIndex={0} aria-label="Historial de atención" className="max-h-80 space-y-3 overflow-y-auto overscroll-contain">
+    {activity.map((event) => (
+      <li key={event.id} className="border-l border-border pl-3">
+        <p className="text-sm leading-5">{event.detail.replace(/\s*\(revisión \d+\)\./gi, ".")}</p>
+        <p className="mt-1 text-xs text-muted-foreground">{dateFormat.format(event.createdAt)} · {event.actorName || "Sistema"}</p>
+      </li>
+    ))}
+  </ol> : <p className="text-sm text-muted-foreground">Todavía no hay actividad registrada.</p>;
+
+  return (
+    <div className="max-w-[74rem] space-y-5">
+      <header className="space-y-3 border-b border-border pb-4">
+        <Link href="/admin/pedidos" className={linkClass}><ArrowLeft aria-hidden="true" className="size-4" /> Pedidos</Link>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="text-2xl font-semibold tracking-tight">Pedido {formatOrderNumber(order.orderNumber)}</h1>
+              <StatusBadge status={order.orderStatus} />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">Registrado el {dateFormat.format(order.createdAt)}</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href={`/seguimiento/${order.trackingToken}`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium hover:bg-secondary">
+              Seguimiento <ArrowUpRight aria-hidden="true" className="size-3.5" />
+            </Link>
+            <AuxiliaryPanels notes={notesPanel} history={historyPanel} notesCount={notes.length} historyCount={activity.length} />
+            <OrderLiveRefresh finished={closed} />
+          </div>
+        </div>
+        {cancelled && order.cancellationReason ? <p className="max-w-prose break-words text-sm leading-5 text-muted-foreground">Motivo de la cancelación: {order.cancellationReason}</p> : null}
+      </header>
+      <AttentionTabs current={current} progress={progress} outcome={cancelled ? "cancelled" : delivered ? "completed" : "active"} panels={panels} />
+    </div>
+  );
 }

@@ -4,7 +4,6 @@ import { useState, useTransition } from "react";
 import dynamic from "next/dynamic";
 import { finalizeSaleAction, reviseSaleAction } from "@/app/admin/sale-document-actions";
 import { notifyAction } from "@/components/feedback/notify-action";
-import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import type { DraftSaleFile } from "@/components/orders/sale-document-pond";
 import { Button } from "@/components/ui/button";
 import { finalizeSaleSchema, reviseSaleSchema } from "@/modules/orders/domain/sale-documents";
@@ -55,19 +54,16 @@ export function SaleDocumentControls({ id, orderId, cycle, initialVersion, initi
     <div className="grid gap-4 lg:grid-cols-2">
       <section aria-label="PDF de la emisión" className="min-w-0">
         <p className="mb-2 text-xs font-semibold">PDF</p>
-        <DocumentPond id={id} cycle={cycle} format="pdf" disabled={pending} locked={xmlBusy} initialDocument={initialDocument} onBusy={setPdfBusy} onError={setPdfError}
+        <DocumentPond id={id} orderId={orderId} cycle={cycle} format="pdf" disabled={pending} locked={xmlBusy} initialDocument={initialDocument} onBusy={setPdfBusy} onError={setPdfError}
           onRemoved={(value) => { setPdf(null); advanceVersion(value); }} onUploaded={(file) => { setPdf(file); advanceVersion(file.version); setError(""); }} />
-        {pdf ? <>
-          <AttachmentPreview kind="documento" orderId={orderId} fileId={pdf.id} name={pdf.name} mimeType="application/pdf" />
-          <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-xs font-medium text-primary underline underline-offset-4">Abrir PDF en Drive</a>
-        </> : null}
+        {pdf ? <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs font-medium text-primary underline underline-offset-4">Abrir PDF en Drive</a> : null}
         {pdfError ? <p role="alert" className="mt-2 text-xs text-destructive">{pdfError}</p> : null}
       </section>
       <section aria-label="XML de la emisión" className="min-w-0">
         <p className="mb-2 text-xs font-semibold">XML</p>
-        <DocumentPond id={id} cycle={cycle} format="xml" disabled={pending} locked={pdfBusy} initialDocument={initialXml} onBusy={setXmlBusy} onError={setXmlError}
+        <DocumentPond id={id} orderId={orderId} cycle={cycle} format="xml" disabled={pending} locked={pdfBusy} initialDocument={initialXml} onBusy={setXmlBusy} onError={setXmlError}
           onRemoved={(value) => { setXml(null); advanceVersion(value); }} onUploaded={(file) => { setXml(file); advanceVersion(file.version); setError(""); }} />
-        {xml ? <a href={xml.url} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary underline underline-offset-4">Revisar XML en Drive</a> : null}
+        {xml ? <a href={xml.url} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs font-medium text-primary underline underline-offset-4">Revisar XML en Drive</a> : null}
         {xmlError ? <p role="alert" className="mt-2 text-xs text-destructive">{xmlError}</p> : null}
       </section>
     </div>

@@ -34,7 +34,7 @@ async function changeCampus(input: unknown, operation: "create" | "update" | "de
       return saveCampus(db, actor, parsed.data, id);
     });
     if (result.success) {
-      revalidatePath("/admin/configuracion", "page");
+      revalidatePath("/admin/configuracion/entregas");
       revalidatePath("/pedido");
     }
     return result;

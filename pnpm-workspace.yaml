@@ -3,6 +3,9 @@ allowBuilds:
   sharp: false
   unrs-resolver: false
 
+minimumReleaseAgeExclude:
+  - filepond@5.0.2
+
 # Drizzle tooling inherits an obsolete esbuild through the legacy ESM loader.
 overrides:
   "@esbuild-kit/core-utils>esbuild": "0.25.12"

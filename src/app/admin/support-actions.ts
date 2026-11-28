@@ -31,7 +31,7 @@ export async function saveSupportAction(input: unknown) {
         await writeManagementAudit(tx, actor, "PICKUP_SUPPORT_SAVED", "pickup_contact", saved.id, { previous: previous ? { name: previous.name, email: previous.email, status: previous.status } : null, next: values });
       });
     });
-    revalidatePath("/admin/configuracion"); revalidatePath("/admin/pedidos", "layout");
+    revalidatePath("/admin/configuracion/entregas"); revalidatePath("/admin/pedidos", "layout");
     return { success: true, message: "Personal de apoyo guardado." };
   } catch (error) { return failure(error); }
 }
@@ -52,7 +52,7 @@ export async function deleteSupportAction(input: unknown) {
         await writeManagementAudit(tx, actor, "PICKUP_SUPPORT_DELETED", "pickup_contact", row.id);
       });
     });
-    revalidatePath("/admin/configuracion"); revalidatePath("/admin/pedidos", "layout");
+    revalidatePath("/admin/configuracion/entregas"); revalidatePath("/admin/pedidos", "layout");
     return { success: true, message: "Personal de apoyo eliminado." };
   } catch (error) { return failure(error); }
 }

@@ -1,8 +1,9 @@
 "use client";
+
 import { useState } from "react";
-import { FilePond } from "@/components/orders/filepond";
-import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import { CheckCircle2 } from "lucide-react";
+import { entryIsLoading, OrderFilePond, storeStatus } from "@/components/orders/filepond";
+import { AttachmentPreview } from "@/components/orders/management/attachment-preview";
 import { pickupImageSchema, pickupUploadSchema } from "@/modules/orders/domain/management";
 import { uploadPickupEvidenceAction } from "@/app/admin/operations";
 
@@ -11,44 +12,44 @@ export default function PickupEvidencePond({ id, version, disabled, existingEvid
   onUploaded: (id: string) => void; onBusyChange: (busy: boolean) => void; onErrorChange: (error: string) => void;
 }) {
   const [uploading, setUploading] = useState(false);
+
+  async function save(image: File, uploadId: string) {
+    if (!pickupUploadSchema.safeParse({ id, version, uploadId }).success || !pickupImageSchema.safeParse(image).success) {
+      const message = "Usa JPG o PNG de hasta 3 MB.";
+      onErrorChange(message);
+      throw new Error(message);
+    }
+    onErrorChange("");
+    const data = new FormData();
+    data.set("id", id);
+    data.set("version", version);
+    data.set("uploadId", uploadId);
+    data.set("image", image);
+    const result = await uploadPickupEvidenceAction(data).catch(() => null);
+    if (!result?.success) {
+      const message = result?.message ?? "No se pudo adjuntar. Reintenta sin retirar la imagen.";
+      onErrorChange(message);
+      throw new Error(message);
+    }
+    onUploaded(result.evidenceId);
+    setUploading(false);
+    onBusyChange(false);
+    return result.evidenceId;
+  }
+
   if (existingEvidenceId) return <>
     <p role="status" className="flex items-center gap-2 text-xs text-emerald-700"><CheckCircle2 aria-hidden="true" className="size-4" />Imagen adjunta.</p>
-    <AttachmentPreview kind="evidencia" orderId={id} fileId={existingEvidenceId} name="la evidencia de entrega" />
+    <AttachmentPreview kind="evidencia" orderId={id} fileId={existingEvidenceId} name="Evidencia de entrega" />
   </>;
-  return <><FilePond name="pickup-evidence" credits={false} disabled={disabled} allowMultiple={false} maxFiles={1} instantUpload allowRevert={false} allowRemove={!uploading} imagePreviewMaxHeight={288}
-    acceptedFileTypes={["image/jpeg", "image/png"]} maxFileSize="3MB"
-    labelIdle='Arrastra la foto o <span class="filepond--label-action">selecciona una imagen</span>'
-    labelFileTypeNotAllowed="Usa JPG o PNG" fileValidateTypeLabelExpectedTypes="Formatos permitidos: JPG y PNG"
-    labelMaxFileSizeExceeded="La imagen supera 3 MB" labelMaxFileSize="Máximo 3 MB" labelButtonRemoveItem="Retirar imagen"
-    labelFileProcessing="Adjuntando imagen" labelFileProcessingComplete="Imagen adjunta" labelFileProcessingError="No se completó la carga"
-    labelTapToRetry="Pulsa para reintentar" labelTapToCancel="" labelTapToUndo=""
-    onaddfilestart={() => onBusyChange(true)}
-    onaddfile={(error, item) => {
-      if (error) { onBusyChange(false); onErrorChange("Usa JPG o PNG de hasta 3 MB."); return; }
-      item.setMetadata("uploadId", crypto.randomUUID(), true); onErrorChange("");
-    }}
-    onprocessfilestart={() => { setUploading(true); onBusyChange(true); }}
-    onprocessfile={(error, item) => {
-      setUploading(false); onBusyChange(false);
-      if (error) onErrorChange("No se completó la carga. Reintenta o retira la imagen.");
-      else { onErrorChange(""); onUploaded(item.serverId); }
-    }}
-    onremovefile={() => { onBusyChange(false); onErrorChange(""); }}
-    server={{ revert: null, remove: null, process: (_field, file, metadata, load, error, progress) => {
-      const valid = pickupUploadSchema.safeParse({ id, version, uploadId: metadata.uploadId });
-      const image = new File([file], file.name, { type: file.type });
-      if (!valid.success || !pickupImageSchema.safeParse(image).success) { error("Usa JPG o PNG de hasta 3 MB."); return; }
-      const data = new FormData(); data.set("id", id); data.set("version", version); data.set("uploadId", valid.data.uploadId); data.set("image", image);
-      progress(false, 0, file.size);
-      let resolved = false;
-      void uploadPickupEvidenceAction(data).then((result) => {
-        resolved = true;
-        if (!result.success) { error(result.message); onErrorChange(result.message); return; }
-        onErrorChange(""); progress(true, file.size, file.size); load(result.evidenceId); onUploaded(result.evidenceId);
-      }).catch(() => { resolved = true; const message = "No se pudo adjuntar. Reintenta sin retirar la imagen."; error(message); onErrorChange(message); }).finally(() => { setUploading(false); onBusyChange(false); });
-      // Server Actions cannot cancel a committed upload. Keep closing blocked
-      // until the request resolves even if the FilePond processing is aborted.
-      return { abort: () => { if (!resolved) onErrorChange("La carga sigue en curso. Espera a que termine."); } };
-    } }} />
-    <p className="mt-2 text-xs text-muted-foreground">JPG o PNG · hasta 3 MB.</p></>;
+
+  return <>
+    <OrderFilePond name="pickup-evidence" locked={disabled || uploading} label="Adjuntar evidencia de entrega"
+      accept="image/jpeg,image/png" describedBy="pickup-evidence-formats" save={save} onentrieschange={({ detail }) => {
+        const busy = detail.some((entry) => entryIsLoading(entry) || ["STORE_QUEUED", "STORE_BUSY"].includes(storeStatus(entry) ?? ""));
+        setUploading(busy);
+        onBusyChange(busy);
+        if (!detail.length) onErrorChange("");
+      }} />
+    <p id="pickup-evidence-formats" className="mt-2 text-xs text-muted-foreground">JPG o PNG · hasta 3 MB.</p>
+  </>;
 }

@@ -1,0 +1,20 @@
+.order-filepond {
+  --default-accent-color: var(--primary);
+  --default-background-color: var(--muted);
+  --default-color: var(--foreground);
+  --default-border: 1px solid var(--border);
+  --default-border-radius: .65rem;
+  --default-padding: .75rem;
+  margin: 0;
+  font: inherit;
+  font-size: .875rem;
+}
+
+.order-filepond[data-locked]::part(entry-button),
+.order-filepond[data-batch]::part(entry-store-state) {
+  display: none;
+}
+
+.order-filepond::part(entry-media) {
+  max-height: 17rem;
+}

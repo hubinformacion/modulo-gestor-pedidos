@@ -35,7 +35,7 @@ async function changeRate(input: unknown, remove: boolean) {
         await writeManagementAudit(tx, actor, remove ? "DELIVERY_RATE_DELETED" : "DELIVERY_RATE_SAVED", "delivery_rate", zone, { previous: current ? { price: current.price, status: current.status } : null, next: remove ? null : deliveryRateSchema.parse(input) });
       });
     });
-    revalidatePath("/admin/configuracion"); revalidatePath("/pedido");
+    revalidatePath("/admin/configuracion/entregas"); revalidatePath("/pedido");
     return { success: true, message: remove ? "Tarifa eliminada. Los pedidos anteriores conservan su costo." : "Tarifa guardada. Se aplicará a nuevas compras." };
   } catch (error) {
     if (!(error instanceof RateError || error instanceof AccessError)) reportServerError("delivery.rate.change", error);

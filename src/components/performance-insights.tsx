@@ -6,7 +6,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 const staticRoutes = new Set([
   "/", "/pedido", "/login", "/acceso", "/admin", "/admin/pedidos",
   "/admin/reporte", "/admin/inventario", "/admin/promociones", "/admin/cupones",
-  "/admin/configuracion", "/admin/guia",
+  "/admin/configuracion", "/admin/configuracion/accesos", "/admin/configuracion/seguridad",
+  "/admin/configuracion/pagos", "/admin/configuracion/entregas", "/admin/configuracion/correos",
+  "/admin/configuracion/integraciones", "/admin/guia",
 ]);
 
 function redactMeasurement<T extends { url: string }>(event: T): T | null {

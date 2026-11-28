@@ -41,7 +41,7 @@ export async function saveTreasuryMailboxAction(input: unknown) {
         return { success: true, message: email ? "Buzón actualizado." : "Buzón retirado." };
       });
     });
-    if (result.success) revalidatePath("/admin/configuracion");
+    if (result.success) revalidatePath("/admin/configuracion/correos");
     return result;
   } catch (error) {
     if (error instanceof AccessError) return { success: false, message: error.message };

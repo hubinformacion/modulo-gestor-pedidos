@@ -13,7 +13,7 @@ export function MailTemplateGallery({ endpointConfigured, activeProvider }: { en
   const busy = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
   const [operation, setOperation] = useState<"preview" | "send" | null>(null);
-  const [provider, setProvider] = useState<string>("gmail");
+  const [provider, setProvider] = useState<string>(activeProvider);
   const [preview, setPreview] = useState<MailSamplePreview | null>(null);
   const [result, setResult] = useState<MailEndpointTestResult | null>(null);
   const [error, setError] = useState("");
@@ -51,11 +51,11 @@ export function MailTemplateGallery({ endpointConfigured, activeProvider }: { en
   }
 
   return <section aria-labelledby="mail-gallery-title">
-    <h2 id="mail-gallery-title" className="text-lg font-semibold tracking-tight">Plantillas de correo</h2>
-    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Revisa los mensajes del sistema con datos ficticios y envía una prueba individual al correo que indiques. Los enlaces del ejemplo están desactivados.</p>
-    <form ref={formRef} className="mt-6" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); runOperation("send"); }}>
+    <h2 id="mail-gallery-title" className="text-base font-semibold">Plantillas y prueba de envío</h2>
+    <p className="mt-3 max-w-3xl text-sm leading-6 text-muted-foreground">Revisa una plantilla o envía un ejemplo con datos ficticios al destinatario que indiques.</p>
+    <form ref={formRef} className="mt-4" aria-busy={pending} onSubmit={(event) => { event.preventDefault(); runOperation("send"); }}>
       <fieldset disabled={pending} className="space-y-5">
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div className="grid max-w-5xl gap-4 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr]">
           <SelectField id="mail-sample-template" name="template" label="Plantilla" defaultValue="PEDIDO_RECIBIDO" onValueChange={() => { setPreview(null); setResult(null); }}>
             {Object.entries(mailSampleOptions).map(([key, label]) => <option key={key} value={key}>{label}</option>)}
           </SelectField>
@@ -74,11 +74,11 @@ export function MailTemplateGallery({ endpointConfigured, activeProvider }: { en
           <div className="grid max-w-3xl gap-5 sm:grid-cols-2">
             <Field id="mail-sample-destination" name="destination" label="Destinatario de prueba" type="email" autoComplete="off" maxLength={254} hint="Solo este correo recibirá la prueba, sin copias automáticas." />
             <SelectField id="mail-sample-provider" label="Servicio de envío de prueba" value={provider} onValueChange={(value) => { setProvider(value); setResult(null); }}>
-              <option value="gmail">Gmail{activeProvider === "gmail" ? " · activo" : ""}</option>
-              <option value="endpoint">Servicio institucional{activeProvider === "endpoint" ? " · activo" : ""}</option>
+              <option value="gmail">Gmail</option>
+              <option value="endpoint">Servicio institucional</option>
             </SelectField>
           </div>
-          <p className="mt-3 text-xs leading-5 text-muted-foreground">Esta selección solo se aplica a la prueba. El asunto llevará la marca [PRUEBA].</p>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">El asunto llevará la marca [PRUEBA].</p>
           {endpointUnavailable ? <p role="status" className="mt-3 text-sm text-muted-foreground">Completa la configuración del servicio institucional en el servidor para habilitar sus envíos de prueba.</p> : null}
           <Button className="mt-4" type="submit" disabled={pending || endpointUnavailable}><Send aria-hidden="true" />{pending && operation === "send" ? "Enviando prueba…" : "Enviar correo de prueba"}</Button>
         </div>
@@ -96,6 +96,6 @@ export function MailTemplateGallery({ endpointConfigured, activeProvider }: { en
       <p className="mt-3 break-words text-sm"><span className="font-medium">Asunto: </span>[PRUEBA] {preview.subject}</p>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{preview.attachmentNames.length ? `Adjuntos: ${preview.attachmentNames.join(", ")}` : "Sin adjuntos PDF."}</p>
       <iframe title="Vista previa del correo de prueba con datos ficticios" sandbox="" srcDoc={preview.html} referrerPolicy="no-referrer" className="mt-4 h-[640px] w-full rounded-lg border border-border bg-white" />
-    </section> : <p className="mt-7 text-sm leading-6 text-muted-foreground">Selecciona una plantilla y pulsa Ver vista previa para revisar su contenido.</p>}
+    </section> : null}
   </section>;
 }

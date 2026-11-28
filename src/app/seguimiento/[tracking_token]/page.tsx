@@ -2,7 +2,7 @@ import { formatOrderNumber } from "@/modules/orders/domain/number";
 import { CancelOrderControls } from "@/components/orders/cancel-order-controls";
 import { canBuyerCancel } from "@/modules/orders/domain/cancellation-validation";
 import { customerSaleDocuments } from "@/modules/orders/data/sale-documents";
-import { PdfPreview } from "@/components/orders/pdf-preview";
+import { StoredAttachmentPreview } from "@/components/orders/stored-attachment-preview";
 import { DeliveryComplete } from "@/components/orders/tracking/delivery-complete";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -59,7 +59,7 @@ export default async function TrackingPage({ params }: { params: Promise<{ track
             <span className="flex min-w-0 flex-wrap items-center gap-2"><ImprintBadge imprint={file.imprint} /><span className="break-all">{file.name}</span></span>
             <span>Descargar {pdf ? "PDF" : "XML"} ↓</span>
           </a>
-          {pdf ? <PdfPreview name={file.name} url={`${url}?vista=1`} /> : null}
+          {pdf ? <StoredAttachmentPreview name={file.name} url={url} /> : null}
         </div>;
       })}</div></div> : null}</section>;
   const distributionPanel = <div key="distribucion" className="space-y-4"><div><h2 className="text-base font-semibold">Distribución de tus publicaciones</h2><p className="mt-2 text-xs leading-6 text-muted-foreground">{order.orderStatus === "CANCELADO" ? "El pedido está cancelado y no continuará su distribución." : ["DESPACHADO", "ENTREGADO"].includes(order.orderStatus) ? order.deliveryType === "delivery" ? "El pedido ya fue enviado. Consulta aquí los datos del courier." : "Las publicaciones están disponibles para recoger en biblioteca." : "Te avisaremos cuando el pedido salga o esté listo para recoger."}</p></div><DeliveryCard order={order} /></div>;

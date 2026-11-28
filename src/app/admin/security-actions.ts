@@ -30,7 +30,7 @@ export async function saveAdmissionPolicyAction(input: unknown) {
         await tx.insert(orderAdmissionChanges).values({ actorEmail: actor.email, previous, next: parsed.data.policy });
       });
     });
-    revalidatePath("/admin/configuracion");
+    revalidatePath("/admin/configuracion/seguridad");
     return { success: true, message: "Límites guardados. Se aplicarán a los pedidos nuevos." };
   } catch (error) {
     if (error instanceof PolicyError) return { success: false, message: error.message };

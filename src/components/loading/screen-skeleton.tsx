@@ -59,15 +59,27 @@ function WorkspaceHeadingBones() {
 export function OrdersSkeleton() {
   return <LoadingRegion label="Cargando pedidos"><WorkspaceHeadingBones /><Filters compact /><Table orders /><div className="mt-5 flex justify-between"><div className="w-32"><Bones kind="action" /></div><div className="w-40"><Bones kind="action" /></div></div></LoadingRegion>;
 }
-function SectionTabsBones({ count = 4 }: { count?: number }) { return <div className={count >= 5 ? "workspace-settings-tabs mt-7" : "workspace-attention-tabs mt-6"}>{Array.from({ length: count }, (_, i) => <div key={i} className="rounded-xl border border-border p-5"><Bones kind="back" /><div className="mt-3"><Bones kind="back" /></div></div>)}</div>; }
 export function InventorySkeleton() {
   return <LoadingRegion label="Cargando inventario"><WorkspaceHeadingBones /><div className="workspace-stock-metrics mt-6">{Array.from({ length: 4 }, (_, i) => <Card key={i}><Bones kind="lines" /></Card>)}</div><Filters compact /><div className="mt-5 w-48"><Bones kind="back" /></div><Table inventory /></LoadingRegion>;
 }
-export function SettingsSkeleton() {
-  return <LoadingRegion label="Cargando configuración"><WorkspaceHeadingBones /><SectionTabsBones count={8} /><div className="mt-7"><Bones kind="heading" /><div className="mt-6 grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_19rem]"><Card><Bones kind="lines" /><Bones kind="lines" /></Card><Card><Bones kind="field" /><div className="mt-4"><Bones kind="action" /></div></Card></div></div></LoadingRegion>;
-}
 export function AdminOrderSkeleton() {
-  return <LoadingRegion label="Cargando atención del pedido"><div className="mb-5 w-36"><Bones kind="back" /></div><WorkspaceHeadingBones /><SectionTabsBones /><div className="mt-6 space-y-5"><Bones kind="back" /><div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"><Card><Bones kind="heading" /><Bones kind="lines" /></Card><Card><Bones kind="heading" /><Bones kind="lines" /></Card><Card><Bones kind="heading" /><Bones kind="lines" /></Card><div className="purchase-detail"><div className="detail-card-heading"><div className="w-full"><Bones kind="heading" /></div></div><div className="px-6"><Bones kind="summary" /></div><div className="purchase-detail-footer"><div className="ml-auto w-64"><Bones kind="lines" /></div></div></div></div></div></LoadingRegion>;
+  return <LoadingRegion label="Cargando atención del pedido">
+    <div className="max-w-[74rem] space-y-5">
+      <div className="w-20"><Bones kind="back" /></div>
+      <div className="border-b border-border pb-3"><WorkspaceHeadingBones /></div>
+      <div className="grid min-w-0 gap-5 xl:grid-cols-[11.5rem_minmax(0,1fr)] xl:gap-x-7">
+        <div className="grid grid-cols-4 gap-1 rounded-lg bg-muted/50 p-1 xl:grid-cols-1 xl:self-start xl:p-1.5">
+          {Array.from({ length: 4 }, (_, index) => <div key={index} className="px-1 py-1.5"><Bones kind="action" /></div>)}
+        </div>
+        <div className="min-w-0 space-y-4">
+          <div className="w-full max-w-lg"><Bones kind="heading" /></div>
+          <div className="border-y border-border py-3"><Bones kind="action" /></div>
+          <div className="max-w-xl"><Bones kind="lines" /></div>
+          <div className="border-t border-border pt-4"><Bones kind="summary" /></div>
+        </div>
+      </div>
+    </div>
+  </LoadingRegion>;
 }
 export function TrackingSkeleton() {
   return <main id="contenido" className="public-order-surface mx-auto w-full max-w-6xl px-5 py-7 sm:px-10 sm:py-10"><LoadingRegion label="Cargando seguimiento del pedido"><Bones kind="heading" /><div className="mt-6 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_21rem]"><div className="overflow-hidden rounded-2xl border border-border"><div className="bg-secondary/40 p-5"><Bones kind="heading" /></div><div className="border-b border-border"><Bones kind="tabs" /></div><div className="space-y-4 p-5"><Card><Bones kind="summary" /></Card><Card><Bones kind="lines" /></Card></div></div><SidePanel /></div></LoadingRegion></main>;
